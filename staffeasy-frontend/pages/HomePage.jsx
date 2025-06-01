@@ -9,8 +9,8 @@ const HomePage = () => {
     <div className="max-w-6xl mx-auto">
       {/* Hero Section */}
       <section className="text-center py-10 md:py-16">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-          Welcome to StaffEasy
+<h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+          Welcome to Shiftly
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
           A comprehensive employee management system designed to simplify operations 

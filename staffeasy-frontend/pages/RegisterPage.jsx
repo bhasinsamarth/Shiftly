@@ -16,7 +16,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Create Account</h1>
-          <p className="mt-2 text-gray-600">Sign up to start using StaffEasy</p>
+          <p className="mt-2 text-gray-600">Sign up to start using Shiftly</p>
         </div>
         
         <RegisterForm />
