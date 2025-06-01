@@ -1,6 +1,6 @@
-# StaffEasy - Employee Management System
+# Shiftly - Employee Management System
 
-StaffEasy is a comprehensive employee management system designed to simplify operations within companies of any size. This web application centralizes employee data, eliminating outdated paper-based systems and disconnected spreadsheets.
+Shiftly is an employee management system designed to simplify operations within companies of any size. This web application centralizes employee data, eliminating outdated paper-based systems and disconnected spreadsheets.
 
 ## Project Contributors
 
@@ -40,8 +40,8 @@ StaffEasy is a comprehensive employee management system designed to simplify ope
 1. Clone the repository:
 
    ```
-   git clone https://github.com/moin-shk/PROJ-StaffEasy.git
-   cd staffeasy
+   git clone https://github.com/bhasinsamarth/Shiftly/
+   cd Shiftly
    ```
 
 2. Install frontend dependencies:
@@ -71,7 +71,7 @@ StaffEasy is a comprehensive employee management system designed to simplify ope
    npm start
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
+6. Open [http://localhost:5173](http://localhost:5173) to view the application in your browser.
 
 ## Role-Based Access
 
