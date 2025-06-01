@@ -14,7 +14,7 @@ const ProtectedRoute = ({ children }) => {
 
   // For demo purposes, we'll be more permissive
   // Check authentication from localStorage as a fallback
-  const storedUser = localStorage.getItem('staffeasy_user');
+  const storedUser = localStorage.getItem('shiftly_user');
   const isLocallyAuthenticated = !!storedUser;
 
   // If authenticated by any means, allow access

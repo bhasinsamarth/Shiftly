@@ -17,7 +17,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Welcome Back</h1>
-          <p className="mt-2 text-gray-600">Sign in to access your StaffEasy account</p>
+          <p className="mt-2 text-gray-600">Sign in to access your Shiftly account</p>
         </div>
         
         <LoginForm />

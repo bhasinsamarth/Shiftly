@@ -7,16 +7,16 @@ export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount, attempt to retrieve user info from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem("staffeasy_user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, []);
+    // On mount, attempt to retrieve user info from localStorage
+    useEffect(() => {
+        const storedUser = localStorage.getItem("shiftly_user");
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+        }
+        setIsLoading(false);
+    }, []);
 
   const login = async (email, password) => {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -33,7 +33,7 @@ export const useAuth = () => {
 
   setUser(user);
   setIsAuthenticated(true);
-  localStorage.setItem("staffeasy_user", JSON.stringify(user));
+  localStorage.setItem("shiftly_user", JSON.stringify(user));
 
   return true;
 };
@@ -42,7 +42,7 @@ export const useAuth = () => {
     // Clear state and local storage
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem("staffeasy_user");
+    localStorage.removeItem("shiftly_user");
     return true;
   };
 
