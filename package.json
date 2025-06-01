@@ -1,0 +1,40 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.5.0",
+    "recharts": "^2.15.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "postcss-nested": "^7.0.2",
+    "tailwindcss": "^4.1.3",
+    "vite": "^6.2.5"
+  },
+  "name": "proj-staffeasy",
+  "version": "1.0.0",
+  "description": "StaffEasy is a comprehensive employee management system designed to simplify operations within companies of any size. This web application centralizes employee data, eliminating outdated paper-based systems and disconnected spreadsheets.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moin-shk/PROJ-StaffEasy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/moin-shk/PROJ-StaffEasy/issues"
+  },
+  "homepage": "https://github.com/moin-shk/PROJ-StaffEasy#readme"
+}
