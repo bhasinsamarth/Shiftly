@@ -16,6 +16,7 @@ Shiftly is an employee management system designed to simplify operations within 
 - **Frontend**: Vite + React JS with Tailwind CSS
 - **Backend**: Supabase
 - **Database**: Supabase
+- **Storage**: Supabase Storage
 - **Authentication**: Supa Auth
 - **Routing**: React Router
 
