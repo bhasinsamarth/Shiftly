@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import InputField from "../../components/InputField";
 import { supabase } from "../../supabaseClient"; 
+import { useAuth } from "../../context/AuthContext";
 
 export default function LoginForm() {
   const [form, setForm] = useState({ employeeId: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -49,15 +51,9 @@ export default function LoginForm() {
 
       const { email } = data;
 
-      console.log("Fetched email for login:", email);
-
-      // Step 2: Use Supabase Auth to sign in with email and password
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
+      // Step 2: Use AuthContext login to sign in and update global state
+      const loginSuccess = await login(email, password);
+      if (!loginSuccess) {
         setError("Invalid Employee ID or password.");
         setIsLoading(false);
         return;
