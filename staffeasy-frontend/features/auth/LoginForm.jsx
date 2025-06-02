@@ -9,12 +9,17 @@ export default function LoginForm() {
   const [form, setForm] = useState({ employeeId: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (error) setError("");
+  };
+
+  const handleKeepLoggedInChange = (e) => {
+    setKeepLoggedIn(e.target.checked);
   };
 
   const handleSubmit = async (e) => {
@@ -52,7 +57,7 @@ export default function LoginForm() {
       const { email } = data;
 
       // Step 2: Use AuthContext login to sign in and update global state
-      const loginSuccess = await login(email, password);
+      const loginSuccess = await login(email, password, keepLoggedIn);
       if (!loginSuccess) {
         setError("Invalid Employee ID or password.");
         setIsLoading(false);
@@ -97,6 +102,16 @@ export default function LoginForm() {
         onChange={handleChange}
         required
       />
+      <div className="flex items-center mb-4">
+        <input
+          id="keepLoggedIn"
+          type="checkbox"
+          checked={keepLoggedIn}
+          onChange={handleKeepLoggedInChange}
+          className="mr-2"
+        />
+        <label htmlFor="keepLoggedIn" className="text-sm text-gray-700">Keep me logged in for 60 days</label>
+      </div>
       <button
         type="submit"
         disabled={isLoading}

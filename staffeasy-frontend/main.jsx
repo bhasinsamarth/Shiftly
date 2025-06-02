@@ -19,6 +19,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function AppWithRoutes() {
   return (
@@ -27,12 +28,12 @@ function AppWithRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/add-employee" element={<AddEmployee />} />
-        <Route path="/edit-employee/:id" element={<EditEmployee />} />
-        <Route path="/teams" element={<TeamsPage />} />
-        <Route path="/time-off" element={<TimeOffPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+        <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
+        <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
+        <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
+        <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={
