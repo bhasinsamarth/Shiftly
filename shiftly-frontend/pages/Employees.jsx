@@ -10,7 +10,7 @@ export default function Employees() {
   useEffect(() => {
     async function fetchEmployees() {
       const { data, error } = await supabase
-        .from('employees')
+        .from('employee')
         .select('*');
       if (error) {
         console.error('Error fetching employees:', error);
@@ -55,7 +55,7 @@ export default function Employees() {
             <tbody className="divide-y divide-gray-200">
               {employees.map(emp => (
                 <tr key={emp.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-700">{emp.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{emp.first_name} {emp.last_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.position}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.department}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.email}</td>
