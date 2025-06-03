@@ -1,54 +1,44 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
-    name: '',
-    position: '',
-    department: '',
     email: '',
-    phone: '',
-    salary: '',
-    team: '',
+    store_id: '',
+    role_id: '',
+    employee_id: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
 
-  // Handles input changes
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (error) setError('');
   };
 
-  // Handles form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate required fields
-    if (!form.name || !form.position || !form.department || !form.email || !form.salary) {
-      setError('Please fill in all required fields');
+    if (!form.email) {
+      setError('Please enter an email');
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('employees')
-      .insert([{ 
-        name: form.name,
-        position: form.position,
-        department: form.department,
-        email: form.email,
-        phone: form.phone,
-        salary: Number(form.salary),
-        team: form.team 
-      }]);
-      
-    if (error) {
-      console.error('Error adding employee:', error);
-      setError('Failed to add employee');
-    } else {
-      // Navigate to the employees page after a successful insertion
-      navigate('/employees');
+    try {
+      // Generate a unique invite token
+      const token = uuidv4();
+      // Build the invite link with all params
+      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&token=${token}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
+      setSuccess('Invitation link generated!');
+      setInviteLink(link);
+      setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
+    } catch (err) {
+      console.error('Error generating invite link:', err.message);
+      setError('Failed to generate invitation link');
     }
     setLoading(false);
   };
@@ -57,7 +47,7 @@ const AddEmployee = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8">
         <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-800">Add Employee</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Send Invitation</h1>
           <button
             onClick={() => navigate(-1)}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
@@ -66,46 +56,13 @@ const AddEmployee = () => {
           </button>
         </div>
         {error && <p className="mb-4 text-center text-red-500">{error}</p>}
+        {success && <p className="mb-4 text-center text-green-600">{success}</p>}
+        {inviteLink && (
+          <div className="mb-4 text-center text-blue-600 break-all">
+            Invitation Link: <a href={inviteLink} className="underline">{inviteLink}</a>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Position <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="position"
-              value={form.position}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Department <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="department"
-              value={form.department}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              required
-            />
-          </div>
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Email <span className="text-red-500">*</span>
@@ -121,39 +78,39 @@ const AddEmployee = () => {
           </div>
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Phone
+              Store ID
             </label>
             <input
               type="text"
-              name="phone"
-              value={form.phone}
+              name="store_id"
+              value={form.store_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Salary <span className="text-red-500">*</span>
+              Role ID
+            </label>
+            <input
+              type="text"
+              name="role_id"
+              value={form.role_id}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Employee ID
             </label>
             <input
               type="number"
-              name="salary"
-              value={form.salary}
+              name="employee_id"
+              value={form.employee_id || ''}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Team
-            </label>
-            <input
-              type="text"
-              name="team"
-              value={form.team}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
+              min="1"
             />
           </div>
           <button
@@ -161,7 +118,7 @@ const AddEmployee = () => {
             disabled={loading}
             className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {loading ? 'Adding...' : 'Add Employee'}
+            {loading ? 'Generating...' : 'Generate Invite Link'}
           </button>
         </form>
       </div>

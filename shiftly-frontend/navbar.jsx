@@ -37,20 +37,14 @@ const Navbar = () => {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-<Link to="/" className="text-xl font-bold text-blue-600">
+              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-xl font-bold text-blue-600">
                 Shiftly
               </Link>
             </div>
             
             {/* Desktop Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link 
-                to="/" 
-                className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                Home
-              </Link>
-              
+              {/* Home link removed for authenticated users and guests */}
               {isAuthenticated && (
                 <>
                   <Link 
@@ -59,7 +53,6 @@ const Navbar = () => {
                   >
                     Dashboard
                   </Link>
-                  
                   {/* Admin Links */}
                   {user?.role === 'admin' && (
                     <>
@@ -69,7 +62,6 @@ const Navbar = () => {
                       >
                         Employees
                       </Link>
-                      
                       <Link 
                         to="/teams" 
                         className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -78,7 +70,6 @@ const Navbar = () => {
                       </Link>
                     </>
                   )}
-                  
                   {/* Manager Links */}
                   {(user?.role === 'manager' || user?.role === 'admin') && (
                     <Link 
@@ -146,12 +137,6 @@ const Navbar = () => {
                 >
                   Login
                 </Link>
-                <Link
-                  to="/register"
-                  className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Register
-                </Link>
               </div>
             )}
           </div>
@@ -196,13 +181,7 @@ const Navbar = () => {
       {/* Mobile menu */}
       <div className={`${mobileMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
         <div className="pt-2 pb-3 space-y-1">
-          <Link
-            to="/"
-            className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-          >
-            Home
-          </Link>
-          
+          {/* Home link removed from mobile menu */}
           {isAuthenticated && (
             <>
               <Link
@@ -211,7 +190,6 @@ const Navbar = () => {
               >
                 Dashboard
               </Link>
-              
               {/* Admin Links */}
               {user?.role === 'admin' && (
                 <>
@@ -229,7 +207,6 @@ const Navbar = () => {
                   </Link>
                 </>
               )}
-              
               {/* Manager Links */}
               {(user?.role === 'manager' || user?.role === 'admin') && (
                 <Link
@@ -284,12 +261,6 @@ const Navbar = () => {
                 className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
               >
                 Login
-              </Link>
-              <Link
-                to="/register"
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-              >
-                Register
               </Link>
             </div>
           )}

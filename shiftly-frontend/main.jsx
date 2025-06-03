@@ -15,9 +15,12 @@ import EditEmployee from "./pages/EditEmployee";
 import TeamsPage from "./pages/TeamsPage";
 import TimeOffPage from "./pages/TimeOffPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
+import SetupAccountPage from "./pages/SetupAccountPage";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function AppWithRoutes() {
   return (
@@ -26,13 +29,15 @@ function AppWithRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/employees" element={<Employees />} />
-        <Route path="/add-employee" element={<AddEmployee />} />
-        <Route path="/edit-employee/:id" element={<EditEmployee />} />
-        <Route path="/teams" element={<TeamsPage />} />
-        <Route path="/time-off" element={<TimeOffPage />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
+        <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
+        <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
+        <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
+        <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/setup-account" element={<SetupAccountPage />} />
         <Route path="*" element={
           <div className="text-center py-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>

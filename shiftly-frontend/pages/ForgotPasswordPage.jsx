@@ -57,6 +57,41 @@ export default function ForgotPassword() {
     setIsLoading(false);
   };
 
+  // Resend link handler
+  const handleResend = async () => {
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
+    try {
+      let email = identifier.trim();
+      if (/^\d{7}$/.test(identifier)) {
+        const { data, error: dbError } = await supabase
+          .from("employee")
+          .select("email")
+          .eq("employee_id", identifier)
+          .single();
+        if (dbError || !data) {
+          setError("No user found with that Employee ID.");
+          setIsLoading(false);
+          return;
+        }
+        email = data.email;
+      }
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (authError) {
+        setError(authError.message);
+        setIsLoading(false);
+        return;
+      }
+      setSuccess(`A password reset link has been sent to ${email}. Please check your inbox.`);
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    }
+    setIsLoading(false);
+  };
+
   return (
     <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
@@ -72,6 +107,14 @@ export default function ForgotPassword() {
         {success ? (
           <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm text-center">
             {success}
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isLoading}
+              className={`block w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+            >
+              {isLoading ? "Resending..." : "Resend Link"}
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md">
