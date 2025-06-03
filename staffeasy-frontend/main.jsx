@@ -16,6 +16,7 @@ import TeamsPage from "./pages/TeamsPage";
 import TimeOffPage from "./pages/TimeOffPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
+import SetupAccountPage from "./pages/SetupAccountPage";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -36,6 +37,7 @@ function AppWithRoutes() {
         <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/setup-account" element={<SetupAccountPage />} />
         <Route path="*" element={
           <div className="text-center py-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>

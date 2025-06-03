@@ -26,9 +26,27 @@ export const useAuth = () => {
     const storedUser = localStorage.getItem("shiftly_user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setIsAuthenticated(true);
-      setIsLoading(false);
+      // Fetch employee record to get latest role_id and other fields
+      (async () => {
+        const { data: empData, error: empError } = await supabase
+          .from("employee")
+          .select("*")
+          .eq("email", parsedUser.email)
+          .single();
+        let mergedUser = parsedUser;
+        if (!empError && empData) {
+          mergedUser = { ...parsedUser, ...empData };
+          setUser(mergedUser);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
+        } else {
+          // If no employee record, fallback to parsedUser
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+        }
+      })();
       return;
     }
     // Check cookie for persistent login
@@ -36,8 +54,23 @@ export const useAuth = () => {
     if (cookieUser) {
       try {
         const parsedUser = JSON.parse(cookieUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
+        (async () => {
+          const { data: empData, error: empError } = await supabase
+            .from("employee")
+            .select("*")
+            .eq("email", parsedUser.email)
+            .single();
+          let mergedUser = parsedUser;
+          if (!empError && empData) {
+            mergedUser = { ...parsedUser, ...empData };
+            setUser(mergedUser);
+            setIsAuthenticated(true);
+            localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
+          } else {
+            setUser(parsedUser);
+            setIsAuthenticated(true);
+          }
+        })();
       } catch {}
     }
     setIsLoading(false);
@@ -54,7 +87,19 @@ export const useAuth = () => {
       return false;
     }
 
-    const user = data.user;
+    let user = data.user;
+
+    // Fetch employee record to get role_id and other fields
+    const { data: empData, error: empError } = await supabase
+      .from("employee")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (!empError && empData) {
+      user = { ...user, ...empData };
+    }
+
     setUser(user);
     setIsAuthenticated(true);
     localStorage.setItem("shiftly_user", JSON.stringify(user));

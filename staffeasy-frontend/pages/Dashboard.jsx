@@ -47,7 +47,7 @@ const Dashboard = () => {
   const accessDenied = location.state?.accessDenied;
   const accessMessage = location.state?.message;
 
-  // --- ADMIN & MANAGER DASHBOARD LOGIC (unchanged) ---
+  // --- ADMIN, OWNER & MANAGER DASHBOARD LOGIC ---
   const [employeesCount, setEmployeesCount] = useState(0);
   const [teamsCount, setTeamsCount] = useState(0);
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
@@ -57,7 +57,7 @@ const Dashboard = () => {
   const [errorActivity, setErrorActivity] = useState('');
 
   useEffect(() => {
-    if (user && (user.role === 'admin' || user.role === 'manager')) {
+    if (user && (user.role_id === 1 || user.role_id === 2)) {
       async function fetchMetricsAndActivity() {
         // Employee count from employees table
         const { count: empCount, error: countError } = await supabase
@@ -138,7 +138,7 @@ const Dashboard = () => {
   const [openUserTeams, setOpenUserTeams] = useState({});
 
   useEffect(() => {
-    if (user && user.role === 'user') {
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
           .from('employees')
@@ -146,7 +146,6 @@ const Dashboard = () => {
           .eq('email', user.email)
           .single();
         if (error) {
-          console.error('Error fetching your employee data:', error);
           setErrorMyEmp('Could not fetch your employee data.');
         } else {
           setMyEmployee(data);
@@ -276,8 +275,21 @@ const Dashboard = () => {
     }
   };
 
+  // Helper to get role description from role_id
+  const getRoleDesc = (role_id) => {
+    switch (role_id) {
+      case 1: return 'Owner';
+      case 2: return 'Manager';
+      case 3: return 'Full-time Associate';
+      case 4: return 'Part-time Associate';
+      case 5: return 'Interns';
+      default: return 'Unknown';
+    }
+  };
+
   // --- RENDERING ---
-  if (user && (user.role === 'admin' || user.role === 'manager')) {
+  if (user && (user.role_id === 1 || user.role_id === 2)) {
+    // Owner/Manager dashboard
     const dynamicDashboardCards = [
       { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
       { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
@@ -390,7 +402,8 @@ const Dashboard = () => {
         </section>
       </div>
     );
-  } else if (user && user.role === 'user') {
+  } else if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+    // Full-time Associate, Part-time Associate, Interns dashboard
     if (loadingMyEmp) {
       return <div className="max-w-4xl mx-auto p-4">Loading your data...</div>;
     }
@@ -417,6 +430,7 @@ const Dashboard = () => {
               <p className="text-gray-700"><strong>Position:</strong> {myEmployee.position}</p>
               <p className="text-gray-700"><strong>Department:</strong> {myEmployee.department}</p>
               <p className="text-gray-700"><strong>Email:</strong> {myEmployee.email}</p>
+              <p className="text-gray-700"><strong>Role:</strong> {getRoleDesc(myEmployee.role_id)}</p>
             </div>
             <div>
               <p className="text-gray-700"><strong>Phone:</strong> {myEmployee.phone || 'N/A'}</p>
