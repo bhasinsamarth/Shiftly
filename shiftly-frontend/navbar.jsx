@@ -8,7 +8,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  
+  const [unreadMessages, setUnreadMessages] = useState(0); // State for unread messages (assuming you have this logic)
+
   const handleLogout = async () => {
     console.log('Logging out...');
     // Call Supabase to sign out the user
@@ -28,6 +29,23 @@ const Navbar = () => {
   const toggleProfileDropdown = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
+
+  // Close profile dropdown when clicking outside
+  React.useEffect(() => {
+    if (!profileDropdownOpen) return;
+    function handleClickOutside(event) {
+      const dropdown = document.getElementById('user-menu-button');
+      const menu = document.getElementById('user-menu-dropdown');
+      if (
+        dropdown && !dropdown.contains(event.target) &&
+        menu && !menu.contains(event.target)
+      ) {
+        setProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [profileDropdownOpen]);
 
   console.log('Auth state in navbar:', { isAuthenticated, user });
 
@@ -85,6 +103,23 @@ const Navbar = () => {
           </div>
           
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {/* Notification Bell */}
+            {isAuthenticated && (
+              <button
+                type="button"
+                className="relative mr-4 focus:outline-none"
+                aria-label="Notifications"
+              >
+                {/* Bell Icon (Heroicons outline) */}
+                <svg className="h-6 w-6 text-gray-500 hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {/* Notification dot for unread messages */}
+                {unreadMessages > 0 && (
+                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
+                )}
+              </button>
+            )}
             {/* Authentication Links */}
             {isAuthenticated ? (
               <div className="ml-3 relative">
@@ -107,6 +142,7 @@ const Navbar = () => {
                 {/* Profile dropdown */}
                 {profileDropdownOpen && (
                   <div
+                    id="user-menu-dropdown"
                     className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
                     role="menu"
                     aria-orientation="vertical"
@@ -114,8 +150,16 @@ const Navbar = () => {
                     tabIndex="-1"
                   >
                     <div className="block px-4 py-2 text-sm text-gray-700" role="menuitem">
-                      Signed in as <strong>{user?.username || user?.email}</strong>
+                      Signed in as <strong>{user?.preferred_name || user?.first_name || user?.username || user?.email}</strong>
                     </div>
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex="-1"
+                    >
+                      My Profile
+                    </Link>
                     
                     <button
                       onClick={handleLogout}
@@ -232,7 +276,7 @@ const Navbar = () => {
                 </div>
                 <div className="ml-3">
                   <div className="text-base font-medium text-gray-800">
-                    {user?.username || 'User'}
+                    {user?.preferred_name || user?.first_name || user?.username || 'User'}
                   </div>
                   <div className="text-sm font-medium text-gray-500">
                     {user?.email || ''}

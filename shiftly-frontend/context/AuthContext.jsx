@@ -17,20 +17,20 @@ export const useAuth = () => {
 // Auth Provider component that wraps the app
 export const AuthProvider = ({ children }) => {
   const auth = useAuthHook();
-  // State to hold the custom user record from the "users" table.
+  // State to hold the custom employee record from the "employee" table.
   const [dbUser, setDbUser] = useState(null);
 
-  // Whenever the auth.user is available, fetch the corresponding user record from your custom table.
+  // Whenever the auth.user is available, fetch the corresponding employee record and role from the new schema.
   useEffect(() => {
     const fetchDbUser = async () => {
-      if (auth.user && auth.user.email) {
+      if (auth.user && auth.user.id) {
         const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", auth.user.email)
+          .from("employee")
+          .select("*, role:role_id(role_desc)")
+          .eq("id", auth.user.id)
           .single();
         if (error) {
-          console.error("Error fetching db user:", error);
+          console.error("Error fetching employee record:", error);
         }
         setDbUser(data);
       }
@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }) => {
     fetchDbUser();
   }, [auth.user]);
 
-  // Compute isAdmin based on the custom user record.
-  const isAdmin = dbUser?.role === "admin";
+  // Compute isAdmin based on the joined role record.
+  const isAdmin = dbUser?.role?.role_desc === "admin";
 
   return (
     <AuthContext.Provider

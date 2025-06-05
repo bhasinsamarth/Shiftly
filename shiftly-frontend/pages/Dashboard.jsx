@@ -44,6 +44,9 @@ const Dashboard = () => {
     console.error('Error parsing stored user', e);
   }
 
+  // Get preferred name or first name for greeting
+  let greetingName = user?.preferred_name || user?.first_name || username;
+
   const accessDenied = location.state?.accessDenied;
   const accessMessage = location.state?.message;
 
@@ -59,12 +62,12 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && (user.role_id === 1 || user.role_id === 2)) {
       async function fetchMetricsAndActivity() {
-        // Employee count from employees table
-        const { count: empCount, error: countError } = await supabase
-          .from('employees')
-          .select('id', { head: true, count: 'exact' });
-        if (!countError) {
-          setEmployeesCount(empCount || 0);
+        // Employee count from employee table
+        const { data: empRows, error: countError } = await supabase
+          .from('employee')
+          .select('id');
+        if (!countError && empRows) {
+          setEmployeesCount(empRows.length);
         } else {
           console.error('Error fetching employee count:', countError);
         }
@@ -80,15 +83,27 @@ const Dashboard = () => {
           console.error('Error fetching salaries:', salaryError);
         }
 
-        // Teams count: Fetch teams info from the teams table, then count distinct team names.
-        const { data: teamsData, error: teamsError } = await supabase
-          .from('teams')
-          .select('team');
-        if (!teamsError && teamsData) {
-          const distinctTeams = new Set(teamsData.map(t => t.team).filter(team => team));
-          setTeamsCount(distinctTeams.size);
+        // Teams count: Fetch number of rows from the store table for owners
+        if (user.role_id === 1) {
+          const { data: storeRows, error: storeError } = await supabase
+            .from('store')
+            .select('store_id');
+          if (!storeError && storeRows) {
+            setTeamsCount(storeRows.length);
+          } else {
+            console.error('Error fetching store rows:', storeError);
+          }
         } else {
-          console.error('Error fetching teams:', teamsError);
+          // Teams count: Fetch teams info from the teams table, then count distinct team names.
+          const { data: teamsData, error: teamsError } = await supabase
+            .from('teams')
+            .select('team');
+          if (!teamsError && teamsData) {
+            const distinctTeams = new Set(teamsData.map(t => t.team).filter(team => team));
+            setTeamsCount(distinctTeams.size);
+          } else {
+            console.error('Error fetching teams:', teamsError);
+          }
         }
 
         // Pending time-off requests from time_off_requests table
@@ -326,10 +341,10 @@ const Dashboard = () => {
         )}
         <section className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-              Welcome back to Shiftly, {username}
+              Welcome {greetingName}
             </h1>
             <p className="text-gray-600">
-              Here's what's happening with your organization today.
+              Here's what's happening within your organization today.
             </p>
         </section>
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -341,6 +356,7 @@ const Dashboard = () => {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
           <div className="bg-white rounded-lg shadow-md p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <QuickAction icon="👤" title="Add Employee" path="/add-employee" />
+            <QuickAction icon="👥" title="Manage Employees" path="/employees" />
             <QuickAction icon="🗂️" title="Manage Teams" path="/teams" />
             <QuickAction icon="📋" title="Review Time-off" path="/time-off" />
           </div>
