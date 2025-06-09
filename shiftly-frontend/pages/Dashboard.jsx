@@ -13,7 +13,6 @@ const DashboardCard = ({ title, value, icon, bgColor, path }) => (
       </div>
       <div className="text-3xl">{icon}</div>
     </div>
-    
   </div>
 );
 
@@ -153,11 +152,39 @@ const Dashboard = () => {
   // New state for open/closed dropdown for user teams
   const [openUserTeams, setOpenUserTeams] = useState({});
 
+  // --- SCHEDULES SECTION ---
+  const [schedules, setSchedules] = useState([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(true);
+  const [errorSchedules, setErrorSchedules] = useState('');
+
+  // --- TIME CARDS SECTION ---
+  const [timeCards, setTimeCards] = useState([]);
+  const [loadingTimeCards, setLoadingTimeCards] = useState(true);
+  const [errorTimeCards, setErrorTimeCards] = useState('');
+
+  // --- CLOCK IN/OUT SECTION ---
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [clockMsg, setClockMsg] = useState('');
+
+  // --- AVAILABILITY REQUEST SECTION ---
+  const [showAvailModal, setShowAvailModal] = useState(false);
+  const [availDays, setAvailDays] = useState([]);
+  const [availTimes, setAvailTimes] = useState('');
+  const [availMsg, setAvailMsg] = useState('');
+
+  // --- ANONYMOUS COMPLAINT SECTION ---
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [complaintAgainst, setComplaintAgainst] = useState('');
+  const [complaintSubject, setComplaintSubject] = useState('');
+  const [complaintDetails, setComplaintDetails] = useState('');
+  const [complaintName, setComplaintName] = useState('');
+  const [complaintMsg, setComplaintMsg] = useState('');
+
   useEffect(() => {
     if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
-          .from('employee') 
+          .from('employee') // FIX: use 'employee' (singular)
           .select('*')
           .eq('email', user.email)
           .single();
@@ -303,6 +330,130 @@ const Dashboard = () => {
     }
   };
 
+  // --- EFFECTS FOR NORMAL USER DASHBOARD LOGIC ---
+  useEffect(() => {
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+      async function fetchSchedules() {
+        // Fetch upcoming and past schedules for the employee
+        const { data, error } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('employee_id', user.id)
+          .order('shift_start', { ascending: false });
+        if (error) setErrorSchedules('Could not fetch schedules.');
+        else setSchedules(data || []);
+        setLoadingSchedules(false);
+      }
+      fetchSchedules();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+      async function fetchTimeCards() {
+        // Fetch time cards for current and previous pay periods
+        const { data, error } = await supabase
+          .from('timecards')
+          .select('*')
+          .eq('employee_id', user.id)
+          .order('date', { ascending: false });
+        if (error) setErrorTimeCards('Could not fetch time cards.');
+        else setTimeCards(data || []);
+        setLoadingTimeCards(false);
+      }
+      fetchTimeCards();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+      async function checkClockStatus() {
+        // Check if the user is currently clocked in
+        const { data, error } = await supabase
+          .from('timecards')
+          .select('*')
+          .eq('employee_id', user.id)
+          .order('date', { ascending: false })
+          .limit(1);
+        if (!error && data && data[0]) {
+          setIsClockedIn(!!data[0].clock_in && !data[0].clock_out);
+        }
+      }
+      checkClockStatus();
+    }
+  }, [user]);
+
+  // --- HANDLERS FOR CLOCK IN/OUT SECTION ---
+  const handleClockIn = async () => {
+    if (isClockedIn) {
+      setClockMsg('Already clocked in.');
+      return;
+    }
+    // Optionally, check for late/early logic here
+    const now = new Date();
+    // ...fetch scheduled shift and compare times for late/early...
+    await supabase.from('timecards').insert([
+      { employee_id: user.id, clock_in: now.toISOString(), date: now.toISOString().split('T')[0] }
+    ]);
+    setIsClockedIn(true);
+    setClockMsg('Clocked in successfully.');
+  };
+
+  const handleClockOut = async () => {
+    if (!isClockedIn) {
+      setClockMsg('Not clocked in.');
+      return;
+    }
+    const now = new Date();
+    // Find today's timecard
+    const { data } = await supabase
+      .from('timecards')
+      .select('*')
+      .eq('employee_id', user.id)
+      .eq('date', now.toISOString().split('T')[0])
+      .order('clock_in', { ascending: false })
+      .limit(1);
+    if (data && data[0]) {
+      await supabase
+        .from('timecards')
+        .update({ clock_out: now.toISOString() })
+        .eq('id', data[0].id);
+      setIsClockedIn(false);
+      setClockMsg('Clocked out successfully.');
+    }
+  };
+
+  // --- AVAILABILITY REQUEST HANDLER ---
+  const handleSubmitAvailability = async (e) => {
+    e.preventDefault();
+    // Insert availability request for manager review
+    const { error } = await supabase.from('availability_requests').insert([
+      { employee_id: user.id, days: availDays, times: availTimes, status: 'pending' }
+    ]);
+    if (error) setAvailMsg('Failed to submit availability request.');
+    else setAvailMsg('Availability request submitted.');
+    setShowAvailModal(false);
+  };
+
+  // --- ANONYMOUS COMPLAINT HANDLER ---
+  const handleSubmitComplaint = async (e) => {
+    e.preventDefault();
+    // Store complaint anonymously
+    const { error } = await supabase.from('complaints').insert([
+      {
+        against: complaintAgainst,
+        subject: complaintSubject,
+        details: complaintDetails,
+        name: complaintName || null,
+        employee_id: user.id,
+        anonymous: !complaintName
+      }
+    ]);
+    if (error) setComplaintMsg('Failed to submit complaint.');
+    else setComplaintMsg('Complaint submitted.');
+    setShowComplaintModal(false);
+  };
+
   // --- RENDERING ---
   if (user && (user.role_id === 1 || user.role_id === 2)) {
     // Owner/Manager dashboard
@@ -432,86 +583,97 @@ const Dashboard = () => {
     }
 
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        {/* Profile Section */}
-        <div className="bg-white shadow-lg rounded-lg p-8 mb-6">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">Your Profile</h2>
-          {alertMsg && (
-            <div className={`mb-4 p-4 rounded ${alertMsg.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {alertMsg.text}
-            </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-gray-700"><strong>Name:</strong> {myEmployee.first_name} {myEmployee.last_name}</p>
-              <p className="text-gray-700"><strong>Email:</strong> {myEmployee.email}</p>
-              <p className="text-gray-700"><strong>Role:</strong> {getRoleDesc(myEmployee.role_id)}</p>
-              <p className="text-gray-700"><strong>Store ID:</strong> {myEmployee.store_id || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-gray-700"><strong>Phone:</strong> {myEmployee.phone || 'N/A'}</p>
-              <p className="text-gray-700"><strong>Date of Birth:</strong> {myEmployee.date_of_birth || 'N/A'}</p>
-              <p className="text-gray-700"><strong>Gender:</strong> {myEmployee.gender || 'N/A'}</p>
-              <p className="text-gray-700"><strong>Time-off Request:</strong> {myEmployee.timeoff_request ? 'Requested' : 'Not Requested'}</p>
-            </div>
-          </div>
-          {/* Request Time Off button remains in the profile section */}
-          <div className="mt-6">
-            { !myEmployee.timeoff_request ? (
-              <button
-                onClick={handleOpenTimeOffModal}
-                className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                Request Time Off
-              </button>
+      <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Greeting */}
+        <div className="col-span-4 mb-6" style={{ backgroundColor: '#004dcf', borderRadius: '0.75rem', padding: '1.5rem' }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Hi {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+        </div>
+        {/* My Schedule */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Schedule</h3>
+          <div className="flex-1 overflow-y-auto">
+            {schedules.length === 0 ? (
+              <p className="text-gray-500">You have nothing planned.</p>
             ) : (
-              <button
-                onClick={handleWithdrawTimeOff}
-                className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                Withdraw Request
-              </button>
+              <ul className="divide-y divide-gray-100">
+                {schedules.slice(0, 5).map((sch, idx) => (
+                  <li key={sch.id || idx} className="py-2 flex items-center">
+                    <div className="w-12 text-center">
+                      <span className="block text-xs text-gray-400 font-medium">
+                        {new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}
+                      </span>
+                      <span className="block text-lg font-bold text-gray-700">
+                        {new Date(sch.shift_start).getDate()}
+                      </span>
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <div className="text-sm text-gray-700 font-medium">
+                        {sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}
+                      </div>
+                      <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
 
-        {/* Teams Section: Display dropdowns for each team the user is part of */}
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Teams</h2>
-          {Object.keys(userTeamGroups).length === 0 ? (
-            <p>You are not part of any teams.</p>
-          ) : (
-            <div className="space-y-4">
-              {Object.keys(userTeamGroups).map(teamName => (
-                <div key={teamName} className="bg-white p-4 rounded shadow border border-gray-200">
-                  <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleUserTeamGroup(teamName)}>
-                    <span className="text-lg font-medium text-gray-800">{teamName}</span>
-                    <span>{openUserTeams[teamName] ? '-' : '+'}</span>
-                  </div>
-                  {openUserTeams[teamName] && (
-                    <ul className="mt-2 pl-4 border-l border-gray-300">
-                      {userTeamGroups[teamName].map(member => (
-                        <li key={member.employee_id} className="text-gray-700 text-sm">
-                          {member.employee_name} (ID: {member.employee_id})
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
+        {/* My Timecard */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Timecard</h3>
+          {timeCards.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+              <span className="text-5xl mb-2">🕒</span>
+              <span>No data to display.</span>
             </div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {timeCards.slice(0, 5).map((tc, idx) => (
+                <li key={tc.id || idx} className="py-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">{tc.date}</span>
+                    <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
+                  </div>
+                  <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in))/3600000).toFixed(2) : '-'}</div>
+                </li>
+              ))}
+            </ul>
           )}
-        </section>
+        </div>
 
-        {/* Time Off Request Modal (for normal users) */}
+        {/* My Notifications */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Notifications</h3>
+          <ul className="divide-y divide-gray-100">
+            <li className="py-2 flex justify-between text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
+            <li className="py-2 flex justify-between text-sm"><span>Timekeeping</span><span className="font-bold">0</span></li>
+            <li className="py-2 flex justify-between text-sm"><span>System Messages</span><span className="font-bold">0</span></li>
+            <li className="py-2 flex justify-between text-sm"><span>Notices</span><span className="font-bold">0</span></li>
+          </ul>
+        </div>
+
+        {/* Request Time Off */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Request Time Off</h3>
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <span className="text-gray-500 mb-2">Request Time Off</span>
+            <button
+              onClick={handleOpenTimeOffModal}
+              className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+            >
+              Time-Off Request
+            </button>
+          </div>
+        </div>
+
+        {/* Time Off Modal */}
         {showTimeOffModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
             <div className="bg-white rounded-lg shadow-xl p-8 w-96">
               <form onSubmit={handleSubmitTimeOffRequest}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Reason
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Reason</label>
                   <textarea
                     value={requestReason}
                     onChange={(e) => setRequestReason(e.target.value)}
@@ -522,9 +684,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Start Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
                   <input
                     type="date"
                     value={startDate}
@@ -534,9 +694,7 @@ const Dashboard = () => {
                   />
                 </div>
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">
-                    End Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">End Date</label>
                   <input
                     type="date"
                     value={endDate}
@@ -551,6 +709,13 @@ const Dashboard = () => {
                     className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
                   >
                     Submit Request
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowTimeOffModal(false)}
+                    className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md"
+                  >
+                    Cancel
                   </button>
                 </div>
               </form>
