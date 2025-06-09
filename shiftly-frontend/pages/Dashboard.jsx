@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 
 // Helper component for dashboard cards (admin/manager view)
 const DashboardCard = ({ title, value, icon, bgColor, path }) => (
-  <div className={`${bgColor} rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow`}>
+  <div className={`${bgColor} rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow min-h-[200px]`}>
     <div className="flex justify-between items-start">
       <div>
         <p className="text-gray-500 text-sm font-medium mb-1">{title}</p>
@@ -461,52 +461,37 @@ const Dashboard = () => {
       { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
       { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
       { title: 'Time-off Requests', value: pendingTimeOff, icon: '📅', bgColor: 'bg-yellow-50', path: '/time-off' },
-      { title: 'Payroll', value: totalPayroll ? `$${totalPayroll}` : '$0', icon: '💰', bgColor: 'bg-purple-50', path: '/payroll' },
+      { title: 'Payroll', value: totalPayroll ? `$${totalPayroll.toLocaleString()}` : '$0', icon: '💰', bgColor: 'bg-purple-50', path: '/payroll' },
     ];
 
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-6xl mx-auto p-2 sm:p-4 lg:p-6">
         {accessDenied && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
+          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4"> {/* Reduced margin above welcome */}
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
+                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">
-                  {accessMessage || 'You do not have permission to access the requested page.'}
-                </p>
+                <p className="text-sm text-red-700">{accessMessage || 'You do not have permission to access the requested page.'}</p>
               </div>
             </div>
           </div>
         )}
-        <section className="mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-              Welcome {greetingName}
-            </h1>
-            <p className="text-gray-600">
-              Here's what's happening within your organization today.
-            </p>
+        <section className="mb-4"> {/* Reduced margin below welcome */}
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">Welcome {greetingName}</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Here's what's happening within your organization today.</p>
         </section>
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           {dynamicDashboardCards.map((card, index) => (
             <DashboardCard key={index} {...card} />
           ))}
         </section>
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-          <div className="bg-white rounded-lg shadow-md p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <QuickAction icon="👤" title="Add Employee" path="/add-employee" />
             <QuickAction icon="👥" title="Manage Employees" path="/employees" />
             <QuickAction icon="🗂️" title="Manage Teams" path="/teams" />
@@ -520,52 +505,32 @@ const Dashboard = () => {
           ) : errorActivity ? (
             <p className="text-red-500">{errorActivity}</p>
           ) : activity.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      When
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      By
-                    </th>
+                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
+                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
+                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Details</th>
+                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">When</th>
+                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">By</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {activity.map(act => (
                     <tr key={act.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {act.type}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {act.action}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {act.subject}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(act.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {act.user_name || act.user_email || 'N/A'}
-                      </td>
+                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.type}</td>
+                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.action}</td>
+                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.subject}</td>
+                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{new Date(act.timestamp).toLocaleString()}</td>
+                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.user_name || act.user_email || 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-600">No recent activity found.</p>
+            <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
           )}
         </section>
       </div>
@@ -573,242 +538,151 @@ const Dashboard = () => {
   } else if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
     // Full-time Associate, Part-time Associate, Interns dashboard
     if (loadingMyEmp) {
-      return <div className="max-w-4xl mx-auto p-4">Loading your data...</div>;
+      return <div className="flex justify-center items-center h-screen"><p className="text-lg text-gray-500">Loading your dashboard...</p></div>;
     }
     if (errorMyEmp) {
-      return <div className="max-w-4xl mx-auto p-4 text-red-500">{errorMyEmp}</div>;
+      return <div className="p-4 text-red-600 bg-red-100 rounded-md">{errorMyEmp}</div>;
     }
     if (!myEmployee) {
-      return <div className="max-w-4xl mx-auto p-4">You are not an employee.</div>;
+      return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
 
     return (
-      <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Greeting */}
-        <div className="col-span-4 mb-6" style={{ backgroundColor: '#004dcf', borderRadius: '0.75rem', padding: '1.5rem' }}>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">Hi {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
-        </div>
-        {/* My Schedule */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200 group hover:bg-blue-700">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 group-hover:text-white transition">My Schedule</h3>
-          <div className="flex-1 overflow-y-auto group-hover:text-white transition">
-            {schedules.length === 0 ? (
-              <p className="text-gray-500">You have nothing planned.</p>
+      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
+        <section className="mb-4"> {/* Reduced margin below welcome */}
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+          <p className="text-gray-600 text-sm sm:text-base mb-4">Here's your personal dashboard.</p>
+        </section>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          {/* My Schedule */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 group hover:bg-blue-700 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 group-hover:text-white transition">My Schedule</h3>
+            <div className="flex-1 overflow-y-auto group-hover:text-white transition" style={{ maxHeight: '200px' }}>
+              {schedules.length === 0 ? (
+                <p className="text-gray-500">You have nothing planned.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {schedules.slice(0, 5).map((sch, idx) => (
+                    <li key={sch.id || idx} className="py-2 flex items-center">
+                      <div className="w-10 sm:w-12 text-center">
+                        <span className="block text-xs text-gray-400 font-medium">{new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                        <span className="block text-md sm:text-lg font-bold text-gray-700">{new Date(sch.shift_start).getDate()}</span>
+                      </div>
+                      <div className="ml-2 sm:ml-3 flex-1">
+                        <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
+                        <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          {/* My Timecard */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">My Timecard</h3>
+            {timeCards.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                <span className="text-4xl sm:text-5xl mb-2">🕒</span>
+                <span className="text-sm">No data to display.</span>
+              </div>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {schedules.slice(0, 5).map((sch, idx) => (
-                  <li key={sch.id || idx} className="py-2 flex items-center">
-                    <div className="w-12 text-center">
-                      <span className="block text-xs text-gray-400 font-medium">
-                        {new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}
-                      </span>
-                      <span className="block text-lg font-bold text-gray-700">
-                        {new Date(sch.shift_start).getDate()}
-                      </span>
+                {timeCards.slice(0, 5).map((tc, idx) => (
+                  <li key={tc.id || idx} className="py-2">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="font-medium text-gray-700">{tc.date}</span>
+                      <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
                     </div>
-                    <div className="ml-3 flex-1">
-                      <div className="text-sm text-gray-700 font-medium">
-                        {sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}
-                      </div>
-                      <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
-                    </div>
+                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in))/3600000).toFixed(2) : '-'}</div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-        </div>
-
-        {/* My Timecard */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Timecard</h3>
-          {timeCards.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-              <span className="text-5xl mb-2">🕒</span>
-              <span>No data to display.</span>
-            </div>
-          ) : (
+          {/* My Notifications */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">My Notifications</h3>
             <ul className="divide-y divide-gray-100">
-              {timeCards.slice(0, 5).map((tc, idx) => (
-                <li key={tc.id || idx} className="py-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-gray-700">{tc.date}</span>
-                    <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
-                  </div>
-                  <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in))/3600000).toFixed(2) : '-'}</div>
-                </li>
-              ))}
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Timekeeping</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Messages</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Notices</span><span className="font-bold">0</span></li>
             </ul>
-          )}
-        </div>
-
-        {/* My Notifications */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Notifications</h3>
-          <ul className="divide-y divide-gray-100">
-            <li className="py-2 flex justify-between text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
-            <li className="py-2 flex justify-between text-sm"><span>Timekeeping</span><span className="font-bold">0</span></li>
-            <li className="py-2 flex justify-between text-sm"><span>System Messages</span><span className="font-bold">0</span></li>
-            <li className="py-2 flex justify-between text-sm"><span>Notices</span><span className="font-bold">0</span></li>
-          </ul>
-        </div>
-
-        {/* Request Time Off */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Request Time Off</h3>
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <span className="text-gray-500 mb-2">Request Time Off</span>
-            <button
-              onClick={handleOpenTimeOffModal}
-              className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
-            >
-              Time-Off Request
-            </button>
+          </div>
+          {/* Request Time Off */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Request Time Off</h3>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <span className="text-gray-500 mb-2">Request Time Off</span>
+              <button onClick={handleOpenTimeOffModal} className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Time-Off Request</button>
+            </div>
+          </div>
+          {/* Clock In / Out */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Clock In / Out</h3>
+            <div className="flex flex-col items-center space-y-3">
+              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
+            </div>
+          </div>
+          {/* Complaint */}
+          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint</h3>
+            <div className="flex flex-col items-center justify-center flex-1">
+              <button onClick={() => setShowComplaintModal(true)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition w-full">Raise Complaint</button>
+              {complaintMsg && <span className="text-xs sm:text-sm text-gray-700 mt-2">{complaintMsg}</span>}
+            </div>
           </div>
         </div>
-
-        {/* Clock In / Out */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Clock In / Out</h3>
-          <div className="flex flex-col items-center space-y-3">
-            <button
-              onClick={handleClockIn}
-              disabled={isClockedIn}
-              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full"
-            >
-              Clock In/Clock Out
-            </button>
-          </div>
-        </div>
-
-        {/* Complaint */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint</h3>
-          <div className="flex flex-col items-center justify-center flex-1">
-            <button
-              onClick={() => setShowComplaintModal(true)}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition w-full"
-            >
-              Raise Complaint
-            </button>
-            {complaintMsg && <span className="text-sm text-gray-700 mt-2">{complaintMsg}</span>}
-          </div>
-        </div>
-
         {/* Time Off Modal */}
         {showTimeOffModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-            <div className="bg-white rounded-lg shadow-xl p-8 w-96">
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
               <form onSubmit={handleSubmitTimeOffRequest}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Reason</label>
-                  <textarea
-                    value={requestReason}
-                    onChange={(e) => setRequestReason(e.target.value)}
-                    placeholder="Enter the reason for your time off request"
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 resize-none"
-                    rows="4"
-                  />
+                  <textarea value={requestReason} onChange={(e) => setRequestReason(e.target.value)} placeholder="Enter the reason for your time off request" required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 resize-none" rows="4" />
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                  />
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
                 </div>
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700">End Date</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                  />
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
                 </div>
                 <div className="flex justify-end space-x-4">
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
-                  >
-                    Submit Request
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowTimeOffModal(false)}
-                    className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md"
-                  >
-                    Cancel
-                  </button>
+                  <button type="submit" className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">Submit Request</button>
+                  <button type="button" onClick={() => setShowTimeOffModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
                 </div>
               </form>
             </div>
           </div>
         )}
-
         {/* Complaint Modal */}
         {showComplaintModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-            <div className="bg-white rounded-lg shadow-xl p-8 w-96">
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
               <form onSubmit={handleSubmitComplaint}>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
-                  <input
-                    type="text"
-                    value={complaintAgainst}
-                    onChange={e => setComplaintAgainst(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300"
-                  />
+                  <input type="text" value={complaintAgainst} onChange={e => setComplaintAgainst(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Subject</label>
-                  <input
-                    type="text"
-                    value={complaintSubject}
-                    onChange={e => setComplaintSubject(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300"
-                  />
+                  <input type="text" value={complaintSubject} onChange={e => setComplaintSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Details</label>
-                  <textarea
-                    value={complaintDetails}
-                    onChange={e => setComplaintDetails(e.target.value)}
-                    required
-                    className="mt-1 block w-full rounded-md border border-gray-300"
-                    rows="4"
-                  />
+                  <textarea value={complaintDetails} onChange={e => setComplaintDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
                 </div>
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                  <input
-                    type="text"
-                    value={complaintName}
-                    onChange={e => setComplaintName(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300"
-                  />
+                  <input type="text" value={complaintName} onChange={e => setComplaintName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
                 </div>
                 <div className="flex justify-end space-x-4">
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-                  >
-                    Submit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowComplaintModal(false)}
-                    className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md"
-                  >
-                    Cancel
-                  </button>
+                  <button type="submit" className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">Submit</button>
+                  <button type="button" onClick={() => setShowComplaintModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
                 </div>
               </form>
             </div>
