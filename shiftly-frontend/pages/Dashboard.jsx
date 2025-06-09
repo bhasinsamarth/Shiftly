@@ -589,9 +589,9 @@ const Dashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-white">Hi {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </div>
         {/* My Schedule */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">My Schedule</h3>
-          <div className="flex-1 overflow-y-auto">
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200 group hover:bg-blue-700">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 group-hover:text-white transition">My Schedule</h3>
+          <div className="flex-1 overflow-y-auto group-hover:text-white transition">
             {schedules.length === 0 ? (
               <p className="text-gray-500">You have nothing planned.</p>
             ) : (
@@ -620,7 +620,7 @@ const Dashboard = () => {
         </div>
 
         {/* My Timecard */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">My Timecard</h3>
           {timeCards.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
@@ -643,7 +643,7 @@ const Dashboard = () => {
         </div>
 
         {/* My Notifications */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">My Notifications</h3>
           <ul className="divide-y divide-gray-100">
             <li className="py-2 flex justify-between text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
@@ -654,7 +654,7 @@ const Dashboard = () => {
         </div>
 
         {/* Request Time Off */}
-        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1">
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Request Time Off</h3>
           <div className="flex-1 flex flex-col items-center justify-center">
             <span className="text-gray-500 mb-2">Request Time Off</span>
@@ -664,6 +664,34 @@ const Dashboard = () => {
             >
               Time-Off Request
             </button>
+          </div>
+        </div>
+
+        {/* Clock In / Out */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Clock In / Out</h3>
+          <div className="flex flex-col items-center space-y-3">
+            <button
+              onClick={handleClockIn}
+              disabled={isClockedIn}
+              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full"
+            >
+              Clock In/Clock Out
+            </button>
+          </div>
+        </div>
+
+        {/* Complaint */}
+        <div className="bg-white rounded-xl shadow-md p-6 flex flex-col col-span-1 border border-black-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint</h3>
+          <div className="flex flex-col items-center justify-center flex-1">
+            <button
+              onClick={() => setShowComplaintModal(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition w-full"
+            >
+              Raise Complaint
+            </button>
+            {complaintMsg && <span className="text-sm text-gray-700 mt-2">{complaintMsg}</span>}
           </div>
         </div>
 
@@ -713,6 +741,70 @@ const Dashboard = () => {
                   <button
                     type="button"
                     onClick={() => setShowTimeOffModal(false)}
+                    className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Complaint Modal */}
+        {showComplaintModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+            <div className="bg-white rounded-lg shadow-xl p-8 w-96">
+              <form onSubmit={handleSubmitComplaint}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
+                  <input
+                    type="text"
+                    value={complaintAgainst}
+                    onChange={e => setComplaintAgainst(e.target.value)}
+                    required
+                    className="mt-1 block w-full rounded-md border border-gray-300"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Subject</label>
+                  <input
+                    type="text"
+                    value={complaintSubject}
+                    onChange={e => setComplaintSubject(e.target.value)}
+                    required
+                    className="mt-1 block w-full rounded-md border border-gray-300"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Details</label>
+                  <textarea
+                    value={complaintDetails}
+                    onChange={e => setComplaintDetails(e.target.value)}
+                    required
+                    className="mt-1 block w-full rounded-md border border-gray-300"
+                    rows="4"
+                  />
+                </div>
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
+                  <input
+                    type="text"
+                    value={complaintName}
+                    onChange={e => setComplaintName(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300"
+                  />
+                </div>
+                <div className="flex justify-end space-x-4">
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
+                  >
+                    Submit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowComplaintModal(false)}
                     className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md"
                   >
                     Cancel
