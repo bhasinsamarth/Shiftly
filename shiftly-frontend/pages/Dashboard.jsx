@@ -13,6 +13,7 @@ const DashboardCard = ({ title, value, icon, bgColor, path }) => (
       </div>
       <div className="text-3xl">{icon}</div>
     </div>
+    
   </div>
 );
 
@@ -156,7 +157,7 @@ const Dashboard = () => {
     if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
-          .from('employees')
+          .from('employee') 
           .select('*')
           .eq('email', user.email)
           .single();
@@ -442,16 +443,15 @@ const Dashboard = () => {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-gray-700"><strong>Name:</strong> {myEmployee.name}</p>
-              <p className="text-gray-700"><strong>Position:</strong> {myEmployee.position}</p>
-              <p className="text-gray-700"><strong>Department:</strong> {myEmployee.department}</p>
+              <p className="text-gray-700"><strong>Name:</strong> {myEmployee.first_name} {myEmployee.last_name}</p>
               <p className="text-gray-700"><strong>Email:</strong> {myEmployee.email}</p>
               <p className="text-gray-700"><strong>Role:</strong> {getRoleDesc(myEmployee.role_id)}</p>
+              <p className="text-gray-700"><strong>Store ID:</strong> {myEmployee.store_id || 'N/A'}</p>
             </div>
             <div>
               <p className="text-gray-700"><strong>Phone:</strong> {myEmployee.phone || 'N/A'}</p>
-              <p className="text-gray-700"><strong>Salary:</strong> {myEmployee.salary ? `$${myEmployee.salary}` : 'N/A'}</p>
-              <p className="text-gray-700"><strong>Teams:</strong> {myEmployee.team || 'N/A'}</p>
+              <p className="text-gray-700"><strong>Date of Birth:</strong> {myEmployee.date_of_birth || 'N/A'}</p>
+              <p className="text-gray-700"><strong>Gender:</strong> {myEmployee.gender || 'N/A'}</p>
               <p className="text-gray-700"><strong>Time-off Request:</strong> {myEmployee.timeoff_request ? 'Requested' : 'Not Requested'}</p>
             </div>
           </div>

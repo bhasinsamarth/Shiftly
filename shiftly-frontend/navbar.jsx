@@ -59,7 +59,6 @@ const Navbar = () => {
                 Shiftly
               </Link>
             </div>
-            
             {/* Desktop Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {/* Home link removed for authenticated users and guests */}
@@ -72,7 +71,7 @@ const Navbar = () => {
                     Dashboard
                   </Link>
                   {/* Admin Links */}
-                  {user?.role === 'admin' && (
+                  {(user?.role_id === 1 || user?.role_id === 2) && (
                     <>
                       <Link 
                         to="/employees" 
@@ -89,7 +88,7 @@ const Navbar = () => {
                     </>
                   )}
                   {/* Manager Links */}
-                  {(user?.role === 'manager' || user?.role === 'admin') && (
+                  {user?.role_id === 3 && (
                     <Link 
                       to="/time-off" 
                       className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -97,11 +96,11 @@ const Navbar = () => {
                       Time Off
                     </Link>
                   )}
+                 
                 </>
               )}
             </div>
           </div>
-          
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {/* Notification Bell */}
             {isAuthenticated && (
@@ -138,7 +137,6 @@ const Navbar = () => {
                     </div>
                   </button>
                 </div>
-                
                 {/* Profile dropdown */}
                 {profileDropdownOpen && (
                   <div
@@ -160,7 +158,6 @@ const Navbar = () => {
                     >
                       My Profile
                     </Link>
-                    
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -184,7 +181,6 @@ const Navbar = () => {
               </div>
             )}
           </div>
-          
           {/* Mobile menu button */}
           <div className="flex items-center sm:hidden">
             <button
@@ -221,7 +217,6 @@ const Navbar = () => {
           </div>
         </div>
       </div>
-      
       {/* Mobile menu */}
       <div className={`${mobileMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
         <div className="pt-2 pb-3 space-y-1">
@@ -235,7 +230,7 @@ const Navbar = () => {
                 Dashboard
               </Link>
               {/* Admin Links */}
-              {user?.role === 'admin' && (
+              {(user?.role_id === 1 || user?.role_id === 2) && (
                 <>
                   <Link
                     to="/employees"
@@ -252,7 +247,7 @@ const Navbar = () => {
                 </>
               )}
               {/* Manager Links */}
-              {(user?.role === 'manager' || user?.role === 'admin') && (
+              {user?.role_id === 3 && (
                 <Link
                   to="/time-off"
                   className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
@@ -260,10 +255,20 @@ const Navbar = () => {
                   Time Off
                 </Link>
               )}
+              {/* Employee/Associate/Intern Dashboard Link - REMOVED as it's redundant */}
+              {/* 
+              {(user?.role_id >= 4 && user?.role_id <= 6) && (
+                <Link
+                  to="/dashboard"
+                  className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                >
+                  Dashboard
+                </Link>
+              )}
+              */}
             </>
           )}
         </div>
-        
         {/* Mobile Authentication Links */}
         <div className="pt-4 pb-3 border-t border-gray-200">
           {isAuthenticated ? (

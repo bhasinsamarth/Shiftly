@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -19,26 +18,89 @@ const AddEmployee = () => {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (error) setError('');
+    if (success) setSuccess('');
+    if (inviteLink) setInviteLink('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setInviteLink('');
+
     if (!form.email) {
-      setError('Please enter an email');
+      setError('Please enter an email.');
       return;
     }
+    if (!form.role_id) {
+        setError('Please enter a Role ID.');
+        return;
+    }
+    if (!form.store_id) {
+        setError('Please enter a Store ID.');
+        return;
+    }
+    // Employee ID is optional, but if provided, it should be a number
+    if (form.employee_id && isNaN(parseInt(form.employee_id))) {
+        setError('Employee ID must be a number.');
+        return;
+    }
+
+
     setLoading(true);
     try {
-      // Generate a unique invite token
-      const token = uuidv4();
-      // Build the invite link with all params
-      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&token=${token}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
-      setSuccess('Invitation link generated!');
+      // Check 1: Duplicate email in auth.users (Supabase handles this on signUp, but good to check early)
+      // For a more robust check, you might query auth.admin.listUsers(), but that requires admin privileges.
+      // A simpler check against the employee table can also be useful.
+      const { data: existingUserByEmail, error: emailCheckError } = await supabase
+        .from('employee')
+        .select('email')
+        .eq('email', form.email)
+        .maybeSingle();
+
+      if (emailCheckError) {
+        console.error('Error checking email:', emailCheckError.message);
+        setError('Error checking email. Please try again.');
+        setLoading(false);
+        return;
+      }
+      if (existingUserByEmail) {
+        setError('This email is already associated with an employee.');
+        setLoading(false);
+        return;
+      }
+
+      // Check 2: Duplicate employee_id in employee table (if employee_id is provided)
+      if (form.employee_id) {
+        const { data: existingUserByEmployeeId, error: employeeIdCheckError } = await supabase
+          .from('employee')
+          .select('employee_id')
+          .eq('employee_id', form.employee_id)
+          .maybeSingle();
+
+        if (employeeIdCheckError) {
+          console.error('Error checking employee ID:', employeeIdCheckError.message);
+          setError('Error checking employee ID. Please try again.');
+          setLoading(false);
+          return;
+        }
+        if (existingUserByEmployeeId) {
+          setError('This Employee ID is already in use.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Build the invite link with all necessary params
+      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
+      
+      setSuccess('Invitation link generated successfully!');
       setInviteLink(link);
-      setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
+      // Clear form only on successful link generation without prior errors
+      // setForm({ email: '', store_id: '', role_id: '', employee_id: '' }); 
     } catch (err) {
       console.error('Error generating invite link:', err.message);
-      setError('Failed to generate invitation link');
+      setError('Failed to generate invitation link. Please check console for details.');
     }
     setLoading(false);
   };
@@ -110,7 +172,6 @@ const AddEmployee = () => {
               value={form.employee_id || ''}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              min="1"
             />
           </div>
           <button

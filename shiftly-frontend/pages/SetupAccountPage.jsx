@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
 
 const SetupAccountPage = () => {
   const [form, setForm] = useState({
@@ -21,6 +20,10 @@ const SetupAccountPage = () => {
     province: '',
     country: '',
     phone: '',
+    // Fields to be pre-filled from URL
+    employee_id: '',
+    store_id: '',
+    role_id: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,19 +35,32 @@ const SetupAccountPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Extract token, email, store_id, role_id from URL
-  const params = new URLSearchParams(location.search);
-  const token = params.get('token');
-  const email = params.get('email') || '';
-
   useEffect(() => {
-    // Prefill form fields from URL params
+    const params = new URLSearchParams(location.search);
+    const emailFromUrl = params.get('email') || '';
+    const employeeIdFromUrl = params.get('employee_id') || '';
+    const storeIdFromUrl = params.get('store_id') || '';
+    const roleIdFromUrl = params.get('role_id') || '';
+
+    if (!emailFromUrl) {
+        setError('Invalid invitation link: Email is missing.');
+        // Optionally, disable the form or redirect
+    }
+    if (!roleIdFromUrl) {
+        setError('Invalid invitation link: Role ID is missing.');
+    }
+    if (!storeIdFromUrl) {
+        setError('Invalid invitation link: Store ID is missing.');
+    }
+
     setForm((prev) => ({
       ...prev,
-      email: email,
-      employee_id: params.get('employee_id') || '',
+      email: emailFromUrl,
+      employee_id: employeeIdFromUrl,
+      store_id: storeIdFromUrl,
+      role_id: roleIdFromUrl,
     }));
-  }, [email]);
+  }, [location.search]);
 
   const validatePassword = (password) => {
     // Minimum 8 characters, at least one lowercase, one uppercase, one digit, one symbol
@@ -81,9 +97,12 @@ const SetupAccountPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate required fields
-    if (!form.email || !form.password || !form.confirmPassword || !form.first_name || !form.date_of_birth || !form.gender || !form.address_line_1 || !form.city || !form.province || !form.country || !form.phone) {
-      setError('Please fill in all required fields.');
+    setError(''); // Clear previous errors
+    setSuccess('');
+
+    // Validate required fields from the form state (which includes URL params)
+    if (!form.email || !form.password || !form.confirmPassword || !form.first_name || !form.date_of_birth || !form.gender || !form.address_line_1 || !form.city || !form.province || !form.country || !form.phone || !form.role_id || !form.store_id) {
+      setError('Please fill in all required fields. Some information might be missing from the invitation link.');
       return;
     }
     if (!validatePassword(form.password)) {
@@ -92,6 +111,7 @@ const SetupAccountPage = () => {
     }
     if (form.password !== form.confirmPassword) {
       setConfirmPasswordError('Passwords do not match.');
+      setError('Passwords do not match.'); // Also set general error
       return;
     }
     setLoading(true);
@@ -110,24 +130,40 @@ const SetupAccountPage = () => {
     if (!userId) {
       // fallback: fetch by email
       const { data: userRows, error: userFetchError } = await supabase
-        .from('users')
+        .from('users') // This should be auth.users table, but direct query is not standard for client-side.
+                       // Supabase client library usually handles user context after signUp.
+                       // If signUpData.user is null and no error, it might mean email confirmation is pending.
         .select('id')
         .eq('email', form.email)
         .single();
+
       if (userFetchError || !userRows) {
-        setError('Account created, but failed to fetch user ID for employee record.');
+        setError('Account created, but failed to retrieve user ID for employee record. Please contact support if this issue persists after verifying your email.');
         setLoading(false);
         return;
       }
       userId = userRows.id;
     }
-    // 3. Insert into employee table with id = userId and employee_id from params (set by owner)
+
+    // Ensure employee_id, store_id, and role_id are from the form state (pre-filled from URL)
+    const employeeIdToInsert = form.employee_id ? parseInt(form.employee_id, 10) : null; // Allow null if not provided
+    const storeIdToInsert = form.store_id ? parseInt(form.store_id, 10) : null;
+    const roleIdToInsert = form.role_id ? parseInt(form.role_id, 10) : null;
+
+    if (!storeIdToInsert || !roleIdToInsert) {
+        setError('Store ID and Role ID are required. Information may be missing from the invitation link.');
+        setLoading(false);
+        return;
+    }
+
     const { error: insertError } = await supabase
       .from('employee')
       .insert([
         {
           id: userId, // This is the UUID from auth.users
-          employee_id: params.get('employee_id') || undefined, // This is set by the owner
+          employee_id: employeeIdToInsert,
+          store_id: storeIdToInsert,
+          role_id: roleIdToInsert,
           email: form.email,
           first_name: form.first_name,
           middle_name: form.middle_name,
@@ -169,16 +205,20 @@ const SetupAccountPage = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
       <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-8">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">Set Up Your Account</h1>
-        <p className="mb-4 text-gray-600">Email: <span className="font-semibold">{form.email}</span></p>
-        {success && <p className="mb-4 text-green-600">{success}</p>}
+        {error && <p className="mb-4 text-center text-red-500 bg-red-100 p-3 rounded-md">{error}</p>} {/* Enhanced error display */}
+        {success && <p className="mb-4 text-center text-green-600 bg-green-100 p-3 rounded-md">{success}</p>} {/* Enhanced success display */}
+        
+        {/* Display pre-filled and non-editable info from invite */}
+        <div className="mb-4 p-4 bg-gray-100 rounded-md">
+            <p className="text-sm text-gray-700">Invited Email: <span className="font-semibold">{form.email || 'Loading...'}</span></p>
+            <p className="text-sm text-gray-700">Store ID: <span className="font-semibold">{form.store_id || 'Not specified'}</span></p>
+            <p className="text-sm text-gray-700">Role ID: <span className="font-semibold">{form.role_id || 'Not specified'}</span></p>
+            {form.employee_id && <p className="text-sm text-gray-700">Employee ID: <span className="font-semibold">{form.employee_id}</span></p>}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email, Password, Confirm Password fields (email is prefilled and readOnly) */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Email <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(e.g. example@email.com)</span>
-            </label>
-            <input type="email" name="email" value={form.email} readOnly className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" required />
-          </div>
+          {/* Email field is removed as it's displayed above and non-editable */}
+          {/* Password and Confirm Password fields */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Password <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(min 8 chars, lowercase, uppercase, digits & symbols recommended)</span>
