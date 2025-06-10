@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import InputField from "../../components/InputField";
-import { supabase } from "../../supabaseClient"; 
+import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 
 export default function LoginForm() {
@@ -79,7 +79,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md">
       <h2 className="text-2xl font-bold mb-4 text-center text-gray-700">
-        Login to Shiftly
+        Sign In
       </h2>
       {error && (
         <div className="mb-4 p-2 bg-red-50 text-red-500 border border-red-200 rounded text-sm">
@@ -131,9 +131,8 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className={`w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${
-          isLoading ? "opacity-70 cursor-not-allowed" : ""
-        }`}
+        className={`w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${isLoading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
       >
         {isLoading ? "Logging in..." : "Login"}
       </button>
