@@ -180,10 +180,30 @@ const Dashboard = () => {
   const [complaintMsg, setComplaintMsg] = useState('');
 
   useEffect(() => {
-    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
           .from('employee') // FIX: use 'employee' (singular)
+          .select('*')
+          .eq('email', user.email)
+          .single();
+        if (error) {
+          setErrorMyEmp('Could not fetch your employee data.');
+        } else {
+          setMyEmployee(data);
+        }
+        setLoadingMyEmp(false);
+      }
+      fetchMyEmployee();
+    }
+  }, [user]);
+
+  // --- EMPLOYEE (role_id 3) DASHBOARD LOGIC ---
+  useEffect(() => {
+    if (user && user.role_id === 3) {
+      async function fetchMyEmployee() {
+        const { data, error } = await supabase
+          .from('employee')
           .select('*')
           .eq('email', user.email)
           .single();
@@ -284,7 +304,7 @@ const Dashboard = () => {
 
   // --- EFFECTS FOR NORMAL USER DASHBOARD LOGIC ---
   useEffect(() => {
-    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchSchedules() {
         // Fetch upcoming and past schedules for the employee
         const { data, error } = await supabase
@@ -301,7 +321,7 @@ const Dashboard = () => {
   }, [user]);
 
   useEffect(() => {
-    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchTimeCards() {
         // Fetch time cards for current and previous pay periods
         const { data, error } = await supabase
@@ -318,7 +338,7 @@ const Dashboard = () => {
   }, [user]);
 
   useEffect(() => {
-    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
+    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function checkClockStatus() {
         // Check if the user is currently clocked in
         const { data, error } = await supabase
@@ -487,7 +507,7 @@ const Dashboard = () => {
       </div>
     );
   } else if (user && user.role_id === 3) {
-    // Full-time Associate dashboard (separate from 4/5/6 for clarity)
+    // Full-time Associate dashboard (same as role_id 4)
     if (loadingMyEmp) {
       return <div className="flex justify-center items-center h-screen"><p className="text-lg text-gray-500">Loading your dashboard...</p></div>;
     }
@@ -505,7 +525,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 col-span-1 min-h-[200px]">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
               <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
             </div>
             <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
@@ -531,9 +551,9 @@ const Dashboard = () => {
           </div>
           {/* My Timecard */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
 
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
             </div>
             {timeCards.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
@@ -548,7 +568,7 @@ const Dashboard = () => {
                       <span className="font-medium text-gray-700">{tc.date}</span>
                       <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
                     </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in))/3600000).toFixed(2) : '-'}</div>
+                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
                   </li>
                 ))}
               </ul>
@@ -556,8 +576,8 @@ const Dashboard = () => {
           </div>
           {/* My Notifications */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
             </div>
             <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
               <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
@@ -568,8 +588,8 @@ const Dashboard = () => {
           </div>
           {/* Request Time Off */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center p-6">
               <span className="text-gray-500 mb-2">Request Time Off</span>
@@ -651,7 +671,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 col-span-1 min-h-[200px]">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
               <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
             </div>
             <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
@@ -677,9 +697,9 @@ const Dashboard = () => {
           </div>
           {/* My Timecard */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
 
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
             </div>
             {timeCards.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
@@ -694,7 +714,7 @@ const Dashboard = () => {
                       <span className="font-medium text-gray-700">{tc.date}</span>
                       <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
                     </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in))/3600000).toFixed(2) : '-'}</div>
+                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
                   </li>
                 ))}
               </ul>
@@ -702,8 +722,8 @@ const Dashboard = () => {
           </div>
           {/* My Notifications */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
             </div>
             <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
               <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
@@ -714,8 +734,8 @@ const Dashboard = () => {
           </div>
           {/* Request Time Off */}
           <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-            <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center p-6">
               <span className="text-gray-500 mb-2">Request Time Off</span>
