@@ -52,7 +52,7 @@ const Dashboard = () => {
   const accessDenied = location.state?.accessDenied;
   const accessMessage = location.state?.message;
 
-  // --- ADMIN, OWNER & MANAGER DASHBOARD LOGIC ---
+  // --- ADMIN, OWNER DASHBOARD LOGIC ---
   const [employeesCount, setEmployeesCount] = useState(0);
   const [teamsCount, setTeamsCount] = useState(0);
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
@@ -84,8 +84,8 @@ const Dashboard = () => {
         } else {
           console.error('Error fetching salaries:', salaryError);
         }
-
-        // Teams count: Fetch number of rows from the store table for owners
+        //ADMIN
+        // Teams count: Fetch number of rows from the store table for ADMIN
         if (user.role_id === 1) {
           const { data: storeRows, error: storeError } = await supabase
             .from('store')
@@ -119,26 +119,29 @@ const Dashboard = () => {
           console.error('Error fetching time-off requests:', toError);
         }
 
-        // Recent activity from "activity" table (excluding time-off request updates)
-        const { data: actData, error: actError } = await supabase
-          .from('activity')
-          .select('*')
-          .order('timestamp', { ascending: false })
-          .limit(5);
-        if (actError) {
-          console.error('Error fetching activity:', actError);
-          setErrorActivity('Failed to load recent activity');
-        } else {
-          const filteredActivity = actData.filter(act => act.type !== 'Time-off Request');
-          setActivity(filteredActivity);
-        }
+
+  //       // Recent activity from "activity" table (excluding time-off request updates)
+        // const { data: actData, error: actError } = await supabase
+        //   .from('activity')
+        //   .select('*')
+        //   .order('timestamp', { ascending: false })
+        //   .limit(5);
+        // if (actError) {
+        //   console.error('Error fetching activity:', actError);
+        //   setErrorActivity('Failed to load recent activity');
+        // } else {
+        //   const filteredActivity = actData.filter(act => act.type !== 'Time-off Request');
+        //   setActivity(filteredActivity);
+        // }
         setLoadingActivity(false);
       }
       fetchMetricsAndActivity();
     }
   }, [user]);
+  
 
-  // --- NORMAL USER DASHBOARD LOGIC ---
+  // --- EMPLOYEE DASHBOARD LOGIC ---
+
   const [myEmployee, setMyEmployee] = useState(null);
   const [loadingMyEmp, setLoadingMyEmp] = useState(true);
   const [errorMyEmp, setErrorMyEmp] = useState('');
@@ -198,7 +201,8 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // --- EMPLOYEE (role_id 3) DASHBOARD LOGIC ---
+  // --- MANAGER (role_id 3) DASHBOARD LOGIC ---
+  // THIS IS TO FETCH EMPLOYEE DATA
   useEffect(() => {
     if (user && user.role_id === 3) {
       async function fetchMyEmployee() {
@@ -261,13 +265,29 @@ const Dashboard = () => {
     }
   }, [myEmployee]);
 
+  // Helper to get role description from role_id
+  /*
+  const getRoleDesc = (role_id) => {
+    switch (role_id) {
+      case 1: return 'Owner';
+      case 2: return 'Manager';
+      case 3: return 'Full-time Associate';
+      case 4: return 'Part-time Associate';
+      case 5: return 'Interns';
+      default: return 'Unknown';
+    }
+  };
+  */
+
   // Toggle dropdown for a specific team group
+  /*
   const toggleUserTeamGroup = (teamName) => {
     setOpenUserTeams((prev) => ({
       ...prev,
       [teamName]: !prev[teamName],
     }));
   };
+  */
 
   // Open the time-off request modal for a specific team (from the user's teams section)
   // This modal appears in the profile section only (as requested, Request Time Off remains in profile)
@@ -276,6 +296,7 @@ const Dashboard = () => {
   };
 
   // Withdraw a time-off request for a normal user (global withdrawal)
+  /*
   const handleWithdrawTimeOff = async () => {
     if (!myEmployee) return;
     const { error } = await supabase
@@ -289,18 +310,7 @@ const Dashboard = () => {
       setMyEmployee({ ...myEmployee, timeoff_request: false });
     }
   };
-
-  // Helper to get role description from role_id
-  const getRoleDesc = (role_id) => {
-    switch (role_id) {
-      case 1: return 'Owner';
-      case 2: return 'Manager';
-      case 3: return 'Full-time Associate';
-      case 4: return 'Part-time Associate';
-      case 5: return 'Interns';
-      default: return 'Unknown';
-    }
-  };
+  */
 
   // --- EFFECTS FOR NORMAL USER DASHBOARD LOGIC ---
   useEffect(() => {
@@ -395,18 +405,6 @@ const Dashboard = () => {
     }
   };
 
-  // --- AVAILABILITY REQUEST HANDLER ---
-  const handleSubmitAvailability = async (e) => {
-    e.preventDefault();
-    // Insert availability request for manager review
-    const { error } = await supabase.from('availability_requests').insert([
-      { employee_id: user.id, days: availDays, times: availTimes, status: 'pending' }
-    ]);
-    if (error) setAvailMsg('Failed to submit availability request.');
-    else setAvailMsg('Availability request submitted.');
-    setShowAvailModal(false);
-  };
-
   // --- ANONYMOUS COMPLAINT HANDLER ---
   const handleSubmitComplaint = async (e) => {
     e.preventDefault();
@@ -428,7 +426,7 @@ const Dashboard = () => {
 
   // --- RENDERING ---
   if (user && (user.role_id === 1 || user.role_id === 2)) {
-    // Owner/Manager dashboard
+    // ADMIN AND OWNER dashboard
     const dynamicDashboardCards = [
       { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
       { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
@@ -507,7 +505,7 @@ const Dashboard = () => {
       </div>
     );
   } else if (user && user.role_id === 3) {
-    // Full-time Associate dashboard (same as role_id 4)
+    // Manager dashboard
     if (loadingMyEmp) {
       return <div className="flex justify-center items-center h-screen"><p className="text-lg text-gray-500">Loading your dashboard...</p></div>;
     }
@@ -520,7 +518,7 @@ const Dashboard = () => {
     return (
       <div className="container mx-auto p-2 sm:p-4 lg:p-6">
         <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
