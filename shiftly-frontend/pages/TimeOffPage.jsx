@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import { approveEmployeeRequest, rejectEmployeeRequest } from "../utils/requestHandler";
 
 const TimeOffPage = () => {
   const { isAuthenticated, user } = useAuth();
@@ -21,16 +22,21 @@ const TimeOffPage = () => {
   const fetchTimeOffRequests = async () => {
     try {
       setLoading(true);
-      // Select columns without extra quotes and join the employee's name.
+      // Fetch pending time-off requests from employee_request (not time_off_requests!)
+      // Only those with request_type = 'availability' and request.start_date & request.end_date (i.e., time-off)
       const { data, error } = await supabase
-        .from("time_off_requests")
-        .select("id, employee_id, reason, timeoff_requested, employees(name)")
-        .eq("timeoff_requested", true);
+        .from("employee_request")
+        .select("request_id, employee_id, request, employees(name)")
+        .eq("request_type", "availability");
       if (error) {
         console.error("Error fetching time-off requests:", error);
         setError("Failed to load time-off requests.");
       } else {
-        setRequests(data || []);
+        // Only show requests that are time-off (have start_date and end_date)
+        const filtered = (data || []).filter(
+          (r) => r.request && r.request.start_date && r.request.end_date
+        );
+        setRequests(filtered);
       }
     } catch (err) {
       console.error("Unexpected error fetching requests:", err);
@@ -46,69 +52,32 @@ const TimeOffPage = () => {
     setTimeout(() => setNotification({ message: "", type: "" }), 3000);
   };
 
-  // Approve a time-off request:
+  // Approve a time-off request using the centralized handler:
   const handleApprove = async (requestId, employeeId) => {
     try {
-      // Update the time_off_requests row to mark it as processed (set to false)
-      const { error: reqError } = await supabase
-        .from("time_off_requests")
-        .update({ timeoff_requested: false })
-        .eq("id", requestId);
-      if (reqError) {
-        console.error("Error approving time-off request:", reqError);
-        showNotification("Failed to approve request.", "error");
+      const result = await approveEmployeeRequest(requestId);
+      if (!result.success) {
+        showNotification(result.error || "Failed to approve request.", "error");
         return;
       }
-
-      // Update the employee record:
-      // Update the column "time_off_requests" in your employees table to "approved".
-      const { error: empError } = await supabase
-        .from("employees")
-        .update({ time_off_requests: "approved" })
-        .eq("id", employeeId);
-      if (empError) {
-        console.error("Error updating employee record:", empError);
-        showNotification("Failed to update employee record.", "error");
-        return;
-      }
-
       showNotification("Time-off request approved.", "success");
-      // Remove the processed request from the list.
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
     } catch (err) {
       console.error("Unexpected error approving request:", err);
       showNotification("Unexpected error.", "error");
     }
   };
 
-  // Reject a time-off request:
+  // Reject a time-off request using the centralized handler:
   const handleReject = async (requestId, employeeId) => {
     try {
-      // Update the time_off_requests row to mark it as processed (set to false)
-      const { error: reqError } = await supabase
-        .from("time_off_requests")
-        .update({ timeoff_requested: false })
-        .eq("id", requestId);
-      if (reqError) {
-        console.error("Error rejecting time-off request:", reqError);
-        showNotification("Failed to reject request.", "error");
+      const result = await rejectEmployeeRequest(requestId);
+      if (!result.success) {
+        showNotification(result.error || "Failed to reject request.", "error");
         return;
       }
-
-      // Update the employee record: set time_off_requests to null.
-      const { error: empError } = await supabase
-        .from("employees")
-        .update({ time_off_requests: null })
-        .eq("id", employeeId);
-      if (empError) {
-        console.error("Error updating employee record:", empError);
-        showNotification("Failed to update employee record.", "error");
-        return;
-      }
-
       showNotification("Time-off request rejected.", "success");
-      // Remove the processed request from the list.
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
     } catch (err) {
       console.error("Unexpected error rejecting request:", err);
       showNotification("Unexpected error.", "error");
@@ -159,21 +128,21 @@ const TimeOffPage = () => {
           </thead>
           <tbody>
             {requests.map((req) => (
-              <tr key={req.id} className="hover:bg-gray-50">
+              <tr key={req.request_id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 border-b">{req.employee_id}</td>
                 <td className="px-4 py-3 border-b">
                   {req.employees && req.employees.name ? req.employees.name : "N/A"}
                 </td>
-                <td className="px-4 py-3 border-b">{req.reason || "N/A"}</td>
+                <td className="px-4 py-3 border-b">{req.request.reason || "N/A"}</td>
                 <td className="px-4 py-3 border-b space-x-2">
                   <button
-                    onClick={() => handleApprove(req.id, req.employee_id)}
+                    onClick={() => handleApprove(req.request_id, req.employee_id)}
                     className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
                   >
                     Approve
                   </button>
                   <button
-                    onClick={() => handleReject(req.id, req.employee_id)}
+                    onClick={() => handleReject(req.request_id, req.employee_id)}
                     className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
                   >
                     Reject

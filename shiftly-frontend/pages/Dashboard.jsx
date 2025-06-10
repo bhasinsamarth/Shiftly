@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { submitEmployeeRequest } from '../utils/requestHandler';
+import TimeOffRequestForm from '../components/TimeOffRequestForm';
 
 // Helper component for dashboard cards (admin/manager view)
 const DashboardCard = ({ title, value, icon, bgColor, path }) => (
@@ -144,9 +146,6 @@ const Dashboard = () => {
 
   // New state for time-off request modal
   const [showTimeOffModal, setShowTimeOffModal] = useState(false);
-  const [requestReason, setRequestReason] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   // New state for user teams grouping: an object where keys are team names and values are arrays of members
   const [userTeamGroups, setUserTeamGroups] = useState({});
   // New state for open/closed dropdown for user teams
@@ -253,54 +252,7 @@ const Dashboard = () => {
   // Open the time-off request modal for a specific team (from the user's teams section)
   // This modal appears in the profile section only (as requested, Request Time Off remains in profile)
   const handleOpenTimeOffModal = () => {
-    setRequestReason("");
-    setStartDate("");
-    setEndDate("");
     setShowTimeOffModal(true);
-  };
-
-  // Submit a time-off request (for normal users)
-  // Here, we store the start and end dates concatenated into the reason column.
-  const handleSubmitTimeOffRequest = async (e) => {
-    e.preventDefault();
-    if (!requestReason || !startDate || !endDate) {
-      setAlertMsg({ type: 'error', text: 'Please fill in all fields for your time-off request.' });
-      return;
-    }
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    if (startDate < today) {
-      setAlertMsg({ type: 'error', text: 'The start date cannot be in the past.' });
-      return;
-    }
-    if (endDate < startDate) {
-      setAlertMsg({ type: 'error', text: 'The end date cannot be before the start date.' });
-      return;
-    }
-    const fullReason = `${requestReason} (From: ${startDate} To: ${endDate})`;
-
-    try {
-      const { error } = await supabase
-        .from('time_off_requests')
-        .insert([{
-          employee_id: myEmployee.id,
-          // Optionally, if you want to record which team the request applies to,
-          // you can add a "team" field here. For example, if the employee belongs to only one team:
-          // team: myEmployee.team,
-          timeoff_requested: true,
-          reason: fullReason
-        }]);
-      if (error) {
-        setAlertMsg({ type: 'error', text: 'Failed to submit time off request.' });
-      } else {
-        setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' });
-        // Update local employee state if needed.
-        setMyEmployee({ ...myEmployee, timeoff_request: 'requested' });
-        setShowTimeOffModal(false);
-      }
-    } catch (err) {
-      console.error("Unexpected error submitting time off request:", err);
-      setAlertMsg({ type: 'error', text: 'Unexpected error occurred while submitting your request.' });
-    }
   };
 
   // Withdraw a time-off request for a normal user (global withdrawal)
@@ -482,7 +434,6 @@ const Dashboard = () => {
         )}
         <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {greetingName}</h1>
-          <p className="text-blue-100 text-sm sm:text-base mb-4">Here's your personal dashboard.</p>
         </section>
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           {dynamicDashboardCards.map((card, index) => (
@@ -550,7 +501,6 @@ const Dashboard = () => {
       <div className="container mx-auto p-2 sm:p-4 lg:p-6">
         <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
-          <p className="text-blue-100 text-sm sm:text-base mb-4">Here's your personal dashboard.</p>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
@@ -643,29 +593,13 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Time Off Modal */}
-        {showTimeOffModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitTimeOffRequest}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Reason</label>
-                  <textarea value={requestReason} onChange={(e) => setRequestReason(e.target.value)} placeholder="Enter the reason for your time off request" required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 resize-none" rows="4" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">End Date</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">Submit Request</button>
-                  <button type="button" onClick={() => setShowTimeOffModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
+        {myEmployee && (
+          <TimeOffRequestForm
+            employeeId={myEmployee.id}
+            show={showTimeOffModal}
+            onClose={() => setShowTimeOffModal(false)}
+            onSuccess={() => setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' })}
+          />
         )}
         {/* Complaint Modal */}
         {showComplaintModal && (
@@ -709,12 +643,10 @@ const Dashboard = () => {
     if (!myEmployee) {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
-
     return (
       <div className="container mx-auto p-2 sm:p-4 lg:p-6">
         <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
-          <p className="text-blue-100 text-sm sm:text-base mb-4">Here's your personal dashboard.</p>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
@@ -807,29 +739,13 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Time Off Modal */}
-        {showTimeOffModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitTimeOffRequest}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Reason</label>
-                  <textarea value={requestReason} onChange={(e) => setRequestReason(e.target.value)} placeholder="Enter the reason for your time off request" required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 resize-none" rows="4" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">End Date</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">Submit Request</button>
-                  <button type="button" onClick={() => setShowTimeOffModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
+        {myEmployee && (
+          <TimeOffRequestForm
+            employeeId={myEmployee.id}
+            show={showTimeOffModal}
+            onClose={() => setShowTimeOffModal(false)}
+            onSuccess={() => setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' })}
+          />
         )}
         {/* Complaint Modal */}
         {showComplaintModal && (
@@ -860,12 +776,6 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-      </div>
-    );
-  } else {
-    return (
-      <div className="max-w-6xl mx-auto p-4">
-        Please log in to view the dashboard.
       </div>
     );
   }
