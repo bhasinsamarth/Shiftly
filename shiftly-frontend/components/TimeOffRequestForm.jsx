@@ -70,7 +70,7 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
     setLoading(true);
     const requestData = {
       employee_id: employeeId,
-      request_type: "availability",
+      request_type: "time-off",
       request: {
         reason,
         start_date: startDate,

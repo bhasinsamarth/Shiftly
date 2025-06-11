@@ -14,7 +14,7 @@ function validateRequest(requestData) {
   if (!employee_id || typeof employee_id !== 'number') {
     return { valid: false, error: 'Invalid or missing employee_id.' };
   }
-  if (!['availability', 'complaint'].includes(request_type)) {
+  if (!['availability', 'complaint', 'time-off'].includes(request_type)) {
     return { valid: false, error: 'Invalid request_type.' };
   }
   if (!request || typeof request !== 'object') {
@@ -25,6 +25,13 @@ function validateRequest(requestData) {
     // Must have at least one of: preferred_hours, start_date, end_date
     if (!request.preferred_hours && (!request.start_date || !request.end_date)) {
       return { valid: false, error: 'Availability request must include preferred_hours or start_date and end_date.' };
+    }
+  }
+  // Additional validation for time-off
+  if (request_type === 'time-off') {
+    // Must include reason, start_date, and end_date
+    if (!request.reason || !request.start_date || !request.end_date) {
+      return { valid: false, error: 'Time-off request must include reason, start_date, and end_date.' };
     }
   }
   // Additional validation for complaint
@@ -114,6 +121,19 @@ export async function approveEmployeeRequest(request_id) {
           }
         ]);
         if (cError) throw new Error(cError.message);
+        break;
+      }
+      case 'time-off': {
+        const { error: toError } = await supabase.from('time_off_requests').insert([
+          {
+            employee_id,
+            reason: request.reason,
+            start_date: request.start_date,
+            end_date: request.end_date,
+            timeoff_requested: true
+          }
+        ]);
+        if (toError) throw new Error(toError.message);
         break;
       }
       default:
