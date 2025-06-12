@@ -521,104 +521,69 @@ const Dashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* My Schedule */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 col-span-1 min-h-[200px]">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
+          {/* My Store Tab */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-green-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Store</h3>
             </div>
-            <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
-              {schedules.length === 0 ? (
-                <p className="text-gray-500">You have nothing planned.</p>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {schedules.slice(0, 5).map((sch, idx) => (
-                    <li key={sch.id || idx} className="py-2 flex items-center">
-                      <div className="w-10 sm:w-12 text-center">
-                        <span className="block text-xs text-gray-400 font-medium">{new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                        <span className="block text-md sm:text-lg font-bold text-gray-700">{new Date(sch.shift_start).getDate()}</span>
-                      </div>
-                      <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
-                        <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">View and manage your assigned store(s), see store details, and access store-specific actions.</p>
+              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
             </div>
           </div>
-          {/* My Timecard */}
+          {/* Schedule Planner */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-yellow-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Schedule Planner</h3>
+            </div>
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">Plan, view, and edit employee schedules. Assign shifts and manage coverage.</p>
+              <a href="/schedules" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Open Schedule Planner</a>
+            </div>
+          </div>
+          {/* Team Management */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-purple-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Team Management</h3>
+            </div>
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">View your team, manage members, and assign roles or responsibilities.</p>
+              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Manage Teams</a>
+            </div>
+          </div>
+          {/* Time-off Requests */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-pink-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Time-off Requests</h3>
+            </div>
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">Review, approve, or deny employee time-off requests.</p>
+              <a href="/time-off" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
+            </div>
+          </div>
+          {/* Notifications */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
-            </div>
-            {timeCards.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
-                <span className="text-4xl sm:text-5xl mb-2">🕒</span>
-                <span className="text-sm">No data to display.</span>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {timeCards.slice(0, 5).map((tc, idx) => (
-                  <li key={tc.id || idx} className="py-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="font-medium text-gray-700">{tc.date}</span>
-                      <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {/* My Notifications */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Notifications</h3>
             </div>
             <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Timekeeping</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Messages</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Notices</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Pending Requests</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Shift Changes</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Alerts</span><span className="font-bold">0</span></li>
+              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Announcements</span><span className="font-bold">0</span></li>
             </ul>
           </div>
-          {/* Request Time Off */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
+          {/* Reports & Analytics */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-indigo-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Reports & Analytics</h3>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-6">
-              <span className="text-gray-500 mb-2">Request Time Off</span>
-              <button onClick={handleOpenTimeOffModal} className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Time-Off Request</button>
-            </div>
-          </div>
-          {/* Clock In / Out */}
-          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Clock In / Out</h3>
-            <div className="flex flex-col items-center space-y-3  ">
-              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
-            </div>
-          </div>
-          {/* Complaint */}
-          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint</h3>
-            <div className="flex flex-col items-center justify-center flex-1">
-              <button onClick={() => setShowComplaintModal(true)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition w-full">Raise Complaint</button>
-              {complaintMsg && <span className="text-xs sm:text-sm text-gray-700 mt-2">{complaintMsg}</span>}
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">View attendance, hours worked, and other key metrics for your team.</p>
+              <a href="/reports" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">View Reports</a>
             </div>
           </div>
         </div>
-        {/* Time Off Modal */}
-        {myEmployee && (
-          <TimeOffRequestForm
-            employeeId={myEmployee.id}
-            show={showTimeOffModal}
-            onClose={() => setShowTimeOffModal(false)}
-            onSuccess={() => setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' })}
-          />
-        )}
         {/* Complaint Modal */}
         {showComplaintModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
