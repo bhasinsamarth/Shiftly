@@ -23,7 +23,9 @@ const ProfilePage = () => {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [initialDataLoading, setInitialDataLoading] = useState(true);
 
-  // Auto-dismiss messages after 5 seconds
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   useEffect(() => {
     if (message.text) {
       const timer = setTimeout(() => setMessage({ type: '', text: '' }), 5000);
@@ -31,7 +33,27 @@ const ProfilePage = () => {
     }
   }, [message]);
 
-  // Load user data into form
+  useEffect(() => {
+    const fetchEmployeePhoto = async () => {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('employee')
+          .select('profile_photo_path')
+          .eq('id', user.id)
+          .single();
+
+        if (data?.profile_photo_path) {
+          const { data: publicUrl } = supabase.storage
+            .from('profile-photo')
+            .getPublicUrl(data.profile_photo_path);
+
+          setPhotoUrl(publicUrl.publicUrl);
+        }
+      }
+    };
+    fetchEmployeePhoto();
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       const editableData = {
@@ -54,7 +76,6 @@ const ProfilePage = () => {
     }
   }, [user, authLoading]);
 
-  // Detect unsaved changes
   useEffect(() => {
     let changed = false;
     for (const key of Object.keys(formData)) {
@@ -69,6 +90,48 @@ const ProfilePage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const cleanName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
+    const path = `${Date.now()}-${cleanName}`;
+
+    setUploadingPhoto(true);
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-photo')
+      .upload(path, file, {
+        upsert: true,
+        cacheControl: '3600',
+        contentType: file.type || 'image/jpeg',
+      });
+
+    if (uploadError) {
+      setMessage({ type: 'error', text: `Upload failed: ${uploadError.message}` });
+      setUploadingPhoto(false);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from('profile-photo')
+      .getPublicUrl(path);
+
+    setPhotoUrl(data.publicUrl);
+    setMessage({ type: 'success', text: 'Photo uploaded successfully!' });
+
+    const { error: updateError } = await supabase
+      .from('employee')
+      .update({ profile_photo_path: path })
+      .eq('id', user.id);
+
+    if (updateError) {
+      setMessage({ type: 'error', text: `Failed to save photo path: ${updateError.message}` });
+    }
+
+    setUploadingPhoto(false);
   };
 
   const handleSubmit = async (e) => {
@@ -88,12 +151,6 @@ const ProfilePage = () => {
       phone: formData.phone,
     };
 
-    if (Object.keys(updates).length === 0) {
-      setMessage({ type: 'info', text: 'No changes to save.' });
-      setIsSubmitting(false);
-      return;
-    }
-
     const { error } = await supabase
       .from('employee')
       .update(updates)
@@ -102,17 +159,15 @@ const ProfilePage = () => {
     setIsSubmitting(false);
 
     if (error) {
-      console.error('Error updating profile:', error);
       setMessage({ type: 'error', text: `Failed to update profile: ${error.message}` });
     } else {
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      if (fetchDbUser) await fetchDbUser(user.id); // Refresh context
+      if (fetchDbUser) await fetchDbUser(user.id);
       setInitialFormData({ ...formData });
       setHasUnsavedChanges(false);
     }
   };
 
-  // Render form input field
   const renderInputField = (label, id, value, span = "md:col-span-1") => (
     <div className={span}>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -127,7 +182,6 @@ const ProfilePage = () => {
     </div>
   );
 
-  // Render display-only field
   const renderDisplayField = (label, value, span = "md:col-span-1") => (
     <div className={span}>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -137,7 +191,6 @@ const ProfilePage = () => {
     </div>
   );
 
-  // Render select dropdown
   const renderSelectField = (label, id, value, options, span = "md:col-span-1") => (
     <div className={span}>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -175,9 +228,32 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      {/* Profile Photo Section */}
+      <div className="flex flex-col items-center mb-8">
+        <label htmlFor="upload-photo" className="cursor-pointer flex flex-col items-center">
+          <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200">
+            <img
+              src={photoUrl || '/default-avatar.png'}
+              alt="Profile"
+              className="object-cover w-full h-full"
+            />
+          </div>
+          <div className="mt-2 text-blue-600 hover:underline">
+            {photoUrl ? 'Change Photo' : 'Add Photo'}
+          </div>
+        </label>
+        <input
+          id="upload-photo"
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoChange}
+          className="hidden"
+        />
+        {uploadingPhoto && <p className="text-sm text-gray-500 mt-1">Uploading...</p>}
+      </div>
+
       <h1 className="text-3xl font-bold mb-8 text-center text-slate-700">My Profile</h1>
 
-      {/* Status Message */}
       {message.text && (
         <div className={`p-4 mb-6 rounded-md text-sm ${
           message.type === 'error' ? 'bg-red-100 text-red-700 border border-red-300' : 'bg-green-100 text-green-700 border border-green-300'
@@ -188,8 +264,6 @@ const ProfilePage = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
-
-        {/* Personal Information Section */}
         <section className="bg-white shadow-xl rounded-xl p-6 md:p-8">
           <h2 className="text-2xl font-semibold mb-6 text-slate-600 border-b pb-4">Personal Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -208,7 +282,6 @@ const ProfilePage = () => {
           </div>
         </section>
 
-        {/* Save Button */}
         <div className="flex justify-end pt-4">
           <button
             type="submit"

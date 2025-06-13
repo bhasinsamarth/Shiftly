@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
@@ -8,16 +8,38 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0); // State for unread messages (assuming you have this logic)
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [profileImage, setProfileImage] = useState(null);
+
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      if (user?.id) {
+        const { data, error } = await supabase
+          .from('employee')
+          .select('profile_photo_path')
+          .eq('id', user.id)
+          .single();
+
+        const photoPath = data?.profile_photo_path;
+        if (photoPath) {
+          const { data: publicUrl } = supabase
+            .storage
+            .from('profile-photo')
+            .getPublicUrl(photoPath);
+          setProfileImage(publicUrl?.publicUrl);
+        } else {
+          setProfileImage('https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg');
+        }
+      }
+    };
+    fetchProfileImage();
+  }, [user]);
 
   const handleLogout = async () => {
-    console.log('Logging out...');
-    // Call Supabase to sign out the user
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error during Supabase sign out:', error);
     }
-    // Proceed with your context logout logic
     await logout();
     navigate('/login');
   };
@@ -30,8 +52,7 @@ const Navbar = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
 
-  // Close profile dropdown when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     if (!profileDropdownOpen) return;
     function handleClickOutside(event) {
       const dropdown = document.getElementById('user-menu-button');
@@ -47,8 +68,6 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
 
-  console.log('Auth state in navbar:', { isAuthenticated, user });
-
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,67 +78,42 @@ const Navbar = () => {
                 Shiftly
               </Link>
             </div>
-            {/* Desktop Navigation Links */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {/* Home link removed for authenticated users and guests */}
               {isAuthenticated && (
                 <>
-                  <Link 
-                    to="/dashboard" 
-                    className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
+                  <Link to="/dashboard" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                     Dashboard
                   </Link>
-                  {/* Admin Links */}
                   {(user?.role_id === 1 || user?.role_id === 2) && (
                     <>
-                      <Link 
-                        to="/employees" 
-                        className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                      >
+                      <Link to="/employees" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                         Employees
                       </Link>
-                      <Link 
-                        to="/teams" 
-                        className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                      >
+                      <Link to="/teams" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                         Teams
                       </Link>
                     </>
                   )}
-                  {/* Manager Links */}
                   {user?.role_id === 3 && (
-                    <Link 
-                      to="/time-off" 
-                      className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
+                    <Link to="/time-off" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                       Time Off
                     </Link>
                   )}
-                 
                 </>
               )}
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {/* Notification Bell */}
             {isAuthenticated && (
-              <button
-                type="button"
-                className="relative mr-4 focus:outline-none"
-                aria-label="Notifications"
-              >
-                {/* Bell Icon (Heroicons outline) */}
+              <button type="button" className="relative mr-4 focus:outline-none" aria-label="Notifications">
                 <svg className="h-6 w-6 text-gray-500 hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
-                {/* Notification dot for unread messages */}
                 {unreadMessages > 0 && (
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
                 )}
               </button>
             )}
-            {/* Authentication Links */}
             {isAuthenticated ? (
               <div className="ml-3 relative">
                 <div>
@@ -132,12 +126,15 @@ const Navbar = () => {
                     onClick={toggleProfileDropdown}
                   >
                     <span className="sr-only">Open user menu</span>
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                      {user?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                    </div>
+                    {profileImage ? (
+                      <img src={profileImage} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                        {user?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </div>
+                    )}
                   </button>
                 </div>
-                {/* Profile dropdown */}
                 {profileDropdownOpen && (
                   <div
                     id="user-menu-dropdown"
@@ -172,16 +169,12 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex space-x-4">
-                <Link
-                  to="/login"
-                  className="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
+                <Link to="/login" className="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
                   Login
                 </Link>
               </div>
             )}
           </div>
-          {/* Mobile menu button */}
           <div className="flex items-center sm:hidden">
             <button
               type="button"
@@ -191,128 +184,14 @@ const Navbar = () => {
               onClick={toggleMobileMenu}
             >
               <span className="sr-only">Open main menu</span>
-              {/* Heroicon: Menu */}
-              <svg
-                className={`${mobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
+              <svg className={`${mobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              {/* Heroicon: X */}
-              <svg
-                className={`${mobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
+              <svg className={`${mobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-        </div>
-      </div>
-      {/* Mobile menu */}
-      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} sm:hidden`} id="mobile-menu">
-        <div className="pt-2 pb-3 space-y-1">
-          {/* Home link removed from mobile menu */}
-          {isAuthenticated && (
-            <>
-              <Link
-                to="/dashboard"
-                className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-              >
-                Dashboard
-              </Link>
-              {/* Admin Links */}
-              {(user?.role_id === 1 || user?.role_id === 2) && (
-                <>
-                  <Link
-                    to="/employees"
-                    className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                  >
-                    Employees
-                  </Link>
-                  <Link
-                    to="/teams"
-                    className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                  >
-                    Teams
-                  </Link>
-                </>
-              )}
-              {/* Manager Links */}
-              {user?.role_id === 3 && (
-                <Link
-                  to="/time-off"
-                  className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                >
-                  Time Off
-                </Link>
-              )}
-              {/* Employee/Associate/Intern Dashboard Link - REMOVED as it's redundant */}
-              {/* 
-              {(user?.role_id >= 4 && user?.role_id <= 6) && (
-                <Link
-                  to="/dashboard"
-                  className="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                >
-                  Dashboard
-                </Link>
-              )}
-              */}
-            </>
-          )}
-        </div>
-        {/* Mobile Authentication Links */}
-        <div className="pt-4 pb-3 border-t border-gray-200">
-          {isAuthenticated ? (
-            <>
-              <div className="flex items-center px-4">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                    {user?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </div>
-                </div>
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800">
-                    {user?.preferred_name || user?.first_name || user?.username || 'User'}
-                  </div>
-                  <div className="text-sm font-medium text-gray-500">
-                    {user?.email || ''}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1">
-                <Link
-                  to="/profile"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                >
-                  Your Profile
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                >
-                  Sign out
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="mt-3 space-y-1">
-              <Link
-                to="/login"
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-              >
-                Login
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </nav>
