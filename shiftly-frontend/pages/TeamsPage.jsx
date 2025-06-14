@@ -1,4 +1,6 @@
-// StoresPage.jsx
+// --- MANAGE STORES PAGE (formerly TeamsPage) ---
+// All UI and logic now refer to 'Store' instead of 'Team'.
+
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
@@ -62,7 +64,12 @@ const StoresPage = () => {
   // -------------------------
   const [showAddModal, setShowAddModal] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
-  const [newStoreLocation, setNewStoreLocation] = useState("");
+  const [newStoreAddress1, setNewStoreAddress1] = useState("");
+  const [newStoreAddress2, setNewStoreAddress2] = useState("");
+  const [newStoreCity, setNewStoreCity] = useState("");
+  const [newStoreProvince, setNewStoreProvince] = useState("");
+  const [newStorePostalCode, setNewStorePostalCode] = useState("");
+  const [newStoreCountry, setNewStoreCountry] = useState("");
 
   // -------------------------
   // Edit Store Modal States (future functionality)
@@ -70,7 +77,12 @@ const StoresPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editStoreId, setEditStoreId] = useState(null);
   const [editStoreName, setEditStoreName] = useState("");
-  const [editStoreLocation, setEditStoreLocation] = useState("");
+  const [editStoreAddress1, setEditStoreAddress1] = useState("");
+  const [editStoreAddress2, setEditStoreAddress2] = useState("");
+  const [editStoreCity, setEditStoreCity] = useState("");
+  const [editStoreProvince, setEditStoreProvince] = useState("");
+  const [editStorePostalCode, setEditStorePostalCode] = useState("");
+  const [editStoreCountry, setEditStoreCountry] = useState("");
 
   // -------------------------
   // Delete Confirmation Modal State
@@ -85,7 +97,7 @@ const StoresPage = () => {
     try {
       const { data, error } = await supabase
         .from("store")
-        .select("store_id, store_name, location");
+        .select("store_id, store_name, address_line_1, address_line_2, city, province, postal_code, country");
       if (error) {
         console.error("Error fetching stores:", error);
         setError("Failed to load stores data.");
@@ -163,7 +175,12 @@ const StoresPage = () => {
   const handleAddStore = async () => {
     if (!isAdmin) return;
     setNewStoreName("");
-    setNewStoreLocation("");
+    setNewStoreAddress1("");
+    setNewStoreAddress2("");
+    setNewStoreCity("");
+    setNewStoreProvince("");
+    setNewStorePostalCode("");
+    setNewStoreCountry("");
     setShowAddModal(true);
   };
 
@@ -176,7 +193,15 @@ const StoresPage = () => {
     try {
       const { data, error } = await supabase
         .from("store")
-        .insert([{ store_name: newStoreName, location: newStoreLocation }]);
+        .insert([{ 
+          store_name: newStoreName, 
+          address_line_1: newStoreAddress1,
+          address_line_2: newStoreAddress2,
+          city: newStoreCity,
+          province: newStoreProvince,
+          postal_code: newStorePostalCode,
+          country: newStoreCountry
+        }]);
       if (error) {
         console.error("Error adding store:", error);
         showNotification("Failed to add new store.", "error");
@@ -200,7 +225,12 @@ const StoresPage = () => {
     // Open the edit modal and pre-populate fields with current store data.
     setEditStoreId(store.store_id);
     setEditStoreName(store.store_name);
-    setEditStoreLocation(store.location);
+    setEditStoreAddress1(store.address_line_1 || "");
+    setEditStoreAddress2(store.address_line_2 || "");
+    setEditStoreCity(store.city || "");
+    setEditStoreProvince(store.province || "");
+    setEditStorePostalCode(store.postal_code || "");
+    setEditStoreCountry(store.country || "");
     setShowEditModal(true);
   };
 
@@ -213,17 +243,24 @@ const StoresPage = () => {
     try {
       const { error } = await supabase
         .from("store")
-        .update({ store_name: editStoreName, location: editStoreLocation })
+        .update({ 
+          store_name: editStoreName, 
+          address_line_1: editStoreAddress1,
+          address_line_2: editStoreAddress2,
+          city: editStoreCity,
+          province: editStoreProvince,
+          postal_code: editStorePostalCode,
+          country: editStoreCountry
+        })
         .eq("store_id", editStoreId);
       if (error) {
         console.error("Error updating store:", error);
         showNotification("Failed to update store.", "error");
       } else {
-        // Update local state optimistically
         setStores((prev) =>
           prev.map((store) =>
             store.store_id === editStoreId
-              ? { ...store, store_name: editStoreName, location: editStoreLocation }
+              ? { ...store, store_name: editStoreName, address_line_1: editStoreAddress1, address_line_2: editStoreAddress2, city: editStoreCity, province: editStoreProvince, postal_code: editStorePostalCode, country: editStoreCountry }
               : store
           )
         );
@@ -302,17 +339,16 @@ const StoresPage = () => {
             onClick={() => setShowAddModal(true)}
             className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-semibold shadow"
           >
-            + Add Team
+            + Add Store
           </button>
         </div>
       </div>
-      {/* Add Team Modal */}
+      {/* Add Store Modal */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Add New Team</h2>
+            <h2 className="text-2xl font-bold mb-6">Add New Store</h2>
             <form onSubmit={handleSubmitAddStore}>
-              {/* Store Name Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Store Name <span className="text-red-500">*</span>
@@ -326,17 +362,72 @@ const StoresPage = () => {
                   required
                 />
               </div>
-              {/* Store Location Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Location
+                  Address Line 1
                 </label>
                 <input
                   type="text"
-                  value={newStoreLocation}
-                  onChange={(e) => setNewStoreLocation(e.target.value)}
+                  value={newStoreAddress1 || ''}
+                  onChange={(e) => setNewStoreAddress1(e.target.value)}
                   className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="e.g., '123 Main St, Anytown'"
+                  placeholder="e.g., '123 Main St'"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Address Line 2
+                </label>
+                <input
+                  type="text"
+                  value={newStoreAddress2 || ''}
+                  onChange={(e) => setNewStoreAddress2(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Apt, Suite, etc."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={newStoreCity || ''}
+                  onChange={(e) => setNewStoreCity(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Province
+                </label>
+                <input
+                  type="text"
+                  value={newStoreProvince || ''}
+                  onChange={(e) => setNewStoreProvince(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Postal Code
+                </label>
+                <input
+                  type="text"
+                  value={newStorePostalCode || ''}
+                  onChange={(e) => setNewStorePostalCode(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={newStoreCountry || ''}
+                  onChange={(e) => setNewStoreCountry(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               {/* Form Buttons */}
@@ -352,7 +443,7 @@ const StoresPage = () => {
                   type="submit"
                   className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
-                  Add Team
+                  Add Store
                 </button>
               </div>
             </form>
@@ -374,8 +465,7 @@ const StoresPage = () => {
                 {store.store_name}
               </h2>
               <div className="flex items-center space-x-4">
-                <span className="text-gray-500">{store.location}</span>
-                {/* Employee count badge */}
+                <span className="text-gray-500">{store.city}, {store.province} {store.postal_code}</span>
                 <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
                   {store.employee_count} Employees
                 </span>
@@ -394,19 +484,20 @@ const StoresPage = () => {
             {openStores[store.store_id] && (
               <div className="mt-4 border-t pt-4">
                 <p className="text-gray-700">Store ID: {store.store_id}</p>
-                {/* Placeholder for future: list employees in this store, edit/delete store, etc. */}
+                <p className="text-gray-700">Address: {store.address_line_1} {store.address_line_2 && (", " + store.address_line_2)}, {store.city}, {store.province}, {store.postal_code}, {store.country}</p>
               </div>
             )}
           </div>
-        ))
-      )}
+        )
+      )
+    )
+      }
       {/* Edit Store Modal (future functionality) */}
       {showEditModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">Edit Store</h2>
             <form onSubmit={handleSubmitEditStore}>
-              {/* Store Name Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Store Name
@@ -420,18 +511,72 @@ const StoresPage = () => {
                   required
                 />
               </div>
-              {/* Store Location Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Location
+                  Address Line 1
                 </label>
                 <input
                   type="text"
-                  value={editStoreLocation}
-                  onChange={(e) => setEditStoreLocation(e.target.value)}
+                  value={editStoreAddress1 || ''}
+                  onChange={(e) => setEditStoreAddress1(e.target.value)}
                   className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="e.g., '123 Main St, Anytown'"
-                  required
+                  placeholder="e.g., '123 Main St'"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Address Line 2
+                </label>
+                <input
+                  type="text"
+                  value={editStoreAddress2 || ''}
+                  onChange={(e) => setEditStoreAddress2(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Apt, Suite, etc."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={editStoreCity || ''}
+                  onChange={(e) => setEditStoreCity(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Province
+                </label>
+                <input
+                  type="text"
+                  value={editStoreProvince || ''}
+                  onChange={(e) => setEditStoreProvince(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Postal Code
+                </label>
+                <input
+                  type="text"
+                  value={editStorePostalCode || ''}
+                  onChange={(e) => setEditStorePostalCode(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={editStoreCountry || ''}
+                  onChange={(e) => setEditStoreCountry(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               {/* Form Buttons */}

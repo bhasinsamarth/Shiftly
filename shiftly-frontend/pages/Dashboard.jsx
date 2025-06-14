@@ -74,36 +74,23 @@ const Dashboard = () => {
 
         // Total payroll
         const { data: empSalaries, error: salaryError } = await supabase
-          .from('employees')
-          .select('salary');
+          .from('employee')
+          .select('pay_rate');
         if (!salaryError && empSalaries) {
-          const total = empSalaries.reduce((acc, cur) => acc + Number(cur.salary || 0), 0);
+          const total = empSalaries.reduce((acc, cur) => acc + Number(cur.pay_rate || 0), 0);
           setTotalPayroll(total);
         } else {
-          console.error('Error fetching salaries:', salaryError);
+          console.error('Error fetching pay rates:', salaryError);
         }
 
-        // Teams count: Fetch number of rows from the store table for owners
-        if (user.role_id === 1) {
-          const { data: storeRows, error: storeError } = await supabase
-            .from('store')
-            .select('store_id');
-          if (!storeError && storeRows) {
-            setTeamsCount(storeRows.length);
-          } else {
-            console.error('Error fetching store rows:', storeError);
-          }
+        // Teams count: Fetch number of rows from the store table for both owners and managers
+        const { data: storeRows, error: storeError } = await supabase
+          .from('store')
+          .select('store_id');
+        if (!storeError && storeRows) {
+          setTeamsCount(storeRows.length);
         } else {
-          // Teams count: Fetch teams info from the teams table, then count distinct team names.
-          const { data: teamsData, error: teamsError } = await supabase
-            .from('teams')
-            .select('team');
-          if (!teamsError && teamsData) {
-            const distinctTeams = new Set(teamsData.map(t => t.team).filter(team => team));
-            setTeamsCount(distinctTeams.size);
-          } else {
-            console.error('Error fetching teams:', teamsError);
-          }
+          console.error('Error fetching store rows:', storeError);
         }
 
         // Pending time-off requests from time_off_requests table
@@ -156,7 +143,7 @@ const Dashboard = () => {
     if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
-          .from('employees')
+          .from('employee')
           .select('*')
           .eq('email', user.email)
           .single();
@@ -175,39 +162,24 @@ const Dashboard = () => {
   useEffect(() => {
     if (myEmployee) {
       async function fetchUserTeams() {
-        // Get all teams rows that have a team value equal to one of the teams that the employee belongs to.
-        // First, fetch the teams row(s) where the employee is a member.
-        const { data, error } = await supabase
-          .from("teams")
-          .select("*")
-          .eq("employee_id", myEmployee.id);
-        if (error) {
-          setAlertMsg({ type: 'error', text: 'Failed to load your teams.' });
+        // For your schema, fetch the store row for the employee's store_id
+        if (!myEmployee.store_id) {
+          setUserTeamGroups({});
           return;
         }
-        if (data) {
-          // Get distinct team names
-          const distinctTeamNames = Array.from(new Set(data.map(item => item.team)));
-          // For each distinct team, fetch all rows belonging to that team.
-          let groups = {};
-          await Promise.all(
-            distinctTeamNames.map(async (teamName) => {
-              const { data: groupData, error: groupError } = await supabase
-                .from("teams")
-                .select("*")
-                .eq("team", teamName);
-              if (!groupError && groupData) {
-                groups[teamName] = groupData;
-              }
-            })
-          );
-          setUserTeamGroups(groups);
-          // Initialize open/closed state for each team as closed (false)
-          const openStates = {};
-          distinctTeamNames.forEach(teamName => {
-            openStates[teamName] = false;
-          });
-          setOpenUserTeams(openStates);
+        const { data, error } = await supabase
+          .from('store')
+          .select('*')
+          .eq('store_id', myEmployee.store_id);
+        if (error) {
+          setAlertMsg({ type: 'error', text: 'Failed to load your store/team.' });
+          return;
+        }
+        if (data && data.length > 0) {
+          setUserTeamGroups({ [data[0].store_name || `Store ${data[0].store_id}`]: [data[0]] });
+          setOpenUserTeams({ [data[0].store_name || `Store ${data[0].store_id}`]: false });
+        } else {
+          setUserTeamGroups({});
         }
       }
       fetchUserTeams();
@@ -307,7 +279,8 @@ const Dashboard = () => {
     // Owner/Manager dashboard
     const dynamicDashboardCards = [
       { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
-      { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
+      // For owners and managers, this card shows the number of stores (teams = stores)
+      { title: 'Stores', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
       { title: 'Time-off Requests', value: pendingTimeOff, icon: '📅', bgColor: 'bg-yellow-50', path: '/time-off' },
       { title: 'Payroll', value: totalPayroll ? `$${totalPayroll}` : '$0', icon: '💰', bgColor: 'bg-purple-50', path: '/payroll' },
     ];
@@ -477,22 +450,22 @@ const Dashboard = () => {
 
         {/* Teams Section: Display dropdowns for each team the user is part of */}
         <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Teams</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Store</h2>
           {Object.keys(userTeamGroups).length === 0 ? (
-            <p>You are not part of any teams.</p>
+            <p>You are not assigned to any store.</p>
           ) : (
             <div className="space-y-4">
-              {Object.keys(userTeamGroups).map(teamName => (
-                <div key={teamName} className="bg-white p-4 rounded shadow border border-gray-200">
-                  <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleUserTeamGroup(teamName)}>
-                    <span className="text-lg font-medium text-gray-800">{teamName}</span>
-                    <span>{openUserTeams[teamName] ? '-' : '+'}</span>
+              {Object.keys(userTeamGroups).map(storeName => (
+                <div key={storeName} className="bg-white p-4 rounded shadow border border-gray-200">
+                  <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleUserTeamGroup(storeName)}>
+                    <span className="text-lg font-medium text-gray-800">{storeName}</span>
+                    <span>{openUserTeams[storeName] ? '-' : '+'}</span>
                   </div>
-                  {openUserTeams[teamName] && (
+                  {openUserTeams[storeName] && (
                     <ul className="mt-2 pl-4 border-l border-gray-300">
-                      {userTeamGroups[teamName].map(member => (
-                        <li key={member.employee_id} className="text-gray-700 text-sm">
-                          {member.employee_name} (ID: {member.employee_id})
+                      {userTeamGroups[storeName].map(store => (
+                        <li key={store.store_id} className="text-gray-700 text-sm">
+                          {store.store_name || `Store ${store.store_id}`} (ID: {store.store_id})
                         </li>
                       ))}
                     </ul>
