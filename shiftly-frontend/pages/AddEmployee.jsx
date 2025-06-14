@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -18,89 +19,58 @@ const AddEmployee = () => {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (error) setError('');
-    if (success) setSuccess('');
-    if (inviteLink) setInviteLink('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setInviteLink('');
-
     if (!form.email) {
-      setError('Please enter an email.');
+      setError('Please enter an email');
       return;
     }
-    if (!form.role_id) {
-        setError('Please enter a Role ID.');
-        return;
-    }
-    if (!form.store_id) {
-        setError('Please enter a Store ID.');
-        return;
-    }
-    // Employee ID is optional, but if provided, it should be a number
-    if (form.employee_id && isNaN(parseInt(form.employee_id))) {
-        setError('Employee ID must be a number.');
-        return;
-    }
-
-
     setLoading(true);
     try {
-      // Check 1: Duplicate email in auth.users (Supabase handles this on signUp, but good to check early)
-      // For a more robust check, you might query auth.admin.listUsers(), but that requires admin privileges.
-      // A simpler check against the employee table can also be useful.
-      const { data: existingUserByEmail, error: emailCheckError } = await supabase
-        .from('employee')
-        .select('email')
-        .eq('email', form.email)
-        .maybeSingle();
-
-      if (emailCheckError) {
-        console.error('Error checking email:', emailCheckError.message);
-        setError('Error checking email. Please try again.');
-        setLoading(false);
-        return;
-      }
-      if (existingUserByEmail) {
-        setError('This email is already associated with an employee.');
-        setLoading(false);
-        return;
-      }
-
-      // Check 2: Duplicate employee_id in employee table (if employee_id is provided)
+      // Generate a secure random token
+      const token = uuidv4();
+      // Set expiry 24 hours from now
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const createdAt = new Date().toISOString();
+      // Insert invite data into setup_tokens table with correct types
+      // Only include employee_id if it is not empty, otherwise omit it to avoid FK error
+      const inviteData = {
+        token,
+        email: form.email,
+        role_id: form.role_id ? parseInt(form.role_id, 10) : null,
+        store_id: form.store_id ? parseInt(form.store_id, 10) : null,
+        expires_at: expiresAt,
+        created_at: createdAt,
+        is_used: false,
+      };
       if (form.employee_id) {
-        const { data: existingUserByEmployeeId, error: employeeIdCheckError } = await supabase
-          .from('employee')
-          .select('employee_id')
-          .eq('employee_id', form.employee_id)
-          .maybeSingle();
-
-        if (employeeIdCheckError) {
-          console.error('Error checking employee ID:', employeeIdCheckError.message);
-          setError('Error checking employee ID. Please try again.');
-          setLoading(false);
-          return;
-        }
-        if (existingUserByEmployeeId) {
-          setError('This Employee ID is already in use.');
-          setLoading(false);
-          return;
-        }
+        inviteData.employee_id = parseInt(form.employee_id, 10);
       }
-
-      // Build the invite link with all necessary params
-      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
-      
-      setSuccess('Invitation link generated successfully!');
+      const { data: insertData, error: tokenInsertError } = await supabase
+        .from('setup_tokens')
+        .insert([inviteData])
+        .select(); // Get the inserted row for debugging
+      if (tokenInsertError) {
+        console.error('Supabase insert error:', tokenInsertError);
+        setError('Failed to generate invitation token. Please try again.');
+        setLoading(false);
+        return;
+      }
+      if (!insertData || insertData.length === 0) {
+        setError('Token was not inserted. Please check your database permissions or constraints.');
+        setLoading(false);
+        return;
+      }
+      // Build the invite link with only the token
+      const link = `${window.location.origin}/setup-account?token=${token}`;
+      setSuccess('Invitation link generated!');
       setInviteLink(link);
-      // Clear form only on successful link generation without prior errors
-      // setForm({ email: '', store_id: '', role_id: '', employee_id: '' }); 
+      setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
     } catch (err) {
       console.error('Error generating invite link:', err.message);
-      setError('Failed to generate invitation link. Please check console for details.');
+      setError('Failed to generate invitation link');
     }
     setLoading(false);
   };
@@ -172,6 +142,7 @@ const AddEmployee = () => {
               value={form.employee_id || ''}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
+              min="1"
             />
           </div>
           <button

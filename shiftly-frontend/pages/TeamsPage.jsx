@@ -293,46 +293,18 @@ const StoresPage = () => {
       )}
       {/* Page header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-10">
-        <h1 className="text-4xl font-bold text-gray-800 mb-4 sm:mb-0">Stores</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-semibold shadow"
-        >
-          + Add Team
-        </button>
-      </div>
-      {/* Store Cards */}
-      <div className="space-y-6">
-        {stores.map((store) => (
-          <div
-            key={store.store_id}
-            className="bg-white rounded-lg shadow p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between border border-gray-200"
+        <h1 className="text-4xl font-bold text-gray-800 mb-4 sm:mb-0">
+          Stores
+        </h1>
+        {/* Add Team button on the opposite side */}
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-semibold shadow"
           >
-            <div className="mb-4 sm:mb-0">
-              <div className="text-2xl font-semibold text-gray-900">{store.store_name}</div>
-              <div className="text-base text-blue-900 mt-1">{store.employee_count} Employee{store.employee_count === 1 ? '' : 's'}</div>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-              <button className="flex items-center border border-gray-300 rounded-lg px-4 py-2 text-base font-medium text-gray-900 bg-white hover:bg-gray-100 transition">
-                <span className="mr-2">&#128101;</span>
-                {store.employee_count} Employee{store.employee_count === 1 ? '' : 's'}
-              </button>
-              <button className="flex items-center border border-gray-300 rounded-lg px-4 py-2 text-base font-medium text-gray-900 bg-white hover:bg-gray-100 transition">
-                <span className="mr-2">&#128100;</span>
-                View Employees
-              </button>
-              {isAdmin && (
-                <button
-                  className="flex items-center border border-gray-300 rounded-lg px-4 py-2 text-base font-medium text-red-600 bg-white hover:bg-red-50 transition"
-                  onClick={e => { e.stopPropagation(); handleDeleteStoreClick(e, store.store_id); }}
-                >
-                  <span className="mr-2">&#128465;</span>
-                  Delete Team
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+            + Add Team
+          </button>
+        </div>
       </div>
       {/* Add Team Modal */}
       {showAddModal && (
@@ -340,6 +312,7 @@ const StoresPage = () => {
           <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">Add New Team</h2>
             <form onSubmit={handleSubmitAddStore}>
+              {/* Store Name Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Store Name <span className="text-red-500">*</span>
@@ -353,6 +326,7 @@ const StoresPage = () => {
                   required
                 />
               </div>
+              {/* Store Location Field */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   Location
@@ -365,6 +339,7 @@ const StoresPage = () => {
                   placeholder="e.g., '123 Main St, Anytown'"
                 />
               </div>
+              {/* Form Buttons */}
               <div className="flex justify-end space-x-4 mt-6">
                 <button
                   type="button"
@@ -384,13 +359,108 @@ const StoresPage = () => {
           </div>
         </div>
       )}
+      {/* Stores listing */}
+      {stores.length === 0 ? (
+        <p className="text-gray-700 text-lg">No stores found.</p>
+      ) : (
+        stores.map((store) => (
+          <div
+            key={store.store_id}
+            className="mb-6 bg-white p-6 rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer border border-gray-200"
+            onClick={() => toggleStoreGroup(store.store_id)}
+          >
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                {store.store_name}
+              </h2>
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-500">{store.location}</span>
+                {/* Employee count badge */}
+                <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  {store.employee_count} Employees
+                </span>
+                <VIcon open={openStores[store.store_id]} />
+                {/* Delete Team button for each team */}
+                {isAdmin && (
+                  <button
+                    className="ml-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                    onClick={e => handleDeleteStoreClick(e, store.store_id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+            {openStores[store.store_id] && (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-gray-700">Store ID: {store.store_id}</p>
+                {/* Placeholder for future: list employees in this store, edit/delete store, etc. */}
+              </div>
+            )}
+          </div>
+        ))
+      )}
+      {/* Edit Store Modal (future functionality) */}
+      {showEditModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+          <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">Edit Store</h2>
+            <form onSubmit={handleSubmitEditStore}>
+              {/* Store Name Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Store Name
+                </label>
+                <input
+                  type="text"
+                  value={editStoreName}
+                  onChange={(e) => setEditStoreName(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., 'Main Street Store'"
+                  required
+                />
+              </div>
+              {/* Store Location Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={editStoreLocation}
+                  onChange={(e) => setEditStoreLocation(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., '123 Main St, Anytown'"
+                  required
+                />
+              </div>
+              {/* Form Buttons */}
+              <div className="flex justify-end space-x-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-5 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Delete Confirmation Modal */}
       {storeToDelete && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-80">
             <h2 className="text-2xl font-bold mb-6">Confirm Delete</h2>
             <p className="mb-6 text-gray-700">
-              Are you sure you want to delete this team? This action cannot be undone.
+              Are you sure you want to delete this store? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-4">
               <button
