@@ -1,6 +1,6 @@
-// LoginForm.jsx
+// src/features/auth/LoginForm.jsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import InputField from "../../components/InputField";
 import { supabase } from "../../supabaseClient"; 
 import { useAuth } from "../../context/AuthContext";
@@ -11,11 +11,15 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/dashboard";
+
+  const { login, user } = useAuth();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError("");
   };
 
@@ -25,7 +29,6 @@ export default function LoginForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const { employeeId, password } = form;
 
     if (!employeeId || !password) {
@@ -42,7 +45,7 @@ export default function LoginForm() {
     setError("");
 
     try {
-      // Step 1: Look up the email from the employees table
+      // 1) Lookup email by employee_id
       const { data, error: dbError } = await supabase
         .from("employee")
         .select("email")
@@ -55,20 +58,21 @@ export default function LoginForm() {
         return;
       }
 
-      const { email } = data;
-
-      // Step 2: Use AuthContext login to sign in and update global state
-      const loginSuccess = await login(email, password, keepLoggedIn);
+      // 2) Attempt login
+      const loginSuccess = await login(data.email, password, keepLoggedIn);
       if (!loginSuccess) {
         setError("Invalid Employee ID or password.");
         setIsLoading(false);
         return;
       }
 
-      // Success!
-      setIsLoading(false);
-      navigate("/dashboard");
+      // 3) Persist user in localStorage for fallback
+      if (user) {
+        localStorage.setItem("shiftly_user", JSON.stringify(user));
+      }
 
+      // 4) Redirect back to intended page
+      navigate(from, { replace: true });
     } catch (err) {
       console.error(err);
       setError("Something went wrong. Please try again.");
@@ -81,11 +85,13 @@ export default function LoginForm() {
       <h2 className="text-2xl font-bold mb-4 text-center text-gray-700">
         Login to Shiftly
       </h2>
+
       {error && (
         <div className="mb-4 p-2 bg-red-50 text-red-500 border border-red-200 rounded text-sm">
           {error}
         </div>
       )}
+
       <InputField
         label="Employee ID"
         type="text"
@@ -95,6 +101,7 @@ export default function LoginForm() {
         placeholder="7-digit number"
         required
       />
+
       <div className="mb-4 relative">
         <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
           Password
@@ -113,11 +120,12 @@ export default function LoginForm() {
           tabIndex={-1}
           onClick={() => setShowPassword((prev) => !prev)}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none text-sm px-2 py-1"
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
+          aria-label={showPassword ? "Hide password" : "Show password"}
         >
-          {showPassword ? 'Hide' : 'Show'}
+          {showPassword ? "Hide" : "Show"}
         </button>
       </div>
+
       <div className="flex items-center mb-4">
         <input
           id="keepLoggedIn"
@@ -126,8 +134,11 @@ export default function LoginForm() {
           onChange={handleKeepLoggedInChange}
           className="mr-2"
         />
-        <label htmlFor="keepLoggedIn" className="text-sm text-gray-700">Keep me logged in for 60 days</label>
+        <label htmlFor="keepLoggedIn" className="text-sm text-gray-700">
+          Keep me logged in for 60 days
+        </label>
       </div>
+
       <button
         type="submit"
         disabled={isLoading}

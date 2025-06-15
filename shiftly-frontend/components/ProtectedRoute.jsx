@@ -1,30 +1,56 @@
+// src/components/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
  * A wrapper component that redirects to the login page if the user is not authenticated.
- * For demo purposes, this is a simplified version that allows access more easily.
+ * Falls back to localStorage-based auth, shows a loading state, 
+ * and preserves the original location in state for post-login redirection.
  */
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute check:', { isAuthenticated, user, path: location.pathname });
-
-  // For demo purposes, we'll be more permissive
-  // Check authentication from localStorage as a fallback
-  const storedUser = localStorage.getItem('shiftly_user');
+  // Deserialize any user stored in localStorage
+  let storedUser = null;
+  try {
+    storedUser = JSON.parse(localStorage.getItem('shiftly_user') || 'null');
+  } catch (e) {
+    storedUser = null;
+  }
   const isLocallyAuthenticated = !!storedUser;
 
-  // If authenticated by any means, allow access
-  if (isAuthenticated || isLocallyAuthenticated) {
-    return children;
+  console.log('ProtectedRoute check:', {
+    isAuthenticated,
+    isLocallyAuthenticated,
+    user,
+    path: location.pathname,
+  });
+
+  // While your auth provider is resolving (e.g. checking a token), show a loader
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p>Loading your session…</p>
+      </div>
+    );
   }
 
-  // Otherwise redirect to login
-  console.log('Not authenticated, redirecting to login');
-  return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  // If neither context nor localStorage indicates a valid session, redirect
+  if (!isAuthenticated && !isLocallyAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    );
+  }
+
+  // Otherwise render the protected child
+  return children;
 };
 
 export default ProtectedRoute;
