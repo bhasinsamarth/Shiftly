@@ -76,8 +76,8 @@ const Dashboard = () => {
 
         // Total payroll
         const { data: empSalaries, error: salaryError } = await supabase
-          .from('employees')
-          .select('salary');
+          .from('employee')
+          .select('pay_rate');
         if (!salaryError && empSalaries) {
           const total = empSalaries.reduce((acc, cur) => acc + Number(cur.salary || 0), 0);
           setTotalPayroll(total);
@@ -85,27 +85,14 @@ const Dashboard = () => {
           console.error('Error fetching salaries:', salaryError);
         }
         //ADMIN
-        // Teams count: Fetch number of rows from the store table for ADMIN
-        if (user.role_id === 1) {
-          const { data: storeRows, error: storeError } = await supabase
-            .from('store')
-            .select('store_id');
-          if (!storeError && storeRows) {
-            setTeamsCount(storeRows.length);
-          } else {
-            console.error('Error fetching store rows:', storeError);
-          }
+        // Teams count: Always fetch number of rows from the store table
+        const { data: storeRows, error: storeError } = await supabase
+          .from('store')
+          .select('store_id');
+        if (!storeError && storeRows) {
+          setTeamsCount(storeRows.length);
         } else {
-          // Teams count: Fetch teams info from the teams table, then count distinct team names.
-          const { data: teamsData, error: teamsError } = await supabase
-            .from('teams')
-            .select('team');
-          if (!teamsError && teamsData) {
-            const distinctTeams = new Set(teamsData.map(t => t.team).filter(team => team));
-            setTeamsCount(distinctTeams.size);
-          } else {
-            console.error('Error fetching teams:', teamsError);
-          }
+          console.error('Error fetching store rows:', storeError);
         }
 
         // Pending time-off requests from time_off_requests table
