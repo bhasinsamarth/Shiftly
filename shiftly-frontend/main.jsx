@@ -5,7 +5,6 @@ import "./index.css";
 
 // Import layout and pages
 import App from "./App";
-import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
