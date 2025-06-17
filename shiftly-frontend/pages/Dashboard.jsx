@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { submitEmployeeRequest } from '../utils/requestHandler';
 import TimeOffRequestForm from '../components/TimeOffRequestForm';
@@ -508,7 +508,6 @@ const Dashboard = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* My Store Tab */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-green-700">
               <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Store</h3>
@@ -620,31 +619,33 @@ const Dashboard = () => {
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 col-span-1 min-h-[200px]">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
+          <Link to="/FetchSchedule" className="col-span-1">
+            <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 min-h-[200px] cursor-pointer">
+              <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
+                <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
+                {schedules.length === 0 ? (
+                  <p className="text-gray-500">You have nothing planned.</p>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {schedules.slice(0, 5).map((sch, idx) => (
+                      <li key={sch.id || idx} className="py-2 flex items-center">
+                        <div className="w-10 sm:w-12 text-center">
+                          <span className="block text-xs text-gray-400 font-medium">{new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                          <span className="block text-md sm:text-lg font-bold text-gray-700">{new Date(sch.shift_start).getDate()}</span>
+                        </div>
+                        <div className="ml-2 sm:ml-3 flex-1">
+                          <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
+                          <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
-              {schedules.length === 0 ? (
-                <p className="text-gray-500">You have nothing planned.</p>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {schedules.slice(0, 5).map((sch, idx) => (
-                    <li key={sch.id || idx} className="py-2 flex items-center">
-                      <div className="w-10 sm:w-12 text-center">
-                        <span className="block text-xs text-gray-400 font-medium">{new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                        <span className="block text-md sm:text-lg font-bold text-gray-700">{new Date(sch.shift_start).getDate()}</span>
-                      </div>
-                      <div className="ml-2 sm:ml-3 flex-1">
-                        <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
-                        <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          </Link>
           {/* My Timecard */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
             <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
