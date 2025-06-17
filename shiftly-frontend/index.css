@@ -9,3 +9,7 @@ body {
     min-width: 320px;
     min-height: 100vh;
 }
+
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+    display: none;
+}

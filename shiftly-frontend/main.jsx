@@ -17,6 +17,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
 import SetupAccountPage from "./pages/SetupAccountPage";
 import ProfilePage from "./pages/ProfilePage";
+import SchedulePlanner from "./pages/SchedulePlanner";
+
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -30,6 +32,7 @@ function AppWithRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/schedules" element={<ProtectedRoute><SchedulePlanner /></ProtectedRoute>} />
         <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
         <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
         <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
@@ -39,6 +42,7 @@ function AppWithRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        
         <Route path="*" element={
           <div className="text-center py-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>
