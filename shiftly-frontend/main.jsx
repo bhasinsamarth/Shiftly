@@ -19,7 +19,7 @@ import SetupAccountPage from "./pages/SetupAccountPage";
 import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
-
+import ChangeAvailabity from "./pages/ChangeAvailabity";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
