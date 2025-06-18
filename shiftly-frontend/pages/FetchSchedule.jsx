@@ -191,7 +191,7 @@ const FetchSchedule = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 pt-8 items-start">
         {/* Calendar Sidebar */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 w-full md:w-1/3 max-w-xs mb-6 md:mb-0 flex flex-col min-h-[320px] h-[500px]">

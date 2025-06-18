@@ -206,9 +206,26 @@ const Dashboard = () => {
   }, [user, myEmployee]);
 
   // --- TIME CARDS SECTION ---
+  // (Commented out all timecard queries and related logic
+/*
   const [timeCards, setTimeCards] = useState([]);
   const [loadingTimeCards, setLoadingTimeCards] = useState(true);
   const [errorTimeCards, setErrorTimeCards] = useState('');
+
+  useEffect(() => {
+    async function fetchTimeCards() {
+      const { data, error } = await supabase
+        .from('timecards')
+        .select('*')
+        .eq('employee_id', myEmployee.employee_id)
+        .order('clock_in', { ascending: false });
+      if (error) setErrorTimeCards('Could not fetch time cards.');
+      else setTimeCards(data || []);
+      setLoadingTimeCards(false);
+    }
+    if (myEmployee) fetchTimeCards();
+  }, [myEmployee]);
+*/
 
   // --- CLOCK IN/OUT SECTION ---
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -270,6 +287,7 @@ const Dashboard = () => {
 
   // After myEmployee is fetched, load all teams that the employee is a part of
   useEffect(() => {
+    
     if (myEmployee) {
       async function fetchUserTeams() {
         try {
@@ -372,58 +390,25 @@ const Dashboard = () => {
 
   // --- EFFECTS FOR NORMAL USER DASHBOARD LOGIC ---
   useEffect(() => {
+    if (!myEmployee) return;
+    // If myEmployee is null, we can't fetch teams, so we skip this effect
     if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchSchedules() {
         // Fetch upcoming and past schedules for the employee
         const { data, error } = await supabase
-          .from('schedules')
+          .from('store_schedule') // updated from 'schedules'
           .select('*')
-          .eq('employee_id', user.id)
-          .order('shift_start', { ascending: false });
+          .eq('employee_id', myEmployee.employee_id)
+          .order('start_time', { ascending: true });
         if (error) setErrorSchedules('Could not fetch schedules.');
         else setSchedules(data || []);
         setLoadingSchedules(false);
       }
       fetchSchedules();
     }
-  }, [user]);
+  }, [user, myEmployee]);
 
-  useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function fetchTimeCards() {
-        // Fetch time cards for current and previous pay periods
-        const { data, error } = await supabase
-          .from('timecards')
-          .select('*')
-          .eq('employee_id', user.id)
-          .order('date', { ascending: false });
-        if (error) setErrorTimeCards('Could not fetch time cards.');
-        else setTimeCards(data || []);
-        setLoadingTimeCards(false);
-      }
-      fetchTimeCards();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function checkClockStatus() {
-        // Check if the user is currently clocked in
-        const { data, error } = await supabase
-          .from('timecards')
-          .select('*')
-          .eq('employee_id', user.id)
-          .order('date', { ascending: false })
-          .limit(1);
-        if (!error && data && data[0]) {
-          setIsClockedIn(!!data[0].clock_in && !data[0].clock_out);
-        }
-      }
-      checkClockStatus();
-    }
-  }, [user]);
-
-  // --- HANDLERS FOR CLOCK IN/OUT SECTION ---
+  // --- CLOCK IN/OUT SECTION ---
   const handleClockIn = async () => {
     if (isClockedIn) {
       setClockMsg('Already clocked in.');
@@ -739,26 +724,9 @@ const Dashboard = () => {
             <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
               <h3 className="text-lg font-semibold text-white mb-0">My Timecard</h3>
             </div>
-            <div className="flex flex-col items-center space-y-3 p-4">
-              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
+              <span className="text-sm">No data to display.</span>
             </div>
-            {timeCards.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
-                <span className="text-sm">No data to display.</span>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {timeCards.slice(0, 5).map((tc, idx) => (
-                  <li key={tc.id || idx} className="py-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="font-medium text-gray-700">{tc.date}</span>
-                      <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
           {/* My Notifications */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">

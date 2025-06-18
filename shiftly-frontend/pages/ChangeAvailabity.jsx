@@ -134,7 +134,7 @@ const ChangeAvailabity = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10">
+    <div className="min-h-screen bg-white flex flex-col items-center py-10">
       <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8 w-full max-w-lg">
         <h1 className="text-2xl font-bold mb-6 text-center">Change Availability</h1>
         <div className="flex justify-center gap-4 mb-6">
