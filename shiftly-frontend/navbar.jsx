@@ -79,18 +79,15 @@ const Navbar = () => {
 
   const handleSubmitReport = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('complaints').insert([
-      {
-        against: reportAgainst || null,
-        subject: reportSubject,
-        details: reportDetails,
-        name: reportName || null,
-        employee_id: user.id,
-        anonymous: !reportName
-      }
-    ]);
-    if (error) setReportMsg('Failed to submit report.');
-    else setReportMsg('Issue reported.');
+    const { error } = await supabase.from('complaints').insert([{
+      against: reportAgainst || null,
+      subject: reportSubject,
+      details: reportDetails,
+      name: reportName || null,
+      employee_id: user.id,
+      anonymous: !reportName
+    }]);
+    setReportMsg(error ? 'Failed to submit report.' : 'Issue reported.');
     setShowReportModal(false);
     setReportAgainst(''); setReportSubject(''); setReportDetails(''); setReportName('');
   };
@@ -122,8 +119,8 @@ const Navbar = () => {
                     </>
                   )}
                   {user?.role_id === 3 && (
-                    <Link to="/time-off" className="relative border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                      Time Off
+                    <Link to="/employee-requests" className="relative border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                      Employee Requests
                       {pendingTimeOffCount > 0 && (
                         <span className="absolute top-2 right-1 block h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
                           {pendingTimeOffCount}
@@ -138,24 +135,11 @@ const Navbar = () => {
 
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {isAuthenticated && (
-              <button type="button" className="relative mr-4 focus:outline-none" aria-label="Notifications">
-                <svg className="h-6 w-6 text-gray-500 hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {unreadMessages > 0 && (
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500"></span>
-                )}
-              </button>
-            )}
-
-            {isAuthenticated && (
               <div className="ml-3 relative">
                 <button
                   type="button"
                   className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   id="user-menu-button"
-                  aria-expanded="false"
-                  aria-haspopup="true"
                   onClick={toggleProfileDropdown}
                 >
                   <span className="sr-only">Open user menu</span>
@@ -167,84 +151,35 @@ const Navbar = () => {
                     </div>
                   )}
                 </button>
-
                 {profileDropdownOpen && (
                   <div
                     id="user-menu-dropdown"
-                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5"
                     role="menu"
+                    aria-orientation="vertical"
+                    tabIndex="-1"
                   >
-                    <div className="block px-4 py-2 text-sm text-gray-700" role="menuitem">
+                    <div className="block px-4 py-2 text-sm text-gray-700">
                       Signed in as <strong>{user?.preferred_name || user?.first_name || user?.username || user?.email}</strong>
                     </div>
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
-                    >
+                    <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       My Profile
                     </Link>
-                    <button
-                      onClick={() => setShowReportModal(true)}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
-                      tabIndex="-1"
-                    >
+                    <button onClick={() => setShowReportModal(true)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Report Issue
                     </button>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      role="menuitem"
-                    >
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                       Sign out
                     </button>
-                  </div>
-                )}
-                {/* Report Issue Modal */}
-                {showReportModal && (
-                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-                      <form onSubmit={handleSubmitReport}>
-                        <h2 className="text-lg font-semibold mb-4">Report Issue</h2>
-                        
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700">Subject</label>
-                          <input type="text" value={reportSubject} onChange={e => setReportSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                        </div>
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700">Details</label>
-                          <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                        </div>
-
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700">Against (optional)</label>
-                          <input type="text" value={reportAgainst} onChange={e => setReportAgainst(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                        </div>
-
-                        <div className="mb-6">
-                          <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                          <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                        </div>
-                        <div className="flex justify-end space-x-4">
-                          <button type="submit" className="px-5 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition">Submit</button>
-                          <button type="button" onClick={() => setShowReportModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                        </div>
-                        {reportMsg && <div className="mt-4 text-green-600">{reportMsg}</div>}
-                      </form>
-                    </div>
                   </div>
                 )}
               </div>
             )}
           </div>
-
           <div className="flex items-center sm:hidden">
             <button
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-              aria-controls="mobile-menu"
-              aria-expanded={mobileMenuOpen}
               onClick={toggleMobileMenu}
             >
               <span className="sr-only">Open main menu</span>
@@ -258,6 +193,38 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
+            <form onSubmit={handleSubmitReport}>
+              <h2 className="text-lg font-semibold mb-4">Report Issue</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Subject</label>
+                <input type="text" value={reportSubject} onChange={e => setReportSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Details</label>
+                <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Against (optional)</label>
+                <input type="text" value={reportAgainst} onChange={e => setReportAgainst(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
+                <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button type="submit" className="px-5 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition">Submit</button>
+                <button type="button" onClick={() => setShowReportModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
+              </div>
+              {reportMsg && <div className="mt-4 text-green-600">{reportMsg}</div>}
+            </form>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };
