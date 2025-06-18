@@ -25,8 +25,9 @@ const TimeOffPage = () => {
       // Fetch requests with request_type = 'time-off' from employee_request
       const { data, error } = await supabase
         .from("employee_request")
-        .select("request_id, employee_id, request")
-        .eq("request_type", "time-off");
+        .select("request_id, employee_id, request, status")
+        .eq("request_type", "time-off")
+        .eq("status", "Pending"); // Correct enum value
       if (error) {
         console.error("Error fetching time-off requests:", error);
         setError("Failed to load time-off requests.");
@@ -155,7 +156,7 @@ const TimeOffPage = () => {
                         onClick={() => handleReject(req.request_id, req.employee_id)}
                         className="bg-red-600 text-white px-4 py-1.5 rounded-lg hover:bg-red-700 transition font-semibold shadow-sm w-full sm:w-auto"
                       >
-                        Reject
+                        Decline
                       </button>
                     </td>
                   </tr>

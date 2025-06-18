@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
+import { fetchPendingTimeOffCount } from "./utils/requestHandler";
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -10,6 +11,13 @@ const Navbar = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [profileImage, setProfileImage] = useState(null);
+  const [pendingTimeOffCount, setPendingTimeOffCount] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportSubject, setReportSubject] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportAgainst, setReportAgainst] = useState('');
+  const [reportName, setReportName] = useState('');
+  const [reportMsg, setReportMsg] = useState('');
 
   useEffect(() => {
     const fetchProfileImage = async () => {
@@ -34,6 +42,14 @@ const Navbar = () => {
     };
     fetchProfileImage();
   }, [user]);
+
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      const count = await fetchPendingTimeOffCount();
+      setPendingTimeOffCount(count);
+    };
+    fetchPendingRequests();
+  }, []);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -60,6 +76,24 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [profileDropdownOpen]);
+
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('complaints').insert([
+      {
+        against: reportAgainst || null,
+        subject: reportSubject,
+        details: reportDetails,
+        name: reportName || null,
+        employee_id: user.id,
+        anonymous: !reportName
+      }
+    ]);
+    if (error) setReportMsg('Failed to submit report.');
+    else setReportMsg('Issue reported.');
+    setShowReportModal(false);
+    setReportAgainst(''); setReportSubject(''); setReportDetails(''); setReportName('');
+  };
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -88,8 +122,13 @@ const Navbar = () => {
                     </>
                   )}
                   {user?.role_id === 3 && (
-                    <Link to="/time-off" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                    <Link to="/time-off" className="relative border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                       Time Off
+                      {pendingTimeOffCount > 0 && (
+                        <span className="absolute top-2 right-1 block h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                          {pendingTimeOffCount}
+                        </span>
+                      )}
                     </Link>
                   )}
                 </>
@@ -146,12 +185,54 @@ const Navbar = () => {
                       My Profile
                     </Link>
                     <button
+                      onClick={() => setShowReportModal(true)}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                      tabIndex="-1"
+                    >
+                      Report Issue
+                    </button>
+                    <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       role="menuitem"
                     >
                       Sign out
                     </button>
+                  </div>
+                )}
+                {/* Report Issue Modal */}
+                {showReportModal && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
+                      <form onSubmit={handleSubmitReport}>
+                        <h2 className="text-lg font-semibold mb-4">Report Issue</h2>
+                        
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">Subject</label>
+                          <input type="text" value={reportSubject} onChange={e => setReportSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
+                        </div>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">Details</label>
+                          <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">Against (optional)</label>
+                          <input type="text" value={reportAgainst} onChange={e => setReportAgainst(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
+                        </div>
+
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
+                          <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
+                        </div>
+                        <div className="flex justify-end space-x-4">
+                          <button type="submit" className="px-5 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition">Submit</button>
+                          <button type="button" onClick={() => setShowReportModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
+                        </div>
+                        {reportMsg && <div className="mt-4 text-green-600">{reportMsg}</div>}
+                      </form>
+                    </div>
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { submitEmployeeRequest } from '../utils/requestHandler';
+import { submitEmployeeRequest, fetchPendingTimeOffCount } from '../utils/requestHandler';
 import TimeOffRequestForm from '../components/TimeOffRequestForm';
 
 // Helper component for dashboard cards (admin/manager view)
@@ -96,16 +96,8 @@ const Dashboard = () => {
         }
 
         // Pending time-off requests from time_off_requests table
-        const { count: toCount, error: toError } = await supabase
-          .from('time_off_requests')
-          .select('id', { head: true, count: 'exact' })
-          .eq('timeoff_requested', true);
-        if (!toError) {
-          setPendingTimeOff(toCount || 0);
-        } else {
-          console.error('Error fetching time-off requests:', toError);
-        }
-
+        const count = await fetchPendingTimeOffCount();
+        setPendingTimeOff(count);
 
         //       // Recent activity from "activity" table (excluding time-off request updates)
         // const { data: actData, error: actError } = await supabase
@@ -145,6 +137,73 @@ const Dashboard = () => {
   const [schedules, setSchedules] = useState([]);
   const [loadingSchedules, setLoadingSchedules] = useState(true);
   const [errorSchedules, setErrorSchedules] = useState('');
+  // --- STORE SCHEDULE PREVIEW FOR DASHBOARD ---
+  const [storeShifts, setStoreShifts] = useState([]);
+  const [loadingStoreShifts, setLoadingStoreShifts] = useState(true);
+  const [errorStoreShifts, setErrorStoreShifts] = useState('');
+
+  useEffect(() => {
+    async function fetchShiftsForWeek(employeeId, weekStart, weekEnd) {
+      const { data: shiftData, error: shiftError } = await supabase
+        .from('store_schedule')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .gte('start_time', weekStart.toISOString())
+        .lte('start_time', weekEnd.toISOString())
+        .order('start_time', { ascending: true });
+      return { shiftData, shiftError };
+    }
+
+    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6) && myEmployee) {
+      (async () => {
+        try {
+          if (!myEmployee.employee_id) {
+            setErrorStoreShifts('No employee_id found for your account.');
+            setLoadingStoreShifts(false);
+            return;
+          }
+          // Calculate current week (Sunday to Saturday)
+          const now = new Date();
+          const day = now.getDay();
+          const weekStart = new Date(now);
+          weekStart.setHours(0,0,0,0);
+          weekStart.setDate(now.getDate() - day);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          weekEnd.setHours(23,59,59,999);
+
+          // Try to fetch this week's shifts
+          let { shiftData, shiftError } = await fetchShiftsForWeek(myEmployee.employee_id, weekStart, weekEnd);
+          if (shiftError) {
+            setErrorStoreShifts('Could not fetch schedule.');
+            setLoadingStoreShifts(false);
+            return;
+          }
+          // If no shifts, try next week
+          if (!shiftData || shiftData.length === 0) {
+            const nextWeekStart = new Date(weekStart);
+            nextWeekStart.setDate(weekStart.getDate() + 7);
+            const nextWeekEnd = new Date(nextWeekStart);
+            nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+            nextWeekEnd.setHours(23,59,59,999);
+            ({ shiftData, shiftError } = await fetchShiftsForWeek(myEmployee.employee_id, nextWeekStart, nextWeekEnd));
+            if (shiftError) {
+              setErrorStoreShifts('Could not fetch schedule.');
+            } else {
+              setStoreShifts(shiftData || []);
+            }
+          } else {
+            setStoreShifts(shiftData || []);
+          }
+        } catch (err) {
+          setErrorStoreShifts('Unexpected error fetching schedule.');
+        }
+        setLoadingStoreShifts(false);
+      })();
+    } else if (!myEmployee && (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6))) {
+      setLoadingStoreShifts(false); // Avoid infinite loading if employee lookup fails
+    }
+  }, [user, myEmployee]);
 
   // --- TIME CARDS SECTION ---
   const [timeCards, setTimeCards] = useState([]);
@@ -213,39 +272,51 @@ const Dashboard = () => {
   useEffect(() => {
     if (myEmployee) {
       async function fetchUserTeams() {
-        // Get all teams rows that have a team value equal to one of the teams that the employee belongs to.
-        // First, fetch the teams row(s) where the employee is a member.
-        const { data, error } = await supabase
-          .from("teams")
-          .select("*")
-          .eq("employee_id", myEmployee.id);
-        if (error) {
-          setAlertMsg({ type: 'error', text: 'Failed to load your teams.' });
-          return;
-        }
-        if (data) {
-          // Get distinct team names
-          const distinctTeamNames = Array.from(new Set(data.map(item => item.team)));
-          // For each distinct team, fetch all rows belonging to that team.
-          let groups = {};
-          await Promise.all(
-            distinctTeamNames.map(async (teamName) => {
-              const { data: groupData, error: groupError } = await supabase
-                .from("teams")
-                .select("*")
-                .eq("team", teamName);
-              if (!groupError && groupData) {
-                groups[teamName] = groupData;
-              }
-            })
-          );
+        try {
+          // Fetch the store_id(s) associated with the employee
+          const { data: employeeStores, error: employeeError } = await supabase
+              .from("employee")
+              .select("store_id")
+              .eq("id", myEmployee.id);
+
+          if (employeeError || !employeeStores) {
+              setAlertMsg({ type: 'error', text: 'Failed to load your stores.' });
+              return;
+          }
+
+          // Extract unique store_ids
+          const storeIds = employeeStores.map(store => store.store_id);
+
+          // Fetch store details for the associated store_ids
+          const { data: stores, error: storeError } = await supabase
+              .from("store")
+              .select("*")
+              .in("store_id", storeIds);
+
+          if (storeError || !stores) {
+              setAlertMsg({ type: 'error', text: 'Failed to load store details.' });
+              return;
+          }
+
+          // Group stores by store_name
+          const groups = stores.reduce((acc, store) => {
+              acc[store.store_name] = acc[store.store_name] || [];
+              acc[store.store_name].push(store);
+              return acc;
+          }, {});
+
           setUserTeamGroups(groups);
-          // Initialize open/closed state for each team as closed (false)
-          const openStates = {};
-          distinctTeamNames.forEach(teamName => {
-            openStates[teamName] = false;
-          });
+
+          // Initialize open/closed state for each store as closed (false)
+          const openStates = Object.keys(groups).reduce((acc, storeName) => {
+              acc[storeName] = false;
+              return acc;
+          }, {});
+
           setOpenUserTeams(openStates);
+        } catch (err) {
+          console.error("Unexpected error fetching user teams:", err);
+          setAlertMsg({ type: 'error', text: 'An unexpected error occurred.' });
         }
       }
       fetchUserTeams();
@@ -417,7 +488,7 @@ const Dashboard = () => {
     const dynamicDashboardCards = [
       { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
       { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
-      { title: 'Time-off Requests', value: pendingTimeOff, icon: '📅', bgColor: 'bg-yellow-50', path: '/time-off' },
+      { title: 'Employee Requests', value: pendingTimeOff, icon: '📋', bgColor: 'bg-yellow-50', path: '/employee-requests' },
       { title: 'Payroll', value: totalPayroll ? `$${totalPayroll.toLocaleString()}` : '$0', icon: '💰', bgColor: 'bg-purple-50', path: '/payroll' },
     ];
 
@@ -528,15 +599,25 @@ const Dashboard = () => {
               <a href="/schedules" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Open Schedule Planner</a>
             </div>
           </div>
+          {/* Team Management */}
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-purple-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Team Management</h3>
+            </div>
+            <div className="flex-1 p-6">
+              <p className="text-gray-700">View your team, manage members, and assign roles or responsibilities.</p>
+              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Manage Teams</a>
+            </div>
+          </div>
           {/* Time-off Requests */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
-              <h3 className="text-lg font-semibold text-white mb-0">Time-off Requests</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-pink-700">
+              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Time-off Requests</h3>
             </div>
 
             <div className="flex-1 p-6">
-              <p className="text-gray-700">Review, approve, or deny employee time-off requests.</p>
-              <a href="/time-off" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
+              <p className="text-gray-700">Review, approve, or deny employee requests, including time-off requests.</p>
+              <a href="/employee-requests" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
             </div>
           </div>
           {/* Notifications */}
@@ -613,24 +694,27 @@ const Dashboard = () => {
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
-          <Link to="/FetchSchedule" className="col-span-1">
-            <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 group hover:shadow-xl transition-shadow duration-300 min-h-[200px] cursor-pointer">
-              <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-                <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Schedule</h3>
+          <Link to="/FetchSchedule" className="col-span-1 bg-white rounded-xl shadow-md flex flex-col border border-gray-200 min-h-[200px] cursor-pointer">
+              <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
+                <h3 className="text-lg font-semibold text-white mb-0">My Schedule</h3>
               </div>
-              <div className="flex-1 overflow-y-auto group-hover:text-white transition p-6" style={{ maxHeight: '200px' }}>
-                {schedules.length === 0 ? (
+              <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                {loadingStoreShifts ? (
+                  <p className="text-blue-700">Loading...</p>
+                ) : errorStoreShifts ? (
+                  <p className="text-red-600">{errorStoreShifts}</p>
+                ) : storeShifts.length === 0 ? (
                   <p className="text-gray-500">You have nothing planned.</p>
                 ) : (
                   <ul className="divide-y divide-gray-100">
-                    {schedules.slice(0, 5).map((sch, idx) => (
+                    {storeShifts.slice(0, 5).map((sch, idx) => (
                       <li key={sch.id || idx} className="py-2 flex items-center">
                         <div className="w-10 sm:w-12 text-center">
-                          <span className="block text-xs text-gray-400 font-medium">{new Date(sch.shift_start).toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                          <span className="block text-md sm:text-lg font-bold text-gray-700">{new Date(sch.shift_start).getDate()}</span>
+                          <span className="block text-xs text-gray-400 font-medium">{sch.start_time ? new Date(sch.start_time).toLocaleDateString('en-US', { weekday: 'short' }) : '--'}</span>
+                          <span className="block text-md sm:text-lg font-bold text-gray-700">{sch.start_time ? new Date(sch.start_time).getDate() : '--'}</span>
                         </div>
                         <div className="ml-2 sm:ml-3 flex-1">
-                          <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.shift_start && sch.shift_end ? `${new Date(sch.shift_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.shift_end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
+                          <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.start_time && sch.end_time ? `${new Date(sch.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
                           <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
                         </div>
                       </li>
@@ -638,17 +722,17 @@ const Dashboard = () => {
                   </ul>
                 )}
               </div>
-            </div>
           </Link>
           {/* My Timecard */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Timecard</h3>
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
+              <h3 className="text-lg font-semibold text-white mb-0">My Timecard</h3>
+            </div>
+            <div className="flex flex-col items-center space-y-3 p-4">
+              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
             </div>
             {timeCards.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
-                <span className="text-4xl sm:text-5xl mb-2">🕒</span>
                 <span className="text-sm">No data to display.</span>
               </div>
             ) : (
@@ -666,9 +750,9 @@ const Dashboard = () => {
             )}
           </div>
           {/* My Notifications */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">My Notifications</h3>
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
+              <h3 className="text-lg font-semibold text-white mb-0">My Notifications</h3>
             </div>
             <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
               <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
@@ -678,28 +762,13 @@ const Dashboard = () => {
             </ul>
           </div>
           {/* Request Time Off */}
-          <div className="bg-white rounded-xl shadow-md  flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white">Request Time Off</h3>
+          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
+            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
+              <h3 className="text-lg font-semibold text-white mb-0">Request Time Off</h3>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center p-6">
               <span className="text-gray-500 mb-2">Request Time Off</span>
               <button onClick={handleOpenTimeOffModal} className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Time-Off Request</button>
-            </div>
-          </div>
-          {/* Clock In / Out */}
-          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Clock In / Out</h3>
-            <div className="flex flex-col items-center space-y-3  ">
-              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
-            </div>
-          </div>
-          {/* Complaint */}
-          <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Complaint</h3>
-            <div className="flex flex-col items-center justify-center flex-1">
-              <button onClick={() => setShowComplaintModal(true)} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition w-full">Raise Complaint</button>
-              {complaintMsg && <span className="text-xs sm:text-sm text-gray-700 mt-2">{complaintMsg}</span>}
             </div>
           </div>
         </div>
