@@ -22,9 +22,9 @@ const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday
-    const offsetToMonday = ((8 - dayOfWeek) % 7) || 7;
+    const offsetToSunday = -dayOfWeek; // Adjust to start from Sunday
     const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() + offsetToMonday + offset * 7);
+    baseDate.setDate(today.getDate() + offsetToSunday + offset * 7);
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(baseDate);
@@ -136,7 +136,8 @@ const SchedulePlanner = () => {
         if (!window.confirm('Are you sure you want to save the schedule?')) return;
 
         setSaving(true);
-        let entries = [];
+        let entriesToInsert = [];
+        let entriesToUpdate = [];
 
         for (const empId in scheduleData) {
             for (const { dateString } of weekDates) {
@@ -148,26 +149,53 @@ const SchedulePlanner = () => {
                         return;
                     }
 
-                    entries.push({
+                    const entry = {
                         store_id: storeId,
                         employee_id: parseInt(empId),
                         start_time: `${dateString}T${shift.start}`,
                         end_time: `${dateString}T${shift.end}`
-                    });
+                    };
+
+                    if (shift.existing) {
+                        entriesToUpdate.push(entry);
+                    } else {
+                        entriesToInsert.push(entry);
+                    }
                 }
             }
         }
 
-        const { error } = await supabase.from('store_schedule').insert(entries);
+        if (entriesToUpdate.length > 0) {
+            for (const entry of entriesToUpdate) {
+                const { error } = await supabase
+                    .from('store_schedule')
+                    .update({ start_time: entry.start_time, end_time: entry.end_time })
+                    .eq('store_id', entry.store_id)
+                    .eq('employee_id', entry.employee_id)
+                    .eq('start_time', entry.start_time);
 
-        if (error) {
-            console.error(error);
-            setMessage('❌ Failed to save schedule.');
-        } else {
-            setMessage('✅ Schedule saved successfully.');
-            setScheduleData({});
+                if (error) {
+                    console.error(error);
+                    setMessage('❌ Failed to update schedule.');
+                    setSaving(false);
+                    return;
+                }
+            }
         }
 
+        if (entriesToInsert.length > 0) {
+            const { error } = await supabase.from('store_schedule').insert(entriesToInsert);
+
+            if (error) {
+                console.error(error);
+                setMessage('❌ Failed to save schedule.');
+                setSaving(false);
+                return;
+            }
+        }
+
+        setMessage('✅ Schedule saved successfully.');
+        setScheduleData({});
         setSaving(false);
     };
 

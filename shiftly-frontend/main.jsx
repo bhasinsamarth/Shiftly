@@ -12,7 +12,7 @@ import Employees from "./pages/Employees";
 import AddEmployee from "./pages/AddEmployee";
 import EditEmployee from "./pages/EditEmployee";
 import TeamsPage from "./pages/TeamsPage";
-import TimeOffPage from "./pages/TimeOffPage";
+import EmployeeRequests from "./pages/EmployeeRequests";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
 import SetupAccountPage from "./pages/SetupAccountPage";
@@ -20,7 +20,6 @@ import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
-
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -39,7 +38,7 @@ function AppWithRoutes() {
         <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
         <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
         <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
-        <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
+        <Route path="/employee-requests" element={<ProtectedRoute><EmployeeRequests /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />

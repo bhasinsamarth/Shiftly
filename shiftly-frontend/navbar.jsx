@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
+import { fetchPendingTimeOffCount } from "./utils/requestHandler";
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -10,11 +11,11 @@ const Navbar = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [profileImage, setProfileImage] = useState(null);
-  // Report Issue modal state
+  const [pendingTimeOffCount, setPendingTimeOffCount] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportAgainst, setReportAgainst] = useState('');
   const [reportSubject, setReportSubject] = useState('');
   const [reportDetails, setReportDetails] = useState('');
+  const [reportAgainst, setReportAgainst] = useState('');
   const [reportName, setReportName] = useState('');
   const [reportMsg, setReportMsg] = useState('');
 
@@ -41,6 +42,14 @@ const Navbar = () => {
     };
     fetchProfileImage();
   }, [user]);
+
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      const count = await fetchPendingTimeOffCount();
+      setPendingTimeOffCount(count);
+    };
+    fetchPendingRequests();
+  }, []);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -120,8 +129,13 @@ const Navbar = () => {
                     </>
                   )}
                   {user?.role_id === 3 && (
-                    <Link to="/time-off" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                    <Link to="/time-off" className="relative border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                       Time Off
+                      {pendingTimeOffCount > 0 && (
+                        <span className="absolute top-2 right-1 block h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                          {pendingTimeOffCount}
+                        </span>
+                      )}
                     </Link>
                   )}
                 </>

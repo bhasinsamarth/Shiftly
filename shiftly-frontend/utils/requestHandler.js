@@ -79,68 +79,34 @@ export async function approveEmployeeRequest(request_id) {
   if (error || !data) {
     return { success: false, error: 'Request not found.' };
   }
-  const { employee_id, request_type, request } = data;
 
-  // Routing logic
+  const { employee_id, request } = data;
+
   try {
-    switch (request_type) {
-      case 'availability': {
-        // If request has start_date and end_date, treat as time-off
-        if (request.start_date && request.end_date) {
-          // Insert into time_off_requests
-          const { error: toError } = await supabase.from('time_off_requests').insert([
-            {
-              employee_id,
-              reason: request.reason || '',
-              start_date: request.start_date,
-              end_date: request.end_date,
-              timeoff_requested: true
-            }
-          ]);
-          if (toError) throw new Error(toError.message);
-        } else {
-          // Insert into availability_updates
-          const { error: avError } = await supabase.from('availability_updates').insert([
-            {
-              employee_id,
-              preferred_hours: request.preferred_hours || null,
-              notes: request.notes || ''
-            }
-          ]);
-          if (avError) throw new Error(avError.message);
-        }
-        break;
-      }
-      case 'complaint': {
-        const { error: cError } = await supabase.from('complaints').insert([
-          {
-            employee_id,
-            subject: request.subject,
-            details: request.details,
-            status: 'open'
-          }
-        ]);
-        if (cError) throw new Error(cError.message);
-        break;
-      }
-      case 'time-off': {
-        const { error: toError } = await supabase.from('time_off_requests').insert([
-          {
-            employee_id,
-            reason: request.reason,
-            start_date: request.start_date,
-            end_date: request.end_date,
-            timeoff_requested: true
-          }
-        ]);
-        if (toError) throw new Error(toError.message);
-        break;
-      }
-      default:
-        return { success: false, error: 'Unknown request type.' };
+    // Insert into employee_availability with 0 hours for the requested days
+    const startDate = new Date(request.start_date);
+    const endDate = new Date(request.end_date);
+
+    const availabilityEntries = [];
+    for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
+      availabilityEntries.push({
+        employee_id,
+        start_time: new Date(d).toISOString(),
+        end_time: new Date(d).toISOString(),
+      });
     }
-    // Optionally, mark the request as processed or delete it
+
+    const { error: insertError } = await supabase
+      .from('employee_availability')
+      .insert(availabilityEntries);
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+
+    // Delete the original request
     await supabase.from('employee_request').delete().eq('request_id', request_id);
+
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -158,4 +124,76 @@ export async function rejectEmployeeRequest(request_id) {
     return { success: false, error: error.message };
   }
   return { success: true };
+}
+
+/**
+ * Fetch count of pending time-off requests.
+ * @returns {Promise<number>} - Count of pending requests.
+ */
+export async function fetchPendingTimeOffCount() {
+    try {
+        const { count, error } = await supabase
+            .from("employee_request")
+            .select("request_id", { count: "exact" })
+            .eq("request_type", "time-off")
+            .eq("status", "Pending");
+
+        if (error) {
+            console.error("Error fetching pending time-off requests:", error);
+            return 0;
+        }
+
+        return count || 0;
+    } catch (err) {
+        console.error("Unexpected error fetching pending time-off requests:", err);
+        return 0;
+    }
+}
+
+/**
+ * Fetch pending availability requests.
+ * @returns {Promise<Array>} - List of pending availability requests.
+ */
+export async function fetchPendingAvailabilityRequests() {
+    try {
+        const { data, error } = await supabase
+            .from("employee_request")
+            .select("*")
+            .eq("request_type", "availability")
+            .eq("status", "Pending");
+
+        if (error) {
+            console.error("Error fetching pending availability requests:", error);
+            return [];
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error("Unexpected error fetching pending availability requests:", err);
+        return [];
+    }
+}
+
+/**
+ * Fetch pending time-off requests.
+ * @returns {Promise<Array>} - List of pending time-off requests.
+ */
+export async function fetchPendingTimeOffRequests() {
+    try {
+        const { data, error } = await supabase
+            .from("employee_request")
+            .select("*")
+            .eq("request_type", "time-off")
+            .eq("status", "Pending");
+
+        if (error) {
+            console.error("Error fetching pending time-off requests:", error);
+            return [];
+        }
+
+        return data || [];
+    } catch (err) {
+        console.error("Unexpected error fetching pending time-off requests:", err);
+        return [];
+    }
 }
