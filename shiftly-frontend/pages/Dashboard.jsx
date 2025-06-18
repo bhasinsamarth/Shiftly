@@ -107,7 +107,7 @@ const Dashboard = () => {
         }
 
 
-  //       // Recent activity from "activity" table (excluding time-off request updates)
+        //       // Recent activity from "activity" table (excluding time-off request updates)
         // const { data: actData, error: actError } = await supabase
         //   .from('activity')
         //   .select('*')
@@ -125,7 +125,7 @@ const Dashboard = () => {
       fetchMetricsAndActivity();
     }
   }, [user]);
-  
+
 
   // --- EMPLOYEE DASHBOARD LOGIC ---
 
@@ -509,9 +509,10 @@ const Dashboard = () => {
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-green-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Store</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
+              <h3 className="text-lg font-semibold text-white mb-0">My Store</h3>
             </div>
+
             <div className="flex-1 p-6">
               <p className="text-gray-700">View and manage your assigned store(s), see store details, and access store-specific actions.</p>
               <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
@@ -519,29 +520,20 @@ const Dashboard = () => {
           </div>
           {/* Schedule Planner */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-yellow-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Schedule Planner</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
+              <h3 className="text-lg font-semibold text-white mb-0">Schedule Planner</h3>
             </div>
             <div className="flex-1 p-6">
               <p className="text-gray-700">Plan, view, and edit employee schedules. Assign shifts and manage coverage.</p>
               <a href="/schedules" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Open Schedule Planner</a>
             </div>
           </div>
-          {/* Team Management */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-purple-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Team Management</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View your team, manage members, and assign roles or responsibilities.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Manage Teams</a>
-            </div>
-          </div>
           {/* Time-off Requests */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-pink-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Time-off Requests</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
+              <h3 className="text-lg font-semibold text-white mb-0">Time-off Requests</h3>
             </div>
+
             <div className="flex-1 p-6">
               <p className="text-gray-700">Review, approve, or deny employee time-off requests.</p>
               <a href="/time-off" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
@@ -549,9 +541,10 @@ const Dashboard = () => {
           </div>
           {/* Notifications */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Notifications</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
+              <h3 className="text-lg font-semibold text-white mb-0">Notifications</h3>
             </div>
+
             <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
               <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Pending Requests</span><span className="font-bold">0</span></li>
               <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Shift Changes</span><span className="font-bold">0</span></li>
@@ -561,9 +554,10 @@ const Dashboard = () => {
           </div>
           {/* Reports & Analytics */}
           <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-indigo-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Reports & Analytics</h3>
+            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 bg-blue-600">
+              <h3 className="text-lg font-semibold text-white mb-0">Reports & Analytics</h3>
             </div>
+
             <div className="flex-1 p-6">
               <p className="text-gray-700">View attendance, hours worked, and other key metrics for your team.</p>
               <a href="/reports" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">View Reports</a>

@@ -104,9 +104,8 @@ const TimeOffPage = () => {
       {/* Notification Banner */}
       {notification.message && (
         <div
-          className={`mb-4 p-3 rounded ${
-            notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
+          className={`mb-4 p-3 rounded ${notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            }`}
         >
           {notification.message}
         </div>

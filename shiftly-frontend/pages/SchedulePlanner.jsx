@@ -17,11 +17,10 @@ const generate24hTimes = () => {
 
 const timeOptions = generate24hTimes();
 
-// Generate week days based on offset (0 = next week, 1 = week after, etc.)
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
+    const dayOfWeek = today.getDay();
     const offsetToMonday = ((8 - dayOfWeek) % 7) || 7;
     const baseDate = new Date(today);
     baseDate.setDate(today.getDate() + offsetToMonday + offset * 7);
@@ -38,7 +37,7 @@ const getWeekDates = (offset = 0) => {
 };
 
 const SchedulePlanner = () => {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
     const [employees, setEmployees] = useState([]);
     const [storeId, setStoreId] = useState(null);
     const [scheduleData, setScheduleData] = useState({});
@@ -48,6 +47,8 @@ const SchedulePlanner = () => {
     const weekDates = getWeekDates(weekOffset);
 
     useEffect(() => {
+        if (!isAuthenticated || user.role_id !== 3) return;
+
         const fetchManagerStore = async () => {
             const { data } = await supabase
                 .from('employee')
@@ -57,11 +58,12 @@ const SchedulePlanner = () => {
 
             if (data?.store_id) setStoreId(data.store_id);
         };
-        if (user) fetchManagerStore();
-    }, [user]);
+
+        fetchManagerStore();
+    }, [user, isAuthenticated]);
 
     useEffect(() => {
-        if (!storeId) return;
+        if (!isAuthenticated || user.role_id !== 3 || !storeId) return;
 
         const fetchEmployeesAndSchedules = async () => {
             const { data: employeeData } = await supabase
@@ -86,8 +88,8 @@ const SchedulePlanner = () => {
                 scheduleEntries.forEach(entry => {
                     const empId = entry.employee_id;
                     const dateKey = entry.start_time.split('T')[0];
-                    const startTime = entry.start_time.split('T')[1].slice(0, 5); // HH:MM
-                    const endTime = entry.end_time.split('T')[1].slice(0, 5);     // HH:MM
+                    const startTime = entry.start_time.split('T')[1].slice(0, 5);
+                    const endTime = entry.end_time.split('T')[1].slice(0, 5);
 
                     if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
                     updatedSchedule[empId][dateKey] = {
@@ -104,7 +106,7 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
-    }, [storeId, weekOffset]);
+    }, [storeId, weekOffset, isAuthenticated, user]);
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
@@ -170,6 +172,15 @@ const SchedulePlanner = () => {
 
         setSaving(false);
     };
+
+    // ✅ Block access if not authenticated or not a manager
+    if (!isAuthenticated || user.role_id !== 3) {
+        return (
+            <div className="p-6 text-red-500 text-center">
+                Access Denied: Managers Only
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
