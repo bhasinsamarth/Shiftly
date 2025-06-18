@@ -1,10 +1,6 @@
-// src/components/AddEmployee.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
-
-const MAILER_API = import.meta.env.VITE_MAILER_API || '../backend/server.js';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -20,74 +16,93 @@ const AddEmployee = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
     if (error) setError('');
+    if (success) setSuccess('');
+    if (inviteLink) setInviteLink('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.email) {
-      setError('Please enter an email');
-      return;
-    }
-
-    setLoading(true);
     setError('');
     setSuccess('');
     setInviteLink('');
 
-    try {
-      const token = uuidv4();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      const createdAt = new Date().toISOString();
-
-      const inviteData = {
-        token,
-        email: form.email,
-        role_id: form.role_id ? parseInt(form.role_id, 10) : null,
-        store_id: form.store_id ? parseInt(form.store_id, 10) : null,
-        expires_at: expiresAt,
-        created_at: createdAt,
-        is_used: false,
-      };
-
-      if (form.employee_id) {
-        inviteData.employee_id = parseInt(form.employee_id, 10);
-      }
-
-      const { data: insertData, error: tokenInsertError } = await supabase
-        .from('setup_tokens')
-        .insert([inviteData])
-        .select();
-
-      if (tokenInsertError) {
-        console.error('Supabase insert error:', tokenInsertError);
-        throw new Error('Failed to generate invitation token.');
-      }
-
-      const link = `${window.location.origin}/setup-account?token=${token}`;
-      setSuccess('Invitation link generated!');
-      setInviteLink(link);
-
-      const mailResp = await fetch(MAILER_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: form.email, link }),
-      });
-
-      if (!mailResp.ok) {
-        const result = await mailResp.json().catch(() => null);
-        console.error('Mail send error:', result);
-        throw new Error(result?.error || 'Failed to send invitation email.');
-      }
-
-      setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
-    } catch (err) {
-      console.error('Error in handleSubmit:', err);
-      setError(err.message || 'Something went wrong.');
-    } finally {
-      setLoading(false);
+    if (!form.email) {
+      setError('Please enter an email.');
+      return;
     }
+    if (!form.role_id) {
+        setError('Please enter a Role ID.');
+        return;
+    }
+    if (!form.store_id) {
+        setError('Please enter a Store ID.');
+        return;
+    }
+    // Employee ID is optional, but if provided, it should be a number
+    if (form.employee_id && isNaN(parseInt(form.employee_id))) {
+        setError('Employee ID must be a number.');
+        return;
+    }
+
+
+    setLoading(true);
+    try {
+      // Check 1: Duplicate email in auth.users (Supabase handles this on signUp, but good to check early)
+      // For a more robust check, you might query auth.admin.listUsers(), but that requires admin privileges.
+      // A simpler check against the employee table can also be useful.
+      const { data: existingUserByEmail, error: emailCheckError } = await supabase
+        .from('employee')
+        .select('email')
+        .eq('email', form.email)
+        .maybeSingle();
+
+      if (emailCheckError) {
+        console.error('Error checking email:', emailCheckError.message);
+        setError('Error checking email. Please try again.');
+        setLoading(false);
+        return;
+      }
+      if (existingUserByEmail) {
+        setError('This email is already associated with an employee.');
+        setLoading(false);
+        return;
+      }
+
+      // Check 2: Duplicate employee_id in employee table (if employee_id is provided)
+      if (form.employee_id) {
+        const { data: existingUserByEmployeeId, error: employeeIdCheckError } = await supabase
+          .from('employee')
+          .select('employee_id')
+          .eq('employee_id', form.employee_id)
+          .maybeSingle();
+
+        if (employeeIdCheckError) {
+          console.error('Error checking employee ID:', employeeIdCheckError.message);
+          setError('Error checking employee ID. Please try again.');
+          setLoading(false);
+          return;
+        }
+        if (existingUserByEmployeeId) {
+          setError('This Employee ID is already in use.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Build the invite link with all necessary params
+      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
+      
+      setSuccess('Invitation link generated successfully!');
+      setInviteLink(link);
+      // Clear form only on successful link generation without prior errors
+      // setForm({ email: '', store_id: '', role_id: '', employee_id: '' }); 
+    } catch (err) {
+      console.error('Error generating invite link:', err.message);
+      setError('Failed to generate invitation link. Please check console for details.');
+    }
+    setLoading(false);
   };
 
   return (
@@ -102,18 +117,13 @@ const AddEmployee = () => {
             Back
           </button>
         </div>
-
         {error && <p className="mb-4 text-center text-red-500">{error}</p>}
         {success && <p className="mb-4 text-center text-green-600">{success}</p>}
         {inviteLink && (
           <div className="mb-4 text-center text-blue-600 break-all">
-            Invitation Link:{' '}
-            <a href={inviteLink} className="underline" target="_blank" rel="noopener noreferrer">
-              {inviteLink}
-            </a>
+            Invitation Link: <a href={inviteLink} className="underline">{inviteLink}</a>
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-gray-700 font-medium mb-2">
@@ -125,12 +135,12 @@ const AddEmployee = () => {
               value={form.email}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
+              required
             />
           </div>
-
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Store ID <span className="text-gray-400">(optional)</span>
+              Store ID
             </label>
             <input
               type="text"
@@ -140,10 +150,9 @@ const AddEmployee = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
-
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Role ID <span className="text-gray-400">(optional)</span>
+              Role ID
             </label>
             <input
               type="text"
@@ -153,21 +162,18 @@ const AddEmployee = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
-
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Employee ID <span className="text-gray-400">(optional)</span>
+              Employee ID
             </label>
             <input
               type="number"
               name="employee_id"
-              value={form.employee_id}
+              value={form.employee_id || ''}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              min="1"
             />
           </div>
-
           <button
             type="submit"
             disabled={loading}
