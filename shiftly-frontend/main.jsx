@@ -19,6 +19,7 @@ import SetupAccountPage from "./pages/SetupAccountPage";
 import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
+import ChangeAvailabity from "./pages/ChangeAvailabity";
 
 
 // Auth context provider
@@ -44,6 +45,7 @@ function AppWithRoutes() {
         <Route path="/setup-account" element={<SetupAccountPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
+        <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
         
         {/* Catch-all route for 404 */}
         <Route path="*" element={
