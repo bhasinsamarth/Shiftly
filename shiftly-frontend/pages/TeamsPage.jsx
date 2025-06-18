@@ -1,4 +1,6 @@
-// TeamsPage.jsx
+// --- MANAGE STORES PAGE (formerly TeamsPage) ---
+// All UI and logic now refer to 'Store' instead of 'Team'.
+
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
@@ -45,97 +47,117 @@ const VIcon = ({ open }) => {
   );
 };
 
-const TeamsPage = () => {
+const StoresPage = () => {
   const { isAuthenticated, isAdmin } = useAuth();
 
-  // Main teams list state
-  const [teamsData, setTeamsData] = useState([]);
+  // Main stores list state
+  const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openTeams, setOpenTeams] = useState({});
+  const [openStores, setOpenStores] = useState({});
 
   // Notification state for messages displayed on the website.
   const [notification, setNotification] = useState({ message: "", type: "" });
 
   // -------------------------
-  // Add Team Modal States
+  // Add Store Modal States (future functionality)
   // -------------------------
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newTeamName, setNewTeamName] = useState("");
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
+  const [newStoreName, setNewStoreName] = useState("");
+  const [newStoreAddress1, setNewStoreAddress1] = useState("");
+  const [newStoreAddress2, setNewStoreAddress2] = useState("");
+  const [newStoreCity, setNewStoreCity] = useState("");
+  const [newStoreProvince, setNewStoreProvince] = useState("");
+  const [newStorePostalCode, setNewStorePostalCode] = useState("");
+  const [newStoreCountry, setNewStoreCountry] = useState("");
 
   // -------------------------
-  // Edit Team Modal States
+  // Edit Store Modal States (future functionality)
   // -------------------------
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editTeamName, setEditTeamName] = useState("");
-  const [editSelectedEmployeeIds, setEditSelectedEmployeeIds] = useState(new Set());
+  const [editStoreId, setEditStoreId] = useState(null);
+  const [editStoreName, setEditStoreName] = useState("");
+  const [editStoreAddress1, setEditStoreAddress1] = useState("");
+  const [editStoreAddress2, setEditStoreAddress2] = useState("");
+  const [editStoreCity, setEditStoreCity] = useState("");
+  const [editStoreProvince, setEditStoreProvince] = useState("");
+  const [editStorePostalCode, setEditStorePostalCode] = useState("");
+  const [editStoreCountry, setEditStoreCountry] = useState("");
 
   // -------------------------
   // Delete Confirmation Modal State
   // -------------------------
-  const [teamToDelete, setTeamToDelete] = useState(null);
+  const [storeToDelete, setStoreToDelete] = useState(null);
 
   // -------------------------
-  // Fetch teams data (without created_at)
+  // Fetch stores data
   // -------------------------
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("teams")
-          .select("employee_id, employee_name, team")
-          .order("team", { ascending: true });
-        if (error) {
-          console.error("Error fetching teams:", error);
-          setError("Failed to load teams data.");
-        } else {
-          setTeamsData(data || []);
-          // Group teams by team name.
-          const groups = {};
-          (data || []).forEach((row) => {
-            if (!groups[row.team]) {
-              groups[row.team] = [];
-            }
-            groups[row.team].push(row);
-          });
-          // Initialize open/closed state for each group.
-          const initialOpenState = {};
-          Object.keys(groups).forEach((teamName) => {
-            initialOpenState[teamName] = false;
-          });
-          setOpenTeams(initialOpenState);
-        }
-      } catch (err) {
-        console.error("Unexpected error:", err);
-        setError("Something went wrong while fetching teams.");
-      } finally {
-        setLoading(false);
+  // Move fetchStores outside useEffect so it can be called after add
+  const fetchStores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("store")
+        .select("store_id, store_name, address_line_1, address_line_2, city, province, postal_code, country");
+      if (error) {
+        console.error("Error fetching stores:", error);
+        setError("Failed to load stores data.");
+      } else {
+        setStores(data || []);
+        // Initialize open/closed state for each store.
+        const initialOpenState = {};
+        (data || []).forEach((row) => {
+          initialOpenState[row.store_id] = false;
+        });
+        setOpenStores(initialOpenState);
       }
-    };
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("Something went wrong while fetching stores.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (isAuthenticated) {
-      fetchTeams();
+      fetchStores();
     } else {
       setLoading(false);
     }
   }, [isAuthenticated]);
 
-  // Group teamsData by team name for display.
-  const groupedTeams = teamsData.reduce((acc, row) => {
-    if (!acc[row.team]) {
-      acc[row.team] = [];
+  // Fetch employee counts for each store
+  useEffect(() => {
+    async function fetchEmployeeCounts() {
+      if (stores.length === 0) return;
+      // Fetch all employees with their store_id
+      const { data: employees, error } = await supabase
+        .from('employee')
+        .select('id, store_id');
+      if (error) {
+        console.error('Error fetching employees for store counts:', error);
+        return;
+      }
+      // Count employees per store
+      const counts = {};
+      employees.forEach(emp => {
+        if (emp.store_id) {
+          counts[emp.store_id] = (counts[emp.store_id] || 0) + 1;
+        }
+      });
+      // Attach employee_count to each store
+      setStores(prev => prev.map(store => ({
+        ...store,
+        employee_count: counts[store.store_id] || 0
+      })));
     }
-    acc[row.team].push(row);
-    return acc;
-  }, {});
+    fetchEmployeeCounts();
+  }, [stores.length]);
 
-  const toggleTeamGroup = (teamLabel) => {
-    setOpenTeams((prev) => ({
+  const toggleStoreGroup = (storeId) => {
+    setOpenStores((prev) => ({
       ...prev,
-      [teamLabel]: !prev[teamLabel],
+      [storeId]: !prev[storeId],
     }));
   };
 
@@ -148,226 +170,142 @@ const TeamsPage = () => {
   };
 
   // -------------------------
-  // Common Function: Fetch employees from "employees" table
+  // ADD STORE Functions (future functionality)
   // -------------------------
-  const fetchEmployees = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("employees")
-        .select("id, name")
-        .order("name", { ascending: true });
-      if (error) {
-        console.error("Error fetching employees:", error);
-        showNotification("Failed to load employees.", "error");
-        return;
-      }
-      setEmployees(data || []);
-    } catch (err) {
-      console.error("Unexpected error fetching employees:", err);
-      showNotification("Unexpected error loading employees.", "error");
-    }
-  };
-
-  // -------------------------
-  // ADD TEAM Functions
-  // -------------------------
-  const handleAddTeam = async () => {
+  const handleAddStore = async () => {
     if (!isAdmin) return;
-    setNewTeamName("");
-    setSearchTerm("");
-    setSelectedEmployeeIds(new Set());
-    await fetchEmployees();
+    setNewStoreName("");
+    setNewStoreAddress1("");
+    setNewStoreAddress2("");
+    setNewStoreCity("");
+    setNewStoreProvince("");
+    setNewStorePostalCode("");
+    setNewStoreCountry("");
     setShowAddModal(true);
   };
 
-  const handleToggleEmployee = (employeeId) => {
-    setSelectedEmployeeIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(employeeId)) {
-        newSet.delete(employeeId);
-      } else {
-        newSet.add(employeeId);
-      }
-      return newSet;
-    });
-  };
-
-  const filteredEmployees = employees.filter((emp) =>
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSubmitAddTeam = async (e) => {
+  const handleSubmitAddStore = async (e) => {
     e.preventDefault();
-    if (!newTeamName) {
-      showNotification("Please provide a team name.", "error");
+    if (!newStoreName) {
+      showNotification("Please provide a store name.", "error");
       return;
     }
-    if (selectedEmployeeIds.size === 0) {
-      showNotification("Please select at least one employee.", "error");
-      return;
-    }
-    // Build rows for each selected employee.
-    const rowsToInsert = [];
-    employees.forEach((emp) => {
-      if (selectedEmployeeIds.has(emp.id)) {
-        rowsToInsert.push({
-          team: newTeamName,
-          employee_id: emp.id,
-          employee_name: emp.name,
-        });
-      }
-    });
     try {
-      const { data, error } = await supabase.from("teams").insert(rowsToInsert);
+      const { data, error } = await supabase
+        .from("store")
+        .insert([{ 
+          store_name: newStoreName, 
+          address_line_1: newStoreAddress1,
+          address_line_2: newStoreAddress2,
+          city: newStoreCity,
+          province: newStoreProvince,
+          postal_code: newStorePostalCode,
+          country: newStoreCountry
+        }]);
       if (error) {
-        console.error("Error adding team members:", error);
-        showNotification("Failed to add new team members.", "error");
+        console.error("Error adding store:", error);
+        showNotification("Failed to add new store.", "error");
       } else {
-        setTeamsData((prev) => [...prev, ...data]);
         setShowAddModal(false);
-        showNotification("Team created successfully.", "success");
+        showNotification("Store added successfully.", "success");
+        fetchStores(); // Refetch stores after successful add
       }
     } catch (err) {
-      console.error("Unexpected error adding team:", err);
-      showNotification("Unexpected error occurred while adding the team.", "error");
+      console.error("Unexpected error adding store:", err);
+      showNotification("Unexpected error occurred while adding the store.", "error");
     }
   };
 
   // -------------------------
-  // EDIT TEAM Functions
+  // EDIT STORE Functions (future functionality)
   // -------------------------
-  const handleEditTeam = async (e, teamLabel) => {
+  const handleEditStore = async (e, store) => {
     e.stopPropagation();
     if (!isAdmin) return;
-    // Open the edit modal and pre-populate selections based on current team members.
-    setEditTeamName(teamLabel);
-    // From the grouped teams, get the current members' ids.
-    const currentMembers = groupedTeams[teamLabel] || [];
-    const currentMemberIds = new Set(currentMembers.map((mem) => mem.employee_id));
-    setEditSelectedEmployeeIds(currentMemberIds);
-    // (Re)load employee list.
-    await fetchEmployees();
+    // Open the edit modal and pre-populate fields with current store data.
+    setEditStoreId(store.store_id);
+    setEditStoreName(store.store_name);
+    setEditStoreAddress1(store.address_line_1 || "");
+    setEditStoreAddress2(store.address_line_2 || "");
+    setEditStoreCity(store.city || "");
+    setEditStoreProvince(store.province || "");
+    setEditStorePostalCode(store.postal_code || "");
+    setEditStoreCountry(store.country || "");
     setShowEditModal(true);
   };
 
-  const handleToggleEditEmployee = (employeeId) => {
-    setEditSelectedEmployeeIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(employeeId)) {
-        newSet.delete(employeeId);
-      } else {
-        newSet.add(employeeId);
-      }
-      return newSet;
-    });
-  };
-
-  const filteredEditEmployees = employees.filter((emp) =>
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSubmitEditTeam = async (e) => {
+  const handleSubmitEditStore = async (e) => {
     e.preventDefault();
-    if (!editTeamName) {
-      showNotification("Team name is missing.", "error");
+    if (!editStoreName) {
+      showNotification("Store name is missing.", "error");
       return;
     }
-    // Determine current members (from groupedTeams) and new selections.
-    const currentMembers = groupedTeams[editTeamName] || [];
-    const currentMemberIds = new Set(currentMembers.map((mem) => mem.employee_id));
-    const newMemberIds = editSelectedEmployeeIds;
-
-    // Calculate which employees to add and which to remove.
-    const toAdd = [];
-    employees.forEach((emp) => {
-      if (newMemberIds.has(emp.id) && !currentMemberIds.has(emp.id)) {
-        toAdd.push({
-          team: editTeamName,
-          employee_id: emp.id,
-          employee_name: emp.name,
-        });
-      }
-    });
-    const toRemove = [];
-    currentMembers.forEach((mem) => {
-      if (!newMemberIds.has(mem.employee_id)) {
-        toRemove.push(mem.employee_id);
-      }
-    });
     try {
-      // Perform deletion of removed employees
-      if (toRemove.length > 0) {
-        const { error: delError } = await supabase
-          .from("teams")
-          .delete()
-          .eq("team", editTeamName)
-          .in("employee_id", toRemove);
-        if (delError) {
-          console.error("Error removing team members:", delError);
-          showNotification("Failed to remove some team members.", "error");
-          return;
-        }
-      }
-      // Insert new rows
-      if (toAdd.length > 0) {
-        const { error: insError } = await supabase.from("teams").insert(toAdd);
-        if (insError) {
-          console.error("Error adding new team members:", insError);
-          showNotification("Failed to add new team members.", "error");
-          return;
-        }
-      }
-      // Refresh teams data
-      const { data, error: fetchError } = await supabase
-        .from("teams")
-        .select("employee_id, employee_name, team")
-        .order("team", { ascending: true });
-      if (fetchError) {
-        console.error("Error refreshing teams:", fetchError);
+      const { error } = await supabase
+        .from("store")
+        .update({ 
+          store_name: editStoreName, 
+          address_line_1: editStoreAddress1,
+          address_line_2: editStoreAddress2,
+          city: editStoreCity,
+          province: editStoreProvince,
+          postal_code: editStorePostalCode,
+          country: editStoreCountry
+        })
+        .eq("store_id", editStoreId);
+      if (error) {
+        console.error("Error updating store:", error);
+        showNotification("Failed to update store.", "error");
       } else {
-        setTeamsData(data || []);
-        showNotification("Team updated successfully.", "success");
+        setStores((prev) =>
+          prev.map((store) =>
+            store.store_id === editStoreId
+              ? { ...store, store_name: editStoreName, address_line_1: editStoreAddress1, address_line_2: editStoreAddress2, city: editStoreCity, province: editStoreProvince, postal_code: editStorePostalCode, country: editStoreCountry }
+              : store
+          )
+        );
+        setShowEditModal(false);
+        showNotification("Store updated successfully.", "success");
       }
-      setShowEditModal(false);
     } catch (err) {
-      console.error("Unexpected error editing team:", err);
-      showNotification("Unexpected error occurred while updating the team.", "error");
+      console.error("Unexpected error editing store:", err);
+      showNotification("Unexpected error occurred while updating the store.", "error");
     }
   };
 
   // -------------------------
-  // DELETE TEAM Functions (using custom modal)
+  // DELETE STORE Functions (using custom modal)
   // -------------------------
-  const handleDeleteTeamClick = (e, teamLabel) => {
+  const handleDeleteStoreClick = (e, storeId) => {
     e.stopPropagation();
     if (!isAdmin) return;
-    setTeamToDelete(teamLabel);
+    setStoreToDelete(storeId);
   };
 
-  const confirmDeleteTeam = async () => {
-    if (!teamToDelete) return;
+  const confirmDeleteStore = async () => {
+    if (!storeToDelete) return;
     try {
       const { error } = await supabase
-        .from("teams")
+        .from("store")
         .delete()
-        .eq("team", teamToDelete);
+        .eq("store_id", storeToDelete);
       if (error) {
-        console.error("Error deleting team:", error);
-        showNotification("Failed to delete team.", "error");
+        console.error("Error deleting store:", error);
+        showNotification("Failed to delete store.", "error");
       } else {
-        setTeamsData((prev) => prev.filter((row) => row.team !== teamToDelete));
-        showNotification(`Team '${teamToDelete}' deleted successfully.`, "success");
+        setStores((prev) => prev.filter((store) => store.store_id !== storeToDelete));
+        showNotification(`Store deleted successfully.`, "success");
       }
     } catch (err) {
       console.error("Unexpected delete error:", err);
-      showNotification("Unexpected error occurred while deleting the team.", "error");
+      showNotification("Unexpected error occurred while deleting the store.", "error");
     } finally {
-      setTeamToDelete(null);
+      setStoreToDelete(null);
     }
   };
 
-  const cancelDeleteTeam = () => {
-    setTeamToDelete(null);
+  const cancelDeleteStore = () => {
+    setStoreToDelete(null);
   };
 
   if (!isAuthenticated) {
@@ -376,7 +314,7 @@ const TeamsPage = () => {
     );
   }
   if (loading) {
-    return <div className="p-4">Loading teams...</div>;
+    return <div className="p-4">Loading stores...</div>;
   }
   if (error) {
     return <div className="p-4 text-red-500">{error}</div>;
@@ -393,125 +331,104 @@ const TeamsPage = () => {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-10">
         <h1 className="text-4xl font-bold text-gray-800 mb-4 sm:mb-0">
-          Teams
+          Stores
         </h1>
-        {isAdmin && (
+        {/* Add Team button on the opposite side */}
+        <div className="flex items-center space-x-4">
           <button
-            onClick={handleAddTeam}
-            className="px-6 py-3 bg-green-600 text-white rounded shadow hover:bg-green-700 transition-all"
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition font-semibold shadow"
           >
-            Add Team
+            + Add Store
           </button>
-        )}
+        </div>
       </div>
-      {/* Teams listing */}
-      {Object.keys(groupedTeams).length === 0 ? (
-        <p className="text-gray-700 text-lg">No teams found.</p>
-      ) : (
-        Object.keys(groupedTeams)
-          .sort()
-          .map((teamLabel) => (
-            <div
-              key={teamLabel}
-              className="mb-6 bg-white p-6 rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer border border-gray-200"
-              onClick={() => toggleTeamGroup(teamLabel)}
-            >
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-800">
-                  {teamLabel}
-                </h2>
-                <div className="flex items-center space-x-4">
-                  {isAdmin && (
-                    <>
-                      <button
-                        onClick={(e) => handleEditTeam(e, teamLabel)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteTeamClick(e, teamLabel)}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  <VIcon open={openTeams[teamLabel]} />
-                </div>
-              </div>
-              {openTeams[teamLabel] && (
-                <div className="mt-4 border-t pt-4">
-                  <ul className="list-disc pl-6 space-y-2 text-gray-700">
-                    {groupedTeams[teamLabel].map((member) => (
-                      <li key={member.employee_id}>
-                        {member.employee_name} (ID: {member.employee_id})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ))
-      )}
-      {/* Add Team Modal */}
+      {/* Add Store Modal */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Add New Team</h2>
-            <form onSubmit={handleSubmitAddTeam}>
-              {/* Team Name Field */}
+            <h2 className="text-2xl font-bold mb-6">Add New Store</h2>
+            <form onSubmit={handleSubmitAddStore}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Team Name
+                  Store Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  placeholder="e.g., 'Sales Team A'"
+                  value={newStoreName}
+                  onChange={(e) => setNewStoreName(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., 'Main Street Store'"
                   required
                 />
               </div>
-              {/* Employee Search */}
-              <div className="mb-3">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Search Employee
+                  Address Line 1
                 </label>
                 <input
                   type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  placeholder="Type to filter employees..."
+                  value={newStoreAddress1 || ''}
+                  onChange={(e) => setNewStoreAddress1(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., '123 Main St'"
                 />
               </div>
-              {/* Employee List with Checkboxes */}
-              <div className="border rounded p-3 max-h-60 overflow-y-auto mt-2">
-                {filteredEmployees.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No matching employees found.
-                  </p>
-                ) : (
-                  filteredEmployees.map((emp) => (
-                    <div key={emp.id} className="flex items-center mb-2">
-                      <input
-                        id={`emp-${emp.id}`}
-                        type="checkbox"
-                        checked={selectedEmployeeIds.has(emp.id)}
-                        onChange={() => handleToggleEmployee(emp.id)}
-                        className="mr-2"
-                      />
-                      <label
-                        htmlFor={`emp-${emp.id}`}
-                        className="text-gray-700 cursor-pointer"
-                      >
-                        {emp.name} (ID: {emp.id})
-                      </label>
-                    </div>
-                  ))
-                )}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Address Line 2
+                </label>
+                <input
+                  type="text"
+                  value={newStoreAddress2 || ''}
+                  onChange={(e) => setNewStoreAddress2(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Apt, Suite, etc."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={newStoreCity || ''}
+                  onChange={(e) => setNewStoreCity(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Province
+                </label>
+                <input
+                  type="text"
+                  value={newStoreProvince || ''}
+                  onChange={(e) => setNewStoreProvince(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Postal Code
+                </label>
+                <input
+                  type="text"
+                  value={newStorePostalCode || ''}
+                  onChange={(e) => setNewStorePostalCode(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={newStoreCountry || ''}
+                  onChange={(e) => setNewStoreCountry(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
               </div>
               {/* Form Buttons */}
               <div className="flex justify-end space-x-4 mt-6">
@@ -524,59 +441,143 @@ const TeamsPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                  className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                 >
-                  Add Team
+                  Add Store
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-      {/* Edit Team Modal */}
+      {/* Stores listing */}
+      {stores.length === 0 ? (
+        <p className="text-gray-700 text-lg">No stores found.</p>
+      ) : (
+        stores.map((store) => (
+          <div
+            key={store.store_id}
+            className="mb-6 bg-white p-6 rounded-lg shadow hover:shadow-xl transition-shadow cursor-pointer border border-gray-200"
+            onClick={() => toggleStoreGroup(store.store_id)}
+          >
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-semibold text-gray-800">
+                {store.store_name}
+              </h2>
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-500">{store.city}, {store.province} {store.postal_code}</span>
+                <span className="inline-block bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  {store.employee_count} Employees
+                </span>
+                <VIcon open={openStores[store.store_id]} />
+                {/* Delete Team button for each team */}
+                {isAdmin && (
+                  <button
+                    className="ml-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+                    onClick={e => handleDeleteStoreClick(e, store.store_id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+            {openStores[store.store_id] && (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-gray-700">Store ID: {store.store_id}</p>
+                <p className="text-gray-700">Address: {store.address_line_1} {store.address_line_2 && (", " + store.address_line_2)}, {store.city}, {store.province}, {store.postal_code}, {store.country}</p>
+              </div>
+            )}
+          </div>
+        )
+      )
+    )
+      }
+      {/* Edit Store Modal (future functionality) */}
       {showEditModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-96 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Edit Team: {editTeamName}</h2>
-            <form onSubmit={handleSubmitEditTeam}>
-              {/* Reuse search field for filtering, if desired */}
-              <div className="mb-3">
+            <h2 className="text-2xl font-bold mb-6">Edit Store</h2>
+            <form onSubmit={handleSubmitEditStore}>
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Search Employee
+                  Store Name
                 </label>
                 <input
                   type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-                  placeholder="Type to filter employees..."
+                  value={editStoreName}
+                  onChange={(e) => setEditStoreName(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., 'Main Street Store'"
+                  required
                 />
               </div>
-              {/* Employee List with Checkboxes for Edit */}
-              <div className="border rounded p-3 max-h-60 overflow-y-auto mt-2">
-                {filteredEditEmployees.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No matching employees found.
-                  </p>
-                ) : (
-                  filteredEditEmployees.map((emp) => (
-                    <div key={emp.id} className="flex items-center mb-2">
-                      <input
-                        id={`edit-emp-${emp.id}`}
-                        type="checkbox"
-                        checked={editSelectedEmployeeIds.has(emp.id)}
-                        onChange={() => handleToggleEditEmployee(emp.id)}
-                        className="mr-2"
-                      />
-                      <label
-                        htmlFor={`edit-emp-${emp.id}`}
-                        className="text-gray-700 cursor-pointer"
-                      >
-                        {emp.name} (ID: {emp.id})
-                      </label>
-                    </div>
-                  ))
-                )}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Address Line 1
+                </label>
+                <input
+                  type="text"
+                  value={editStoreAddress1 || ''}
+                  onChange={(e) => setEditStoreAddress1(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="e.g., '123 Main St'"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Address Line 2
+                </label>
+                <input
+                  type="text"
+                  value={editStoreAddress2 || ''}
+                  onChange={(e) => setEditStoreAddress2(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Apt, Suite, etc."
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <input
+                  type="text"
+                  value={editStoreCity || ''}
+                  onChange={(e) => setEditStoreCity(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Province
+                </label>
+                <input
+                  type="text"
+                  value={editStoreProvince || ''}
+                  onChange={(e) => setEditStoreProvince(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Postal Code
+                </label>
+                <input
+                  type="text"
+                  value={editStorePostalCode || ''}
+                  onChange={(e) => setEditStorePostalCode(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={editStoreCountry || ''}
+                  onChange={(e) => setEditStoreCountry(e.target.value)}
+                  className="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
               </div>
               {/* Form Buttons */}
               <div className="flex justify-end space-x-4 mt-6">
@@ -599,22 +600,22 @@ const TeamsPage = () => {
         </div>
       )}
       {/* Delete Confirmation Modal */}
-      {teamToDelete && (
+      {storeToDelete && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 w-80">
             <h2 className="text-2xl font-bold mb-6">Confirm Delete</h2>
             <p className="mb-6 text-gray-700">
-              Are you sure you want to delete team <strong>{teamToDelete}</strong>? This action cannot be undone.
+              Are you sure you want to delete this store? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-4">
               <button
-                onClick={cancelDeleteTeam}
+                onClick={cancelDeleteStore}
                 className="px-5 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition"
               >
                 Cancel
               </button>
               <button
-                onClick={confirmDeleteTeam}
+                onClick={confirmDeleteStore}
                 className="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
               >
                 Delete
@@ -627,4 +628,4 @@ const TeamsPage = () => {
   );
 };
 
-export default TeamsPage;
+export default StoresPage;

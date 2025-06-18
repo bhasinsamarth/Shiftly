@@ -5,7 +5,6 @@ import "./index.css";
 
 // Import layout and pages
 import App from "./App";
-import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
@@ -13,10 +12,14 @@ import Employees from "./pages/Employees";
 import AddEmployee from "./pages/AddEmployee";
 import EditEmployee from "./pages/EditEmployee";
 import TeamsPage from "./pages/TeamsPage";
-import TimeOffPage from "./pages/TimeOffPage";
+import EmployeeRequests from "./pages/EmployeeRequests";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPageWrapper";
 import SetupAccountPage from "./pages/SetupAccountPage";
+import ProfilePage from "./pages/ProfilePage";
+import FetchSchedule from "./pages/FetchSchedule";
+import SchedulePlanner from "./pages/SchedulePlanner";
+import ChangeAvailabity from "./pages/ChangeAvailabity";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -26,18 +29,24 @@ function AppWithRoutes() {
   return (
     <App>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/schedules" element={<ProtectedRoute><SchedulePlanner /></ProtectedRoute>} />
         <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
         <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
         <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
         <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
-        <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
+        <Route path="/employee-requests" element={<ProtectedRoute><EmployeeRequests /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
+        <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
+        
+        {/* Catch-all route for 404 */}
         <Route path="*" element={
           <div className="text-center py-20">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>

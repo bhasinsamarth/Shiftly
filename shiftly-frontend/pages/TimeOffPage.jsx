@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
+import { approveEmployeeRequest, rejectEmployeeRequest } from "../utils/requestHandler";
 
 const TimeOffPage = () => {
   const { isAuthenticated, user } = useAuth();
@@ -11,7 +12,7 @@ const TimeOffPage = () => {
   const [notification, setNotification] = useState({ message: "", type: "" });
 
   useEffect(() => {
-    if (!isAuthenticated || (user.role !== "manager" && user.role !== "admin")) {
+    if (!isAuthenticated || user.role_id !== 3) {
       setLoading(false);
       return;
     }
@@ -21,16 +22,21 @@ const TimeOffPage = () => {
   const fetchTimeOffRequests = async () => {
     try {
       setLoading(true);
-      // Select columns without extra quotes and join the employee's name.
+      // Fetch requests with request_type = 'time-off' from employee_request
       const { data, error } = await supabase
-        .from("time_off_requests")
-        .select("id, employee_id, reason, timeoff_requested, employees(name)")
-        .eq("timeoff_requested", true);
+        .from("employee_request")
+        .select("request_id, employee_id, request, status")
+        .eq("request_type", "time-off")
+        .eq("status", "Pending"); // Correct enum value
       if (error) {
         console.error("Error fetching time-off requests:", error);
         setError("Failed to load time-off requests.");
       } else {
-        setRequests(data || []);
+        // Only show requests that have start_date and end_date in the request JSON
+        const filtered = (data || []).filter(
+          (r) => r.request && r.request.start_date && r.request.end_date
+        );
+        setRequests(filtered);
       }
     } catch (err) {
       console.error("Unexpected error fetching requests:", err);
@@ -46,76 +52,39 @@ const TimeOffPage = () => {
     setTimeout(() => setNotification({ message: "", type: "" }), 3000);
   };
 
-  // Approve a time-off request:
+  // Approve a time-off request using the centralized handler:
   const handleApprove = async (requestId, employeeId) => {
     try {
-      // Update the time_off_requests row to mark it as processed (set to false)
-      const { error: reqError } = await supabase
-        .from("time_off_requests")
-        .update({ timeoff_requested: false })
-        .eq("id", requestId);
-      if (reqError) {
-        console.error("Error approving time-off request:", reqError);
-        showNotification("Failed to approve request.", "error");
+      const result = await approveEmployeeRequest(requestId);
+      if (!result.success) {
+        showNotification(result.error || "Failed to approve request.", "error");
         return;
       }
-
-      // Update the employee record:
-      // Update the column "time_off_requests" in your employees table to "approved".
-      const { error: empError } = await supabase
-        .from("employees")
-        .update({ time_off_requests: "approved" })
-        .eq("id", employeeId);
-      if (empError) {
-        console.error("Error updating employee record:", empError);
-        showNotification("Failed to update employee record.", "error");
-        return;
-      }
-
       showNotification("Time-off request approved.", "success");
-      // Remove the processed request from the list.
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
     } catch (err) {
       console.error("Unexpected error approving request:", err);
       showNotification("Unexpected error.", "error");
     }
   };
 
-  // Reject a time-off request:
+  // Reject a time-off request using the centralized handler:
   const handleReject = async (requestId, employeeId) => {
     try {
-      // Update the time_off_requests row to mark it as processed (set to false)
-      const { error: reqError } = await supabase
-        .from("time_off_requests")
-        .update({ timeoff_requested: false })
-        .eq("id", requestId);
-      if (reqError) {
-        console.error("Error rejecting time-off request:", reqError);
-        showNotification("Failed to reject request.", "error");
+      const result = await rejectEmployeeRequest(requestId);
+      if (!result.success) {
+        showNotification(result.error || "Failed to reject request.", "error");
         return;
       }
-
-      // Update the employee record: set time_off_requests to null.
-      const { error: empError } = await supabase
-        .from("employees")
-        .update({ time_off_requests: null })
-        .eq("id", employeeId);
-      if (empError) {
-        console.error("Error updating employee record:", empError);
-        showNotification("Failed to update employee record.", "error");
-        return;
-      }
-
       showNotification("Time-off request rejected.", "success");
-      // Remove the processed request from the list.
-      setRequests((prev) => prev.filter((r) => r.id !== requestId));
+      setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
     } catch (err) {
       console.error("Unexpected error rejecting request:", err);
       showNotification("Unexpected error.", "error");
     }
   };
 
-  if (!isAuthenticated || (user.role !== "manager" && user.role !== "admin")) {
+  if (!isAuthenticated || user.role_id !== 3) {
     return (
       <div className="p-6 text-red-500 text-center">
         Access Denied: Managers Only
@@ -144,45 +113,59 @@ const TimeOffPage = () => {
         </div>
       )}
 
-      <h1 className="text-3xl font-bold mb-6">Time-Off Requests</h1>
+      <h1 className="text-3xl font-bold mb-8 text-blue-700 text-center">Time-Off Requests</h1>
       {requests.length === 0 ? (
-        <p>No pending time-off requests.</p>
+        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500 text-lg">
+          No pending time-off requests.
+        </div>
       ) : (
-        <table className="min-w-full bg-white border border-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-gray-600 text-left border-b">Employee ID</th>
-              <th className="px-4 py-3 text-gray-600 text-left border-b">Employee Name</th>
-              <th className="px-4 py-3 text-gray-600 text-left border-b">Reason</th>
-              <th className="px-4 py-3 text-gray-600 text-left border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req) => (
-              <tr key={req.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 border-b">{req.employee_id}</td>
-                <td className="px-4 py-3 border-b">
-                  {req.employees && req.employees.name ? req.employees.name : "N/A"}
-                </td>
-                <td className="px-4 py-3 border-b">{req.reason || "N/A"}</td>
-                <td className="px-4 py-3 border-b space-x-2">
-                  <button
-                    onClick={() => handleApprove(req.id, req.employee_id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleReject(req.id, req.employee_id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                  >
-                    Reject
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-md">
+            <thead className="bg-blue-50">
+              <tr>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">Employee ID</th>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">Reason</th>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">Start Date</th>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">End Date</th>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">Number of Days</th>
+                <th className="px-4 py-3 text-blue-800 text-left border-b font-semibold">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {requests.map((req) => {
+                const start = req.request.start_date ? new Date(req.request.start_date) : null;
+                const end = req.request.end_date ? new Date(req.request.end_date) : null;
+                let numDays = "N/A";
+                if (start && end && !isNaN(start) && !isNaN(end)) {
+                  numDays = Math.max(1, Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1);
+                }
+                return (
+                  <tr key={req.request_id} className="hover:bg-blue-50 transition">
+                    <td className="px-4 py-3 border-b text-gray-800">{req.employee_id}</td>
+                    <td className="px-4 py-3 border-b text-gray-700">{req.request.reason || "N/A"}</td>
+                    <td className="px-4 py-3 border-b text-gray-700">{req.request.start_date || "N/A"}</td>
+                    <td className="px-4 py-3 border-b text-gray-700">{req.request.end_date || "N/A"}</td>
+                    <td className="px-4 py-3 border-b text-gray-700">{numDays}</td>
+                    <td className="px-4 py-3 border-b space-x-2 flex flex-col sm:flex-row gap-2 justify-center items-center">
+                      <button
+                        onClick={() => handleApprove(req.request_id, req.employee_id)}
+                        className="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 transition font-semibold shadow-sm w-full sm:w-auto"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(req.request_id, req.employee_id)}
+                        className="bg-red-600 text-white px-4 py-1.5 rounded-lg hover:bg-red-700 transition font-semibold shadow-sm w-full sm:w-auto"
+                      >
+                        Decline
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

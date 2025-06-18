@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
-const HomePage = () => {
+const Features = () => {
   const { isAuthenticated, user } = useAuth();
 
   return (
@@ -164,4 +164,4 @@ const UserTypeCard = ({ userType, features, bgColor, textColor, borderColor }) =
   </div>
 );
 
-export default HomePage;
+export default Features;

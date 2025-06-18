@@ -24,8 +24,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const fetchDbUser = async () => {
       if (auth.user && auth.user.email) {
+        // CHANGE HERE: Use the correct table for your user data, e.g. 'employee' or 'profiles'
         const { data, error } = await supabase
-          .from("users")
+          .from("employee") // <-- change 'users' to your actual user table
           .select("*")
           .eq("email", auth.user.email)
           .single();

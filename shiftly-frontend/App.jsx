@@ -6,9 +6,7 @@ export default function App({ children }) {
   return (
     <>
       <Navbar />
-      <div className="mt-16 p-4">
-        {children}
-      </div>
+      <div className="mt-1 ">{children}</div>
     </>
   );
 }

@@ -1,7 +1,11 @@
+// src/components/AddEmployee.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
+
+// endpoint of your mail-sending backend
+const MAILER_API = import.meta.env.VITE_MAILER_API || 'http://localhost:3001/send-invite';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -17,7 +21,7 @@ const AddEmployee = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError('');
   };
 
@@ -28,19 +32,66 @@ const AddEmployee = () => {
       return;
     }
     setLoading(true);
+    setError('');
+    setSuccess('');
+    setInviteLink('');
+
     try {
-      // Generate a unique invite token
+      // Generate a secure random token
       const token = uuidv4();
-      // Build the invite link with all params
-      const link = `${window.location.origin}/setup-account?email=${encodeURIComponent(form.email)}&token=${token}&role_id=${form.role_id || ''}&store_id=${form.store_id || ''}&employee_id=${form.employee_id || ''}`;
+      // Set expiry 24 hours from now
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const createdAt = new Date().toISOString();
+
+      // Build the invite object
+      const inviteData = {
+        token,
+        email: form.email,
+        role_id: form.role_id ? parseInt(form.role_id, 10) : null,
+        store_id: form.store_id ? parseInt(form.store_id, 10) : null,
+        expires_at: expiresAt,
+        created_at: createdAt,
+        is_used: false,
+      };
+      if (form.employee_id) {
+        inviteData.employee_id = parseInt(form.employee_id, 10);
+      }
+
+      // Insert token into setup_tokens
+      const { data: insertData, error: tokenInsertError } = await supabase
+        .from('setup_tokens')
+        .insert([inviteData])
+        .select();
+      if (tokenInsertError) {
+        console.error('Supabase insert error:', tokenInsertError);
+        throw new Error('Failed to generate invitation token.');
+      }
+
+      // Build the invite link
+      const link = `${window.location.origin}/setup-account?token=${token}`;
       setSuccess('Invitation link generated!');
       setInviteLink(link);
+
+      // --- Send the invitation email ---
+      const mailResp = await fetch(MAILER_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, link }),
+      });
+      if (!mailResp.ok) {
+        const { error: mailError } = await mailResp.json().catch(() => ({}));
+        console.error('Mail send error:', mailError);
+        setError('Failed to send invite email.');
+      }
+
+      // Clear the form on success
       setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
     } catch (err) {
-      console.error('Error generating invite link:', err.message);
-      setError('Failed to generate invitation link');
+      console.error('Error in handleSubmit:', err);
+      setError(err.message || 'Error generating invitation link');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -55,13 +106,18 @@ const AddEmployee = () => {
             Back
           </button>
         </div>
+
         {error && <p className="mb-4 text-center text-red-500">{error}</p>}
         {success && <p className="mb-4 text-center text-green-600">{success}</p>}
         {inviteLink && (
           <div className="mb-4 text-center text-blue-600 break-all">
-            Invitation Link: <a href={inviteLink} className="underline">{inviteLink}</a>
+            Invitation Link:{' '}
+            <a href={inviteLink} className="underline">
+              {inviteLink}
+            </a>
           </div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-gray-700 font-medium mb-2">
@@ -73,12 +129,12 @@ const AddEmployee = () => {
               value={form.email}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              required
             />
           </div>
+
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Store ID
+              Store ID <span className="text-gray-400">(optional)</span>
             </label>
             <input
               type="text"
@@ -88,9 +144,10 @@ const AddEmployee = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
+
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Role ID
+              Role ID <span className="text-gray-400">(optional)</span>
             </label>
             <input
               type="text"
@@ -100,19 +157,21 @@ const AddEmployee = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
+
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Employee ID
+              Employee ID <span className="text-gray-400">(optional)</span>
             </label>
             <input
               type="number"
               name="employee_id"
-              value={form.employee_id || ''}
+              value={form.employee_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
               min="1"
             />
           </div>
+
           <button
             type="submit"
             disabled={loading}
