@@ -1,5 +1,5 @@
 // src/components/AddEmployee.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,11 +13,39 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
+  const [stores, setStores] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const { data, error } = await supabase.from('store').select('store_id, store_name');
+        if (error) throw error;
+        setStores(data);
+      } catch (err) {
+        console.error('Error fetching stores:', err);
+      }
+    };
+    fetchStores();
+  }, []);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase.from('role').select('role_id, role_name').neq('role_id', 1);
+        if (error) throw error;
+        setRoles(data);
+      } catch (err) {
+        console.error('Error fetching roles:', err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -28,6 +56,16 @@ const AddEmployee = () => {
     e.preventDefault();
     if (!form.email) {
       setError('Please enter an email');
+      return;
+    }
+
+    if (!form.store_id) {
+      setError('Please select a store');
+      return;
+    }
+
+    if (!form.role_id) {
+      setError('Please enter a role ID');
       return;
     }
 
@@ -130,28 +168,36 @@ const AddEmployee = () => {
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Store ID <span className="text-gray-400">(optional)</span>
+              Store <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               name="store_id"
               value={form.store_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
+            >
+              <option value="">Select a store</option>
+              {stores.map((store) => (
+                <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
-              Role ID <span className="text-gray-400">(optional)</span>
+              Role ID <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               name="role_id"
               value={form.role_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
+            >
+              <option value="">Select a role</option>
+              {roles.map((role) => (
+                <option key={role.role_id} value={role.role_id}>{role.role_desc}</option>
+              ))}
+            </select>
           </div>
 
           <div>

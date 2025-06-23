@@ -478,7 +478,7 @@ const Dashboard = () => {
     ];
 
     return (
-      <div className="max-w-6xl mx-auto p-2 sm:p-4 lg:p-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {accessDenied && (
           <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4"> {/* Reduced margin above welcome */}
             <div className="flex">
@@ -493,8 +493,8 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {greetingName}</h1>
+        <section className="mb-4 py-5">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-700 mb-1">Welcome {greetingName}</h1>
         </section>
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
           {dynamicDashboardCards.map((card, index) => (
@@ -559,9 +559,9 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="mb-4 py-5">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-700 mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule (Manager) */}
@@ -684,9 +684,9 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="mb-4 py-5">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-700 mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
         </section>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* My Schedule */}
