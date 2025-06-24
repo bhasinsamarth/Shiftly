@@ -46,7 +46,7 @@ const FetchSchedule = () => {
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
     d.setDate(1);
-    d.setHours(0,0,0,0);
+    d.setHours(0, 0, 0, 0);
     return d;
   });
   const navigate = useNavigate();
@@ -97,10 +97,10 @@ const FetchSchedule = () => {
       const today = new Date();
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay() + 1); // next week
-      startOfWeek.setHours(0,0,0,0);
+      startOfWeek.setHours(0, 0, 0, 0);
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23,59,59,999);
+      endOfWeek.setHours(23, 59, 59, 999);
       const { data, error } = await supabase
         .from("employee_availability")
         .select("start_time, end_time")
@@ -138,7 +138,7 @@ const FetchSchedule = () => {
   // Find the week key for the current week + offset
   const baseDate = new Date();
   baseDate.setDate(baseDate.getDate() - baseDate.getDay() + weekOffset * 7);
-  baseDate.setHours(0,0,0,0);
+  baseDate.setHours(0, 0, 0, 0);
   const currentWeekKey = baseDate.toISOString().slice(0, 10);
   const weekShifts = allWeeks[currentWeekKey] || [];
   const weekStartDate = new Date(currentWeekKey);
@@ -223,7 +223,7 @@ const FetchSchedule = () => {
         <div className="flex-1 w-full">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
             <div className="flex items-center gap-8">
-            
+
               <nav className="flex gap-6 text-lg font-medium">
                 <span
                   className={tab === "schedule" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"}
@@ -300,7 +300,7 @@ const FetchSchedule = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].map((day, idx) => (
+                    {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => (
                       <tr key={day}>
                         <td className="p-2 border font-medium">{day}</td>
                         <td className="p-2 border">{availability[idx]?.start_time ? new Date(availability[idx].start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</td>

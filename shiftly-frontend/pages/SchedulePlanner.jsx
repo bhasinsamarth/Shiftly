@@ -23,7 +23,8 @@ const getWeekDates = (offset = 0) => {
     const dayOfWeek = today.getDay(); // 0 = Sunday
     const offsetToMonday = ((8 - dayOfWeek) % 7) || 7;
     const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() + offsetToSunday + offset * 7);
+    // FIX: use offsetToMonday instead of offsetToSunday
+    baseDate.setDate(today.getDate() + offsetToMonday + offset * 7);
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(baseDate);

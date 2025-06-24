@@ -582,7 +582,7 @@ const Dashboard = () => {
 
             <div className="flex-1 p-6">
               <p className="text-gray-700">View and manage your assigned store(s), see store details, and access store-specific actions.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
+              <a href="/my-store" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
             </div>
           </div>
           {/* Schedule Planner */}
