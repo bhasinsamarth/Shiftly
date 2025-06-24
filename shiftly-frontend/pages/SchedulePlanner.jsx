@@ -20,8 +20,8 @@ const timeOptions = generate24hTimes();
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
-    const offsetToMonday = ((8 - dayOfWeek) % 7) || 7;
+    const dayOfWeek = today.getDay(); 
+    const offsetToSunday = (7 - dayOfWeek) % 7; 
     const baseDate = new Date(today);
     // FIX: use offsetToMonday instead of offsetToSunday
     baseDate.setDate(today.getDate() + offsetToMonday + offset * 7);

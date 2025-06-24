@@ -16,6 +16,8 @@ const ProfilePage = () => {
     country: '',
     postal_code: '',
     phone: '',
+    email: '',
+    password: '',
   });
   const [initialFormData, setInitialFormData] = useState({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -66,6 +68,7 @@ const ProfilePage = () => {
         country: user.country || '',
         postal_code: user.postal_code || '',
         phone: user.phone || '',
+        email: user.email || '',
       };
 
       setFormData(editableData);
@@ -149,6 +152,8 @@ const ProfilePage = () => {
       country: formData.country,
       postal_code: formData.postal_code,
       phone: formData.phone,
+      email: formData.email,
+      password: formData.password,
     };
 
     const { error } = await supabase
@@ -272,6 +277,12 @@ const ProfilePage = () => {
             {renderInputField("Preferred Name", "preferred_name", formData.preferred_name)}
             {renderDisplayField("Date of Birth", user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : "Not set")}
             {renderSelectField("Gender", "gender", formData.gender, GENDER_OPTIONS)}
+          </div>
+        </section>
+
+        <section className="bg-white shadow-xl rounded-xl p-6 md:p-8">
+          <h2 className="text-2xl font-semibold mb-6 text-slate-600 border-b pb-4">Address</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
             {renderInputField("Address Line 1", "address_line_1", formData.address_line_1, "md:col-span-2")}
             {renderInputField("Address Line 2", "address_line_2", formData.address_line_2, "md:col-span-2")}
             {renderInputField("City", "city", formData.city)}
@@ -282,11 +293,32 @@ const ProfilePage = () => {
           </div>
         </section>
 
+        <section className="bg-white shadow-xl rounded-xl p-6 md:p-8">
+          <h2 className="text-2xl font-semibold mb-6 text-slate-600 border-b pb-4">Credentials</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            {renderDisplayField("Employee ID", user.employee_id, "md:col-span-2")}
+            {renderInputField("Email", "email", formData.email, "md:col-span-2")}
+            <div className="md:col-span-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                name="password"
+                id="password"
+                value={formData.password || ''}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+          </div>
+        </section>
+
         <div className="flex justify-end pt-4">
           <button
             type="submit"
             disabled={isSubmitting || !hasUnsavedChanges}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+            className={`font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-opacity-50 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
+              isSubmitting || !hasUnsavedChanges ? 'bg-gray-400 text-gray-700' : 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
+            }`}
           >
             {isSubmitting ? (
               <>

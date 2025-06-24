@@ -22,20 +22,38 @@ const Navbar = () => {
   useEffect(() => {
     const fetchProfileImage = async () => {
       if (user?.id) {
-        const { data } = await supabase
-          .from('employee')
-          .select('profile_photo_path')
-          .eq('id', user.id)
-          .single();
+        try {
+          const { data, error } = await supabase
+            .from('employee')
+            .select('profile_photo_path')
+            .eq('id', user.id)
+            .single();
 
-        const photoPath = data?.profile_photo_path;
-        if (photoPath) {
-          const { data: publicUrl } = supabase
-            .storage
-            .from('profile-photo')
-            .getPublicUrl(photoPath);
-          setProfileImage(publicUrl?.publicUrl);
-        } else {
+          if (error) {
+            console.error('Error fetching profile photo path:', error);
+            setProfileImage('https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg');
+            return;
+          }
+
+          const photoPath = data?.profile_photo_path;
+          if (photoPath) {
+            const { data: publicUrl, error: urlError } = await supabase
+              .storage
+              .from('profile-photo')
+              .getPublicUrl(photoPath);
+
+            if (urlError) {
+              console.error('Error fetching public URL for profile photo:', urlError);
+              setProfileImage('https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg');
+              return;
+            }
+
+            setProfileImage(publicUrl?.publicUrl);
+          } else {
+            setProfileImage('https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg');
+          }
+        } catch (err) {
+          console.error('Unexpected error fetching profile image:', err);
           setProfileImage('https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg');
         }
       }
@@ -63,19 +81,47 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!profileDropdownOpen) return;
-    function handleClickOutside(event) {
-      const dropdown = document.getElementById('user-menu-button');
-      const menu = document.getElementById('user-menu-dropdown');
+
+    const handleClickOutside = (event) => {
+      const dropdownButton = document.getElementById('user-menu-button');
+      const dropdownMenu = document.getElementById('user-menu-dropdown');
+
       if (
-        dropdown && !dropdown.contains(event.target) &&
-        menu && !menu.contains(event.target)
+        dropdownButton && !dropdownButton.contains(event.target) &&
+        dropdownMenu && !dropdownMenu.contains(event.target)
       ) {
         setProfileDropdownOpen(false);
       }
-    }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [profileDropdownOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handleClickOutside = (event) => {
+      const menuButton = document.querySelector('.inline-flex.items-center.justify-center.p-2');
+      const menuDropdown = document.querySelector('.absolute.top-16.left-0.w-full.bg-white.shadow-md.z-50');
+
+      if (
+        menuButton && !menuButton.contains(event.target) &&
+        menuDropdown && !menuDropdown.contains(event.target)
+      ) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
 
   const handleSubmitReport = async (e) => {
     e.preventDefault();
@@ -96,86 +142,6 @@ const Navbar = () => {
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-xl font-bold text-blue-600">
-                Shiftly
-              </Link>
-            </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {isAuthenticated && (
-                <>
-                  <Link to="/dashboard" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                    Dashboard
-                  </Link>
-                  {(user?.role_id === 1 || user?.role_id === 2) && (
-                    <>
-                      <Link to="/employees" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                        Employees
-                      </Link>
-                      <Link to="/teams" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                        Teams
-                      </Link>
-                    </>
-                  )}
-                  {user?.role_id === 3 && (
-                    <Link to="/employee-requests" className="relative border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                      Employee Requests
-                      {pendingTimeOffCount > 0 && (
-                        <span className="absolute top-2 right-1 block h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-                          {pendingTimeOffCount}
-                        </span>
-                      )}
-                    </Link>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {isAuthenticated && (
-              <div className="ml-3 relative">
-                <button
-                  type="button"
-                  className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  id="user-menu-button"
-                  onClick={toggleProfileDropdown}
-                >
-                  <span className="sr-only">Open user menu</span>
-                  {profileImage ? (
-                    <img src={profileImage} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                      {user?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                    </div>
-                  )}
-                </button>
-                {profileDropdownOpen && (
-                  <div
-                    id="user-menu-dropdown"
-                    className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5"
-                    role="menu"
-                    aria-orientation="vertical"
-                    tabIndex="-1"
-                  >
-                    <div className="block px-4 py-2 text-sm text-gray-700">
-                      Signed in as <strong>{user?.preferred_name || user?.first_name || user?.username || user?.email}</strong>
-                    </div>
-                    <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      My Profile
-                    </Link>
-                    <button onClick={() => setShowReportModal(true)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      Report Issue
-                    </button>
-                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
           <div className="flex items-center sm:hidden">
             <button
               type="button"
@@ -190,6 +156,96 @@ const Navbar = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+            <Link to={isAuthenticated ? "/dashboard" : "/"} className="ml-2 text-xl font-bold text-blue-600">
+              Shiftly
+            </Link>
+          </div>
+
+          {mobileMenuOpen && (
+            <div className="absolute top-16 left-0 w-full bg-white shadow-md z-50">
+              <div className="flex flex-col space-y-2 p-4">
+                {isAuthenticated && (
+                  <>
+                    {/* Removed Dashboard option */}
+                    {(user?.role_id === 1 || user?.role_id === 2) && (
+                      <>
+                        <Link to="/employees" className="text-gray-700 hover:text-blue-600">Employees</Link>
+                        <Link to="/teams" className="text-gray-700 hover:text-blue-600">Teams</Link>
+                      </>
+                    )}
+                    {user?.role_id === 3 && (
+                      <Link to="/employee-requests" className="text-gray-700 hover:text-blue-600">Employee Requests</Link>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="hidden sm:flex sm:items-center w-full justify-between">
+            <div className="flex-shrink-0 flex items-center space-x-6">
+              <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-xl font-bold text-blue-600">
+                Shiftly
+              </Link>
+              {isAuthenticated && (
+                <>
+                  {(user?.role_id === 1 || user?.role_id === 2) && (
+                    <>
+                      <Link to="/employees" className="text-gray-700 hover:text-blue-600">Employees</Link>
+                      <Link to="/teams" className="text-gray-700 hover:text-blue-600">Teams</Link>
+                    </>
+                  )}
+                  {user?.role_id === 3 && (
+                    <Link to="/employee-requests" className="text-gray-700 hover:text-blue-600">Employee Requests</Link>
+                  )}
+                </>
+              )}
+            </div>
+            {isAuthenticated && (
+              <div className="flex items-center space-x-6">
+                {/* Desktop Nav Links */}
+                {/* Profile Photo & Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    id="user-menu-button-desktop"
+                    onClick={toggleProfileDropdown}
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    {profileImage ? (
+                      <img src={profileImage} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                        {user?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </div>
+                    )}
+                  </button>
+                  {profileDropdownOpen && (
+                    <div
+                      id="user-menu-dropdown-desktop"
+                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5"
+                      role="menu"
+                      aria-orientation="vertical"
+                      tabIndex="-1"
+                    >
+                      <div className="block px-4 py-2 text-sm text-gray-700">
+                        Signed in as <strong>{user?.preferred_name || user?.first_name || user?.username || user?.email}</strong>
+                      </div>
+                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        My Profile
+                      </Link>
+                      <button onClick={() => setShowReportModal(true)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Report Issue
+                      </button>
+                      <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

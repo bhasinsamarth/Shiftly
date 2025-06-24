@@ -4,6 +4,7 @@ import { supabase } from "../supabaseClient";
 
 const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
   const [reason, setReason] = useState("");
+  const [otherReason, setOtherReason] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
@@ -11,6 +12,8 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
   const [employeeId, setEmployeeId] = useState(null);
   const [idLoading, setIdLoading] = useState(false);
   const [idError, setIdError] = useState("");
+
+  const predefinedReasons = ["Vacation", "Medical", "Personal", "Family Emergency", "Other"];
 
   useEffect(() => {
     if (!show) return;
@@ -72,7 +75,7 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
       employee_id: employeeId,
       request_type: "time-off",
       request: {
-        reason,
+        reason: reason === "Other" ? otherReason : reason,
         start_date: startDate,
         end_date: endDate,
       },
@@ -86,6 +89,7 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
         onSuccess && onSuccess();
         onClose && onClose();
         setReason("");
+        setOtherReason("");
         setStartDate("");
         setEndDate("");
       }
@@ -115,20 +119,55 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Reason</label>
-              <textarea
+              <select
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="E.g. Vacation, Medical, Personal..."
+                onChange={(e) => {
+                  const selectedReason = e.target.value;
+                  setReason(selectedReason);
+                  if (selectedReason !== "Other") {
+                    setOtherReason("");
+                    setError("");
+                  }
+                }}
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 resize-none p-2 min-h-[80px]"
-              />
+                className="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 p-2"
+              >
+                <option value="" disabled>Select a reason</option>
+                {predefinedReasons.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </div>
+            {reason === "Other" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Specify Reason (Max. 500 Characters allowed)</label>
+                <textarea
+                  value={otherReason}
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    const sanitizedInput = input
+                      .replace(/<script.*?>.*?<\/script>/gi, "")
+                      .replace(/[<>\"'`]/g, ""); // Remove common special characters
+                    if (sanitizedInput.length > 500) {
+                      setError("Reason cannot exceed 500 characters.");
+                    } else {
+                      setError("");
+                      setOtherReason(sanitizedInput);
+                    }
+                  }}
+                  placeholder="Provide additional details..."
+                  required
+                  className="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 resize-none p-2 min-h-[80px]"
+                />
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
+                  onFocus={(e) => e.target.showPicker && e.target.showPicker()}
                   onChange={(e) => setStartDate(e.target.value)}
                   required
                   className="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 p-2"
@@ -139,6 +178,7 @@ const TimeOffRequestForm = ({ show, onClose, onSuccess }) => {
                 <input
                   type="date"
                   value={endDate}
+                  onFocus={(e) => e.target.showPicker && e.target.showPicker()}
                   onChange={(e) => setEndDate(e.target.value)}
                   required
                   className="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 p-2"

@@ -10,7 +10,8 @@ export const useAuth = () => {
   // Helper to set cookie with expiry
   function setCookie(name, value, days) {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/';
+    const formattedExpires = expires.replace(/^(\w{3}),\s(\d{2})\s(\w{3})\s(\d{4})\s(\d{2}:\d{2}:\d{2})\sGMT$/, '$1, $2 $3 $4 $5 GMT');
+    document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + formattedExpires + '; path=/';
   }
 
   // Helper to get cookie
