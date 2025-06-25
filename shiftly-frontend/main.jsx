@@ -20,11 +20,8 @@ import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
-<<<<<<< Updated upstream
-=======
-import ManagerStorePage from "./pages/MyStore";
+// import ManagerStorePage from "./pages/MyStore";
 import TimeOffPage from "./pages/TimeOffPage";
->>>>>>> Stashed changes
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -50,13 +47,9 @@ function AppWithRoutes() {
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
         <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
-<<<<<<< Updated upstream
-        
-=======
-        <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
+        {/* <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} /> */}
         <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
 
->>>>>>> Stashed changes
         {/* Catch-all route for 404 */}
         <Route path="*" element={
           <div className="text-center py-20">

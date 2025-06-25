@@ -21,18 +21,11 @@ const timeOptions = generate24hTimes();
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
-<<<<<<< Updated upstream
-    const dayOfWeek = today.getDay(); // 0 = Sunday
-    const offsetToSunday = -dayOfWeek; // Adjust to start from Sunday
-    const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() + offsetToSunday + offset * 7);
-=======
     const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
     // Calculate the date for Sunday of the current week, then add offset*7 days
     const baseDate = new Date(today);
     baseDate.setDate(today.getDate() - dayOfWeek + offset * 7);
     baseDate.setHours(0, 0, 0, 0);
->>>>>>> Stashed changes
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(baseDate);
@@ -98,32 +91,9 @@ const SchedulePlanner = () => {
                 .gte('start_time', `${startDate}T00:00`)
                 .lte('end_time', `${endDate}T23:59`);
 
-<<<<<<< Updated upstream
-            if (scheduleEntries) {
-                const updatedSchedule = {};
-
-                scheduleEntries.forEach(entry => {
-                    const empId = entry.employee_id;
-                    const dateKey = entry.start_time.split('T')[0];
-                    const startTime = entry.start_time.split('T')[1].slice(0, 5); // HH:MM
-                    const endTime = entry.end_time.split('T')[1].slice(0, 5);     // HH:MM
-
-                    if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
-                    updatedSchedule[empId][dateKey] = {
-                        checked: true,
-                        start: startTime,
-                        end: endTime,
-                        existing: true,
-                        editable: false
-                    };
-                });
-
-                setScheduleData(updatedSchedule);
-=======
             if (schedErr) {
                 setScheduleData({});
                 return;
->>>>>>> Stashed changes
             }
 
             const updatedSchedule = {};
@@ -147,12 +117,8 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
-<<<<<<< Updated upstream
-    }, [storeId, weekOffset]);
-=======
         // eslint-disable-next-line
     }, [storeId, weekOffset, isAuthenticated, user]);
->>>>>>> Stashed changes
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
@@ -247,8 +213,6 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-<<<<<<< Updated upstream
-=======
     // Block access if not authenticated or not a manager
     if (!isAuthenticated || user.role_id !== 3) {
         return (
@@ -258,7 +222,6 @@ const SchedulePlanner = () => {
         );
     }
 
->>>>>>> Stashed changes
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-4">

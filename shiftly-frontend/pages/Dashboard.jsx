@@ -208,11 +208,6 @@ const Dashboard = () => {
   }, [user, myEmployee]);
 
   // --- TIME CARDS SECTION ---
-<<<<<<< Updated upstream
-  const [timeCards, setTimeCards] = useState([]);
-  const [loadingTimeCards, setLoadingTimeCards] = useState(true);
-  const [errorTimeCards, setErrorTimeCards] = useState('');
-=======
   // (Commented out all timecard queries and related logic
   /*
     const [timeCards, setTimeCards] = useState([]);
@@ -233,7 +228,6 @@ const Dashboard = () => {
       if (myEmployee) fetchTimeCards();
     }, [myEmployee]);
   */
->>>>>>> Stashed changes
 
   // --- CLOCK IN/OUT SECTION ---
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -295,10 +289,6 @@ const Dashboard = () => {
 
   // After myEmployee is fetched, load all teams that the employee is a part of
   useEffect(() => {
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
     if (myEmployee) {
       async function fetchUserTeams() {
         try {
@@ -530,55 +520,6 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-<<<<<<< Updated upstream
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {greetingName}</h1>
-        </section>
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-          {dynamicDashboardCards.map((card, index) => (
-            <DashboardCard key={index} {...card} />
-          ))}
-        </section>
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <QuickAction icon="👤" title="Add Employee" path="/add-employee" />
-            <QuickAction icon="👥" title="Manage Employees" path="/employees" />
-            <QuickAction icon="🗂️" title="Manage Teams" path="/teams" />
-            <QuickAction icon="📋" title="Review Time-off" path="/time-off" />
-          </div>
-        </section>
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
-          {loadingActivity ? (
-            <p className="text-gray-600">Loading recent activity...</p>
-          ) : errorActivity ? (
-            <p className="text-red-500">{errorActivity}</p>
-          ) : activity.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Details</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">When</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">By</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {activity.map(act => (
-                    <tr key={act.id} className="hover:bg-gray-50">
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.type}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.action}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.subject}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{new Date(act.timestamp).toLocaleString()}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.user_name || act.user_email || 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-=======
 
         <section className="py-5">
           <h1 className="text-3xl font-bold mb-1 text-gray-800">Dashboard</h1>
@@ -597,7 +538,6 @@ const Dashboard = () => {
             <div className="bg-white p-4 rounded-xl shadow-md">
               <p className="text-sm text-gray-500">Open Positions</p>
               <p className="text-2xl font-bold text-blue-700">5</p>
->>>>>>> Stashed changes
             </div>
           </div>
 
@@ -684,73 +624,6 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-<<<<<<< Updated upstream
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
-        </section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-green-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Store</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View and manage your assigned store(s), see store details, and access store-specific actions.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
-            </div>
-          </div>
-          {/* Schedule Planner */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-yellow-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Schedule Planner</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">Plan, view, and edit employee schedules. Assign shifts and manage coverage.</p>
-              <a href="/schedules" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Open Schedule Planner</a>
-            </div>
-          </div>
-          {/* Team Management */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-purple-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Team Management</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View your team, manage members, and assign roles or responsibilities.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Manage Teams</a>
-            </div>
-          </div>
-          {/* Employee Requests */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-pink-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Employee Requests</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">Review, approve, or deny employee requests, including time-off requests.</p>
-              <a href="/employee-requests" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
-            </div>
-          </div>
-          {/* Notifications */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Notifications</h3>
-            </div>
-            <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Pending Requests</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Shift Changes</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Alerts</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Announcements</span><span className="font-bold">0</span></li>
-            </ul>
-          </div>
-          {/* Reports & Analytics */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-indigo-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Reports & Analytics</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View attendance, hours worked, and other key metrics for your team.</p>
-              <a href="/reports" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">View Reports</a>
-            </div>
-=======
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="mb-4 py-5">
           <h1 className="text-2xl md:text-3xl font-bold  mb-1">Dashboard</h1>
@@ -772,7 +645,6 @@ const Dashboard = () => {
                 Requests
               </button>
             </Link>
->>>>>>> Stashed changes
           </div>
         </div>
         {/* Upcoming div */}
@@ -780,9 +652,6 @@ const Dashboard = () => {
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Upcoming</h2>
           </div>
-<<<<<<< Updated upstream
-        )}
-=======
           <div className=" rounded-lg mb-6">
           </div>
           {/* My Schedule */}
@@ -908,7 +777,6 @@ const Dashboard = () => {
           )}
         </div>
         {/* End Complaint Modal */}
->>>>>>> Stashed changes
       </div>
     );
   } else if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
@@ -923,68 +791,6 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-<<<<<<< Updated upstream
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
-        </section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* My Schedule */}
-          <Link to="/FetchSchedule" className="col-span-1 bg-white rounded-xl shadow-md flex flex-col border border-gray-200 min-h-[200px] cursor-pointer">
-              <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-                <h3 className="text-lg font-semibold text-white mb-0">My Schedule</h3>
-              </div>
-              <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
-                {loadingStoreShifts ? (
-                  <p className="text-blue-700">Loading...</p>
-                ) : errorStoreShifts ? (
-                  <p className="text-red-600">{errorStoreShifts}</p>
-                ) : storeShifts.length === 0 ? (
-                  <p className="text-gray-500">You have nothing planned.</p>
-                ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {storeShifts.slice(0, 5).map((sch, idx) => (
-                      <li key={sch.id || idx} className="py-2 flex items-center">
-                        <div className="w-10 sm:w-12 text-center">
-                          <span className="block text-xs text-gray-400 font-medium">{sch.start_time ? new Date(sch.start_time).toLocaleDateString('en-US', { weekday: 'short' }) : '--'}</span>
-                          <span className="block text-md sm:text-lg font-bold text-gray-700">{sch.start_time ? new Date(sch.start_time).getDate() : '--'}</span>
-                        </div>
-                        <div className="ml-2 sm:ml-3 flex-1">
-                          <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.start_time && sch.end_time ? `${new Date(sch.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
-                          <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-          </Link>
-          {/* My Timecard */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-              <h3 className="text-lg font-semibold text-white mb-0">My Timecard</h3>
-            </div>
-            <div className="flex flex-col items-center space-y-3 p-4">
-              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
-            </div>
-            {timeCards.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
-                <span className="text-sm">No data to display.</span>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {timeCards.slice(0, 5).map((tc, idx) => (
-                  <li key={tc.id || idx} className="py-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="font-medium text-gray-700">{tc.date}</span>
-                      <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
-=======
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <section className="mb-4 py-5">
           <h1 className="text-2xl md:text-3xl font-bold  mb-1">Dashboard</h1>
@@ -994,7 +800,6 @@ const Dashboard = () => {
         <div>
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
->>>>>>> Stashed changes
           </div>
           <div className='flex flex-col md:flex-row gap-4 mb-6'>
             <Link to="/">
@@ -1009,17 +814,6 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
-<<<<<<< Updated upstream
-        {/* Time Off Modal */}
-        {myEmployee && (
-          <TimeOffRequestForm
-            employeeId={myEmployee.id}
-            show={showTimeOffModal}
-            onClose={() => setShowTimeOffModal(false)}
-            onSuccess={() => setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' })}
-          />
-        )}
-=======
         {/* Upcoming div */}
         <div>
           <div>
@@ -1076,7 +870,6 @@ const Dashboard = () => {
             })()}
           </Link>
         </div>
->>>>>>> Stashed changes
         {/* Complaint Modal */}
         {showComplaintModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
