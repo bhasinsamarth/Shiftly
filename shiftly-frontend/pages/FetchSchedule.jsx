@@ -32,7 +32,7 @@ function getShiftTypeAndColor(start, end) {
   return { label: "Other", color: "bg-gray-400 text-white" };
 }
 
-const FetchSchedule = () => {
+export const FetchSchedule = () => {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
