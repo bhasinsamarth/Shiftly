@@ -22,6 +22,7 @@ import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
 import ManagerStorePage from "./pages/MyStore";
 import TimeOffPage from "./pages/TimeOffPage";
+import TimeOffRequestPage from "./pages/TimeOffRequestPage";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -49,6 +50,7 @@ function AppWithRoutes() {
         <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
         <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
         <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
+        <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={

@@ -128,7 +128,7 @@ const Navbar = () => {
             {(user?.role_id === 4 || user?.role_id === 5 || user?.role_id === 6) && (
               <>
                 {commonLinks}
-                <Link to="/" className="w-full block text-gray-700 hover:text-blue-600">🕐 Time off</Link>
+                <Link to="/time-off-request" className="w-full block text-gray-700 hover:text-blue-600">🕐 Time off</Link>
                 <Link to="/shifts" className="w-full block text-gray-700 hover:text-blue-600">⌛ Timecard</Link>
                 <Link to="/requests" className="w-full block text-gray-700 hover:text-blue-600">🔔 Notifications</Link>
               </>
