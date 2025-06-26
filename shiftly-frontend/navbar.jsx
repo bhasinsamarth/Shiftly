@@ -93,7 +93,7 @@ const Navbar = () => {
   );
 
   return (
-    <aside className={`w-full lg:w-1/5 bg-white shadow-md h-screen lg:fixed top-0 left-0 z-40 flex flex-col justify-between ${mobileMenuOpen ? 'block' : 'hidden'} lg:block`}>
+    <aside className={`w-full lg:w-1/6 bg-white shadow-md h-screen lg:fixed top-0 left-0 z-40 flex flex-col justify-between ${mobileMenuOpen ? 'block' : 'hidden'} lg:block`}>
       <div className="p-6">
         <button
           className="lg:hidden text-gray-700 hover:text-blue-600 mb-4"

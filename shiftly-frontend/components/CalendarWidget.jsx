@@ -21,6 +21,7 @@ const CalendarWidget = ({ initialDate, onDateSelect }) => {
   const initial = initialDate ? new Date(initialDate) : new Date();
   const [currentYear, setCurrentYear] = useState(initial.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(initial.getMonth());
+  const [selectedDate, setSelectedDate] = useState(initial.getDate());
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
@@ -32,6 +33,7 @@ const CalendarWidget = ({ initialDate, onDateSelect }) => {
     } else {
       setCurrentMonth(currentMonth - 1);
     }
+    setSelectedDate(null); // Reset selected date when changing months
   };
 
   const handleNext = () => {
@@ -41,6 +43,7 @@ const CalendarWidget = ({ initialDate, onDateSelect }) => {
     } else {
       setCurrentMonth(currentMonth + 1);
     }
+    setSelectedDate(null); // Reset selected date when changing months
   };
 
   // Build calendar grid
@@ -96,15 +99,18 @@ const CalendarWidget = ({ initialDate, onDateSelect }) => {
             d ? (
               <button
                 key={i}
-                className={`py-1 text-base select-none w-full h-full flex items-center justify-center rounded-full hover:bg-blue-200 transition ${
+                className={`py-1 text-base select-none w-full h-full flex items-center justify-center rounded-full transition ${
                   today.year === currentYear && today.month === currentMonth && today.day === d
                     ? 'bg-blue-600 text-white font-bold'
-                    : 'text-gray-800'
+                    : selectedDate === d
+                    ? 'bg-blue-300 text-white font-bold'
+                    : 'text-gray-800 hover:bg-blue-200'
                 }`}
                 onClick={() => {
-                  const selectedDate = new Date(currentYear, currentMonth, d);
+                  setSelectedDate(d);
+                  const selectedDateObj = new Date(currentYear, currentMonth, d);
                   if (typeof onDateSelect === 'function') {
-                    onDateSelect(selectedDate);
+                    onDateSelect(selectedDateObj);
                   }
                 }}
               >
