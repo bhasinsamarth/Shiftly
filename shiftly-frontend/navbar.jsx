@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 import { fetchPendingTimeOffCount } from "./utils/requestHandler";
@@ -7,6 +7,7 @@ import { fetchPendingTimeOffCount } from "./utils/requestHandler";
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -83,16 +84,24 @@ const Navbar = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
   };
 
+  const isActive = (path) => location.pathname === path;
+
   const commonLinks = (
     <>
-      <Link to="/FetchSchedule" className="block text-gray-700 hover:text-blue-600">📆 View My Schedule</Link>
+      <Link to="/FetchSchedule" className={`block text-gray-700 hover:text-blue-600 ${isActive('/FetchSchedule') ? 'bg-blue-100' : ''}`}>📆 View My Schedule</Link>
     </>
   );
 
   return (
-    <aside className="w-full lg:w-1/5 bg-white shadow-md h-screen lg:fixed top-0 left-0 z-40 flex flex-col justify-between">
+    <aside className={`w-full lg:w-1/5 bg-white shadow-md h-screen lg:fixed top-0 left-0 z-40 flex flex-col justify-between ${mobileMenuOpen ? 'block' : 'hidden'} lg:block`}>
       <div className="p-6">
-        <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-2xl font-bold block mb-8">
+        <button
+          className="lg:hidden text-gray-700 hover:text-blue-600 mb-4"
+          onClick={toggleMobileMenu}
+        >
+          {mobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+        </button>
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="text-2xl font-bold block mb-8 text-blue-700 hover:text-blue-800">
           Shiftly
         </Link>
         {isAuthenticated && (
@@ -100,18 +109,18 @@ const Navbar = () => {
             {/* Admin/Owner */}
             {(user?.role_id === 1 || user?.role_id === 2) && (
               <>
-                <Link to="/employees" className="block text-gray-700 hover:text-blue-600">👨‍💼Employees</Link>
-                <Link to="/teams" className="block text-gray-700 hover:text-blue-600">🏢 Teams</Link>
-                <Link to="/add-employee" className="block text-gray-700 hover:text-blue-600">📝 Hiring</Link>
+                <Link to="/employees" className={`block text-gray-700 hover:text-blue-600 ${isActive('/employees') ? 'bg-blue-100' : ''}`}>👨‍💼 Employees</Link>
+                <Link to="/teams" className={`block text-gray-700 hover:text-blue-600 ${isActive('/teams') ? 'bg-blue-100' : ''}`}>🏢 Teams</Link>
+                <Link to="/add-employee" className={`block text-gray-700 hover:text-blue-600 ${isActive('/add-employee') ? 'bg-blue-100' : ''}`}>📝 Hiring</Link>
               </>
             )}
 
             {/* Manager */}
             {user?.role_id === 3 && (
               <div className="space-y-6">
-                <Link to="/my-store" className="w-full block text-gray-700 hover:text-blue-600">🏪 My Store</Link>
-                <Link to="/schedules" className="block text-gray-700 hover:text-blue-600">📝 Schedule Planner</Link>
-                <Link to="/time-off" className=" w-full relative block text-gray-700 hover:text-blue-600">
+                <Link to="/my-store" className={`w-full block text-gray-700 hover:text-blue-600 ${isActive('/my-store') ? 'bg-blue-100' : ''}`}>🏪 My Store</Link>
+                <Link to="/schedules" className={`block text-gray-700 hover:text-blue-600 ${isActive('/schedules') ? 'bg-blue-100' : ''}`}>📝 Schedule Planner</Link>
+                <Link to="/time-off" className={`w-full relative block text-gray-700 hover:text-blue-600 ${isActive('/time-off') ? 'bg-blue-100' : ''}`}>
                   🕐 Time Off
                   {pendingTimeOffCount > 0 && (
                     <span className="absolute left-12 bottom-3 mx-11 block h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
