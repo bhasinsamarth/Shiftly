@@ -117,6 +117,7 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
+
         // eslint-disable-next-line
     }, [storeId, weekOffset, user]);
 
@@ -214,6 +215,7 @@ const SchedulePlanner = () => {
     };
 
     // Block access if not authenticated or not a manager
+    if (!user || user.role_id !== 3) {
     if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
