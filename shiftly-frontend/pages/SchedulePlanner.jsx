@@ -21,10 +21,11 @@ const timeOptions = generate24hTimes();
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
-    const offsetToSunday = -dayOfWeek; // Adjust to start from Sunday
+    const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+    // Calculate the date for Sunday of the current week, then add offset*7 days
     const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() + offsetToSunday + offset * 7);
+    baseDate.setDate(today.getDate() - dayOfWeek + offset * 7);
+    baseDate.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(baseDate);
@@ -49,13 +50,17 @@ const SchedulePlanner = () => {
 
     useEffect(() => {
         const fetchManagerStore = async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('employee')
                 .select('store_id')
                 .eq('email', user.email)
                 .single();
 
-            if (data?.store_id) setStoreId(data.store_id);
+            if (error || !data?.store_id) {
+                setStoreId(null);
+            } else {
+                setStoreId(data.store_id);
+            }
         };
         if (user) fetchManagerStore();
     }, [user]);
@@ -64,52 +69,58 @@ const SchedulePlanner = () => {
         if (!storeId) return;
 
         const fetchEmployeesAndSchedules = async () => {
-            const { data: employeeData } = await supabase
+            // Fetch employees
+            const { data: employeeData, error: empErr } = await supabase
                 .from('employee')
                 .select('employee_id, first_name, last_name')
                 .eq('store_id', storeId);
-            if (employeeData) setEmployees(employeeData);
+            if (empErr) {
+                setEmployees([]);
+                return;
+            }
+            setEmployees(employeeData || []);
 
+            // Fetch schedules
             const startDate = weekDates[0].dateString;
             const endDate = weekDates[6].dateString;
 
-            const { data: scheduleEntries } = await supabase
+            const { data: scheduleEntries, error: schedErr } = await supabase
                 .from('store_schedule')
                 .select('employee_id, start_time, end_time')
                 .eq('store_id', storeId)
                 .gte('start_time', `${startDate}T00:00`)
                 .lte('end_time', `${endDate}T23:59`);
 
-            if (scheduleEntries) {
-                const updatedSchedule = {};
-
-                scheduleEntries.forEach(entry => {
-                    const empId = entry.employee_id;
-                    const dateKey = entry.start_time.split('T')[0];
-                    const startTime = entry.start_time.split('T')[1].slice(0, 5); // HH:MM
-                    const endTime = entry.end_time.split('T')[1].slice(0, 5);     // HH:MM
-
-                    if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
-                    updatedSchedule[empId][dateKey] = {
-                        checked: true,
-                        start: startTime,
-                        end: endTime,
-                        existing: true,
-                        editable: false
-                    };
-                });
-
-                setScheduleData(updatedSchedule);
+            if (schedErr) {
+                setScheduleData({});
+                return;
             }
+
+            const updatedSchedule = {};
+            (scheduleEntries || []).forEach(entry => {
+                const empId = entry.employee_id;
+                const dateKey = entry.start_time.split('T')[0];
+                const startTime = entry.start_time.split('T')[1].slice(0, 5);
+                const endTime = entry.end_time.split('T')[1].slice(0, 5);
+
+                if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
+                updatedSchedule[empId][dateKey] = {
+                    checked: true,
+                    start: startTime,
+                    end: endTime,
+                    existing: true,
+                    editable: false
+                };
+            });
+
+            setScheduleData(updatedSchedule);
         };
 
         fetchEmployeesAndSchedules();
-<<<<<<< Updated upstream
-    }, [storeId, weekOffset]);
-=======
+
         // eslint-disable-next-line
     }, [storeId, weekOffset, user]);
->>>>>>> Stashed changes
+
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
@@ -170,6 +181,7 @@ const SchedulePlanner = () => {
             }
         }
 
+        // Update existing shifts
         if (entriesToUpdate.length > 0) {
             for (const entry of entriesToUpdate) {
                 const { error } = await supabase
@@ -180,7 +192,6 @@ const SchedulePlanner = () => {
                     .eq('start_time', entry.start_time);
 
                 if (error) {
-                    console.error(error);
                     setMessage('❌ Failed to update schedule.');
                     setSaving(false);
                     return;
@@ -188,11 +199,11 @@ const SchedulePlanner = () => {
             }
         }
 
+        // Insert new shifts
         if (entriesToInsert.length > 0) {
             const { error } = await supabase.from('store_schedule').insert(entriesToInsert);
 
             if (error) {
-                console.error(error);
                 setMessage('❌ Failed to save schedule.');
                 setSaving(false);
                 return;
@@ -204,8 +215,6 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-<<<<<<< Updated upstream
-=======
     // Block access if not authenticated or not a manager
     if (!user || user.role_id !== 3) {
         return (
@@ -215,7 +224,6 @@ const SchedulePlanner = () => {
         );
     }
 
->>>>>>> Stashed changes
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-4">

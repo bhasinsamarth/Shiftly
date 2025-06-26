@@ -4,6 +4,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { submitEmployeeRequest, fetchPendingTimeOffCount } from '../utils/requestHandler';
 import TimeOffRequestForm from '../components/TimeOffRequestForm';
+import FetchSchedule from './FetchSchedule';
 
 // Helper component for dashboard cards (admin/manager view)
 const DashboardCard = ({ title, value, icon, bgColor, path }) => (
@@ -154,7 +155,8 @@ const Dashboard = () => {
       return { shiftData, shiftError };
     }
 
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6) && myEmployee) {
+    // Include role_id 3 (manager) in the schedule preview logic
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5 || user.role_id === 6) && myEmployee) {
       (async () => {
         try {
           if (!myEmployee.employee_id) {
@@ -200,15 +202,32 @@ const Dashboard = () => {
         }
         setLoadingStoreShifts(false);
       })();
-    } else if (!myEmployee && (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6))) {
+    } else if (!myEmployee && (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5 || user.role_id === 6))) {
       setLoadingStoreShifts(false); // Avoid infinite loading if employee lookup fails
     }
   }, [user, myEmployee]);
 
   // --- TIME CARDS SECTION ---
-  const [timeCards, setTimeCards] = useState([]);
-  const [loadingTimeCards, setLoadingTimeCards] = useState(true);
-  const [errorTimeCards, setErrorTimeCards] = useState('');
+  // (Commented out all timecard queries and related logic
+  /*
+    const [timeCards, setTimeCards] = useState([]);
+    const [loadingTimeCards, setLoadingTimeCards] = useState(true);
+    const [errorTimeCards, setErrorTimeCards] = useState('');
+  
+    useEffect(() => {
+      async function fetchTimeCards() {
+        const { data, error } = await supabase
+          .from('timecards')
+          .select('*')
+          .eq('employee_id', myEmployee.employee_id)
+          .order('clock_in', { ascending: false });
+        if (error) setErrorTimeCards('Could not fetch time cards.');
+        else setTimeCards(data || []);
+        setLoadingTimeCards(false);
+      }
+      if (myEmployee) fetchTimeCards();
+    }, [myEmployee]);
+  */
 
   // --- CLOCK IN/OUT SECTION ---
   const [isClockedIn, setIsClockedIn] = useState(false);
@@ -485,21 +504,14 @@ const Dashboard = () => {
   // --- RENDERING ---
   if (user && (user.role_id === 1 || user.role_id === 2)) {
     // ADMIN AND OWNER dashboard
-    const dynamicDashboardCards = [
-      { title: 'Employees', value: employeesCount, icon: '👥', bgColor: 'bg-blue-50', path: '/employees' },
-      { title: 'Teams', value: teamsCount, icon: '🏢', bgColor: 'bg-green-50', path: '/teams' },
-      { title: 'Employee Requests', value: pendingTimeOff, icon: '📋', bgColor: 'bg-yellow-50', path: '/employee-requests' },
-      { title: 'Payroll', value: totalPayroll ? `$${totalPayroll.toLocaleString()}` : '$0', icon: '💰', bgColor: 'bg-purple-50', path: '/payroll' },
-    ];
-
     return (
       <div className="max-w-6xl mx-auto p-2 sm:p-4 lg:p-6">
         {accessDenied && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4"> {/* Reduced margin above welcome */}
+          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="..." clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
@@ -508,59 +520,97 @@ const Dashboard = () => {
             </div>
           </div>
         )}
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {greetingName}</h1>
-        </section>
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-          {dynamicDashboardCards.map((card, index) => (
-            <DashboardCard key={index} {...card} />
-          ))}
-        </section>
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h2>
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <QuickAction icon="👤" title="Add Employee" path="/add-employee" />
-            <QuickAction icon="👥" title="Manage Employees" path="/employees" />
-            <QuickAction icon="🗂️" title="Manage Teams" path="/teams" />
-            <QuickAction icon="📋" title="Review Time-off" path="/time-off" />
-          </div>
-        </section>
-        <section className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
-          {loadingActivity ? (
-            <p className="text-gray-600">Loading recent activity...</p>
-          ) : errorActivity ? (
-            <p className="text-red-500">{errorActivity}</p>
-          ) : activity.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Type</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Action</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Details</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">When</th>
-                    <th className="px-2 py-3 sm:px-4 lg:px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">By</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {activity.map(act => (
-                    <tr key={act.id} className="hover:bg-gray-50">
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.type}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.action}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-900">{act.subject}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{new Date(act.timestamp).toLocaleString()}</td>
-                      <td className="px-2 py-4 sm:px-4 lg:px-6 whitespace-nowrap text-sm text-gray-500">{act.user_name || act.user_email || 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+        <section className="py-5">
+          <h1 className="text-3xl font-bold mb-1 text-gray-800">Dashboard</h1>
+          <p className="text-md text-gray-500 mb-6">Welcome back, Admin</p>
+
+          {/* STAT CARDS */}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Link to="/employees">
+              <div className="bg-white p-4 rounded-xl shadow-md">
+                <p className="text-sm text-gray-500">Total Employees</p>
+                <p className="text-2xl font-bold text-blue-700">{employeesCount}</p>
+              </div>
+            </Link>
+            {/* To-do: Add logic for open positions  */}
+            <div className="bg-white p-4 rounded-xl shadow-md">
+              <p className="text-sm text-gray-500">Open Positions</p>
+              <p className="text-2xl font-bold text-blue-700">5</p>
             </div>
-          ) : (
-            <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
-          )}
+          </div>
+
+          {/* QUICK ACTIONS */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+            <div className="flex flex-col md:flex-row gap-4">
+              <Link to="/employees">
+                <button className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow transition">
+                  Manage Employees
+                </button>
+              </Link>
+              <Link to="/add-employee">
+                <button className="flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-black font-semibold py-2 px-4 rounded-xl shadow transition">
+                  Hire Employees
+                </button>
+              </Link>
+            </div>
+          </div>
+
+          {/* RECENT HIRES */}
+          {/* placeholder, Still  have to write the logic for recent hires */}
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Hires</h2>
+            <ul className="bg-white rounded-lg shadow divide-y divide-gray-100">
+              {[{ name: 'Emily Zhang', role: 'Physiotherapist' }, { name: 'Jordan Blake', role: 'Front Desk' }].map((emp, idx) => (
+                <li key={idx} className="px-4 py-3 flex justify-between text-sm">
+                  <span>{emp.name}</span>
+                  <span className="text-gray-500">{emp.role}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ACTIVITY FEED */}
+          <section className="mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
+            {loadingActivity ? (
+              <p className="text-gray-600">Loading recent activity...</p>
+            ) : errorActivity ? (
+              <p className="text-red-500">{errorActivity}</p>
+            ) : activity.length > 0 ? (
+              <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Type', 'Action', 'Details', 'When', 'By'].map((col) => (
+                        <th key={col} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {activity.map(act => (
+                      <tr key={act.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 text-sm text-gray-900">{act.type}</td>
+                        <td className="px-4 py-4 text-sm text-gray-500">{act.action}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{act.subject}</td>
+                        <td className="px-4 py-4 text-sm text-gray-500">{new Date(act.timestamp).toLocaleString()}</td>
+                        <td className="px-4 py-4 text-sm text-gray-500">{act.user_name || act.user_email || 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
+            )}
+          </section>
         </section>
       </div>
+
     );
   } else if (user && user.role_id === 3) {
     // Manager dashboard
@@ -574,102 +624,159 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="mb-4 py-5">
+          <h1 className="text-2xl md:text-3xl font-bold  mb-1">Dashboard</h1>
+          <p className="text-md mt-4 text-gray-500 mb-1">Welcome back, {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</p>
         </section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-green-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">My Store</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View and manage your assigned store(s), see store details, and access store-specific actions.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Go to My Store</a>
-            </div>
+        {/* Quick Actions div */}
+        <div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
           </div>
-          {/* Schedule Planner */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-yellow-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Schedule Planner</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">Plan, view, and edit employee schedules. Assign shifts and manage coverage.</p>
-              <a href="/schedules" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Open Schedule Planner</a>
-            </div>
-          </div>
-          {/* Team Management */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-purple-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Team Management</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View your team, manage members, and assign roles or responsibilities.</p>
-              <a href="/teams" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Manage Teams</a>
-            </div>
-          </div>
-          {/* Employee Requests */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-pink-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Employee Requests</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">Review, approve, or deny employee requests, including time-off requests.</p>
-              <a href="/employee-requests" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Review Requests</a>
-            </div>
-          </div>
-          {/* Notifications */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-blue-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Notifications</h3>
-            </div>
-            <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Pending Requests</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Shift Changes</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Alerts</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Announcements</span><span className="font-bold">0</span></li>
-            </ul>
-          </div>
-          {/* Reports & Analytics */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px] group hover:shadow-xl transition-shadow duration-300">
-            <div className="transition-colors duration-300 rounded-t-xl px-6 pt-6 pb-4 group-hover:bg-indigo-700">
-              <h3 className="text-lg font-semibold text-gray-800 mb-0 group-hover:text-white transition">Reports & Analytics</h3>
-            </div>
-            <div className="flex-1 p-6">
-              <p className="text-gray-700">View attendance, hours worked, and other key metrics for your team.</p>
-              <a href="/reports" className="mt-3 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">View Reports</a>
-            </div>
+          <div className='flex flex-col md:flex-row gap-4 mb-6'>
+            <Link to="/schedules">
+              <button className='mb-4 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
+                Create Schedule
+              </button>
+            </Link>
+            <Link to="/time-off">
+              <button className='mb-4 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-black font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
+                Requests
+              </button>
+            </Link>
           </div>
         </div>
-        {/* Complaint Modal */}
-        {showComplaintModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitComplaint}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
-                  <input type="text" value={complaintAgainst} onChange={e => setComplaintAgainst(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
-                  <input type="text" value={complaintSubject} onChange={e => setComplaintSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Details</label>
-                  <textarea value={complaintDetails} onChange={e => setComplaintDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                  <input type="text" value={complaintName} onChange={e => setComplaintName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">Submit</button>
-                  <button type="button" onClick={() => setShowComplaintModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-              </form>
-            </div>
+        {/* Upcoming div */}
+        <div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Upcoming</h2>
           </div>
-        )}
+          <div className=" rounded-lg mb-6">
+          </div>
+          {/* My Schedule */}
+          <Link to="/FetchSchedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
+            {(() => {
+              const now = new Date();
+              const upcomingShift = storeShifts
+                .filter(sch => sch.start_time && new Date(sch.start_time) > now)
+                .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
+              if (loadingStoreShifts) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-blue-700">Loading...</p>
+                  </div>
+                );
+              } else if (errorStoreShifts) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-red-600">{errorStoreShifts}</p>
+                  </div>
+                );
+              } else if (!upcomingShift) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-gray-500">You have nothing planned.</p>
+                  </div>
+                );
+              } else {
+                const shiftDate = new Date(upcomingShift.start_time);
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 " style={{ maxHeight: '200px' }}>
+                    <h3 className="text-md text-gray-500 mb-2">
+                      {shiftDate.toLocaleDateString('en-US', { weekday: 'long' })}, {shiftDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </h3>
+                    <ul className="divide-y divide-gray-100">
+                      <li className="py-1 flex items-center">
+                        <div className=" flex-1">
+                          <span className='font-bold'>Shift from </span>
+                          <div className="text-xs sm:text-sm text-gray-700 font-semibold">
+                            {upcomingShift.start_time && upcomingShift.end_time ? `${new Date(upcomingShift.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to ${new Date(upcomingShift.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}
+                          </div>
+                          <div className="text-xs text-gray-500">{upcomingShift.department || upcomingShift.location || ''}</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                );
+              }
+            })()}
+          </Link>
+        </div>
+        {/* recent activity */}
+        <div className="mt-10">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
+          <div className="bg-white rounded-xl shadow-md p-6">
+            {loadingActivity ? (
+              <p className="text-gray-600">Loading recent activity...</p>
+            ) : errorActivity ? (
+              <p className="text-red-500">{errorActivity}</p>
+            ) : activity.length > 0 ? (
+              <ul className="divide-y divide-gray-100">
+                {activity.map((act, idx) => (
+                  <li key={act.id || idx} className="flex items-start py-4 gap-4">
+                    <div className="flex-shrink-0 mt-1">
+                      {/* Icon based on activity type */}
+                      {act.type === 'Time-off Request' ? (
+                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </span>
+                      ) : act.type === 'Schedule' ? (
+                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </span>
+                      ) : (
+                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
+                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6" /></svg>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 text-sm mb-1">{act.action || act.type}</div>
+                      <div className="text-gray-500 text-xs mb-1">{act.subject}</div>
+                      <div className="text-gray-400 text-xs">{act.timestamp ? new Date(act.timestamp).toLocaleString() : ''}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-10">
+
+          {/* Complaint Modal */}
+          {showComplaintModal && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
+                <form onSubmit={handleSubmitComplaint}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
+                    <input type="text" value={complaintAgainst} onChange={e => setComplaintAgainst(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Subject</label>
+                    <input type="text" value={complaintSubject} onChange={e => setComplaintSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Details</label>
+                    <textarea value={complaintDetails} onChange={e => setComplaintDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
+                  </div>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
+                    <input type="text" value={complaintName} onChange={e => setComplaintName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
+                  </div>
+                  <div className="flex justify-end space-x-4">
+                    <button type="submit" className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">Submit</button>
+                    <button type="button" onClick={() => setShowComplaintModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* End Complaint Modal */}
       </div>
     );
   } else if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
@@ -684,99 +791,85 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="container mx-auto p-2 sm:p-4 lg:p-6">
-        <section className="mb-4 bg-blue-700 rounded-xl px-6 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Welcome {myEmployee.first_name}{myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="mb-4 py-5">
+          <h1 className="text-2xl md:text-3xl font-bold  mb-1">Dashboard</h1>
+          <p className="text-md mt-4 text-gray-500 mb-1">Welcome back, {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</p>
         </section>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* My Schedule */}
-          <Link to="/FetchSchedule" className="col-span-1 bg-white rounded-xl shadow-md flex flex-col border border-gray-200 min-h-[200px] cursor-pointer">
-              <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-                <h3 className="text-lg font-semibold text-white mb-0">My Schedule</h3>
-              </div>
-              <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
-                {loadingStoreShifts ? (
-                  <p className="text-blue-700">Loading...</p>
-                ) : errorStoreShifts ? (
-                  <p className="text-red-600">{errorStoreShifts}</p>
-                ) : storeShifts.length === 0 ? (
-                  <p className="text-gray-500">You have nothing planned.</p>
-                ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {storeShifts.slice(0, 5).map((sch, idx) => (
-                      <li key={sch.id || idx} className="py-2 flex items-center">
-                        <div className="w-10 sm:w-12 text-center">
-                          <span className="block text-xs text-gray-400 font-medium">{sch.start_time ? new Date(sch.start_time).toLocaleDateString('en-US', { weekday: 'short' }) : '--'}</span>
-                          <span className="block text-md sm:text-lg font-bold text-gray-700">{sch.start_time ? new Date(sch.start_time).getDate() : '--'}</span>
-                        </div>
-                        <div className="ml-2 sm:ml-3 flex-1">
-                          <div className="text-xs sm:text-sm text-gray-700 font-medium">{sch.start_time && sch.end_time ? `${new Date(sch.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(sch.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}</div>
-                          <div className="text-xs text-gray-500">{sch.department || sch.location || ''}</div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-          </Link>
-          {/* My Timecard */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-              <h3 className="text-lg font-semibold text-white mb-0">My Timecard</h3>
-            </div>
-            <div className="flex flex-col items-center space-y-3 p-4">
-              <button onClick={handleClockIn} disabled={isClockedIn} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 w-full">Clock In/Clock Out</button>
-            </div>
-            {timeCards.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-6">
-                <span className="text-sm">No data to display.</span>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {timeCards.slice(0, 5).map((tc, idx) => (
-                  <li key={tc.id || idx} className="py-2">
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="font-medium text-gray-700">{tc.date}</span>
-                      <span className="text-gray-500">{tc.clock_in ? `${new Date(tc.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'} - {tc.clock_out ? `${new Date(tc.clock_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">Hours: {tc.clock_in && tc.clock_out ? ((new Date(tc.clock_out) - new Date(tc.clock_in)) / 3600000).toFixed(2) : '-'}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {/* Quick Actions div */}
+        <div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
           </div>
-          {/* My Notifications */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-              <h3 className="text-lg font-semibold text-white mb-0">My Notifications</h3>
-            </div>
-            <ul className="divide-y divide-gray-100 p-6 flex-1 overflow-y-auto" style={{ maxHeight: '200px' }}>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>My Requests</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Timekeeping</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>System Messages</span><span className="font-bold">0</span></li>
-              <li className="py-2 flex justify-between text-xs sm:text-sm"><span>Notices</span><span className="font-bold">0</span></li>
-            </ul>
-          </div>
-          {/* Request Time Off */}
-          <div className="bg-white rounded-xl shadow-md flex flex-col border border-gray-200 col-span-1 min-h-[200px]">
-            <div className="bg-blue-700 rounded-t-xl px-6 pt-6 pb-4">
-              <h3 className="text-lg font-semibold text-white mb-0">Request Time Off</h3>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-6">
-              <span className="text-gray-500 mb-2">Request Time Off</span>
-              <button onClick={handleOpenTimeOffModal} className="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Time-Off Request</button>
-            </div>
+          <div className='flex flex-col md:flex-row gap-4 mb-6'>
+            <Link to="/">
+              <button className='mb-4 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
+                Clock in
+              </button>
+            </Link>
+            <Link to="/FetchSchedule">
+              <button className='mb-4 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-black font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
+                My Schedule
+              </button>
+            </Link>
           </div>
         </div>
-        {/* Time Off Modal */}
-        {myEmployee && (
-          <TimeOffRequestForm
-            employeeId={myEmployee.id}
-            show={showTimeOffModal}
-            onClose={() => setShowTimeOffModal(false)}
-            onSuccess={() => setAlertMsg({ type: 'success', text: 'Time off request submitted successfully.' })}
-          />
-        )}
+        {/* Upcoming div */}
+        <div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Upcoming</h2>
+          </div>
+          <div className=" rounded-lg mb-6">
+          </div>
+          {/* My Schedule */}
+          <Link to="/FetchSchedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
+            {(() => {
+              const now = new Date();
+              const upcomingShift = storeShifts
+                .filter(sch => sch.start_time && new Date(sch.start_time) > now)
+                .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0];
+              if (loadingStoreShifts) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-blue-700">Loading...</p>
+                  </div>
+                );
+              } else if (errorStoreShifts) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-red-600">{errorStoreShifts}</p>
+                  </div>
+                );
+              } else if (!upcomingShift) {
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 p-6" style={{ maxHeight: '200px' }}>
+                    <p className="text-gray-500">You have nothing planned.</p>
+                  </div>
+                );
+              } else {
+                const shiftDate = new Date(upcomingShift.start_time);
+                return (
+                  <div className="flex-1 overflow-y-auto text-gray-800 " style={{ maxHeight: '200px' }}>
+                    <h3 className="text-md text-gray-500 mb-2">
+                      {shiftDate.toLocaleDateString('en-US', { weekday: 'long' })}, {shiftDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </h3>
+                    <ul className="divide-y divide-gray-100">
+                      <li className="py-1 flex items-center">
+                        <div className=" flex-1">
+                          <span className='font-bold'>Shift from </span>
+                          <div className="text-xs sm:text-sm text-gray-700 font-semibold">
+                            {upcomingShift.start_time && upcomingShift.end_time ? `${new Date(upcomingShift.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to ${new Date(upcomingShift.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No shift'}
+                          </div>
+                          <div className="text-xs text-gray-500">{upcomingShift.department || upcomingShift.location || ''}</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                );
+              }
+            })()}
+          </Link>
+        </div>
         {/* Complaint Modal */}
         {showComplaintModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
