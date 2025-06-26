@@ -216,7 +216,6 @@ const SchedulePlanner = () => {
 
     // Block access if not authenticated or not a manager
     if (!user || user.role_id !== 3) {
-    if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
                 Access Denied: Managers Only
