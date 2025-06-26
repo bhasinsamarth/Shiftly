@@ -117,8 +117,10 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
+
         // eslint-disable-next-line
     }, [storeId, weekOffset, user]);
+
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
