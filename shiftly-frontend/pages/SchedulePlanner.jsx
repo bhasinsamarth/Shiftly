@@ -104,7 +104,12 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
+<<<<<<< Updated upstream
     }, [storeId, weekOffset]);
+=======
+        // eslint-disable-next-line
+    }, [storeId, weekOffset, user]);
+>>>>>>> Stashed changes
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
@@ -199,6 +204,18 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
+<<<<<<< Updated upstream
+=======
+    // Block access if not authenticated or not a manager
+    if (!user || user.role_id !== 3) {
+        return (
+            <div className="p-6 text-red-500 text-center">
+                Access Denied: Managers Only
+            </div>
+        );
+    }
+
+>>>>>>> Stashed changes
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-4">
