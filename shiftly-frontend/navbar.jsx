@@ -68,11 +68,8 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error during Supabase sign out:', error);
-    }
-    await logout();
+    await supabase.auth.signOut(); // Always sign out from Supabase session
+    await logout(); // Clear app state and storage
     navigate('/login');
   };
 
@@ -88,7 +85,8 @@ const Navbar = () => {
 
   const commonLinks = (
     <>
-      <Link to="/FetchSchedule" className={`block text-gray-700 hover:text-blue-600 ${isActive('/FetchSchedule') ? 'bg-blue-100' : ''}`}>📆 View My Schedule</Link>
+      <Link to="/fetch-schedule" className={`block text-gray-700 hover:text-blue-600 ${isActive('/fetch-schedule') ? 'bg-blue-100' : ''}`}>📆 View My Schedule</Link>
+      <Link to="/clock" className={`block text-gray-700 hover:text-blue-600 ${isActive('/clock') ? 'bg-blue-100' : ''}`}>🕐 Clock In/Out</Link>
     </>
   );
 
@@ -112,6 +110,7 @@ const Navbar = () => {
                 <Link to="/employees" className={`block text-gray-700 hover:text-blue-600 ${isActive('/employees') ? 'bg-blue-100' : ''}`}>👨‍💼 Employees</Link>
                 <Link to="/teams" className={`block text-gray-700 hover:text-blue-600 ${isActive('/teams') ? 'bg-blue-100' : ''}`}>🏢 Teams</Link>
                 <Link to="/add-employee" className={`block text-gray-700 hover:text-blue-600 ${isActive('/add-employee') ? 'bg-blue-100' : ''}`}>📝 Hiring</Link>
+                <Link to="/bulk-geocoding" className={`block text-gray-700 hover:text-blue-600 ${isActive('/bulk-geocoding') ? 'bg-blue-100' : ''}`}>📍 Setup Store Locations</Link>
               </>
             )}
 
@@ -119,6 +118,7 @@ const Navbar = () => {
             {user?.role_id === 3 && (
               <div className="space-y-6">
                 <Link to="/my-store" className={`w-full block text-gray-700 hover:text-blue-600 ${isActive('/my-store') ? 'bg-blue-100' : ''}`}>🏪 My Store</Link>
+                <Link to="/bulk-geocoding" className={`w-full block text-gray-700 hover:text-blue-600 ${isActive('/bulk-geocoding') ? 'bg-blue-100' : ''}`}>📍 Setup Store Location</Link>
                 <Link to="/schedules" className={`block text-gray-700 hover:text-blue-600 ${isActive('/schedules') ? 'bg-blue-100' : ''}`}>📝 Schedule Planner</Link>
                 <Link to="/time-off" className={`w-full relative block text-gray-700 hover:text-blue-600 ${isActive('/time-off') ? 'bg-blue-100' : ''}`}>
                   🕐 Time Off

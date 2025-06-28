@@ -23,38 +23,41 @@ export const useAuth = () => {
 
   // On mount, check for cookie if no localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem("shiftly_user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      // Fetch employee record to get latest role_id and other fields
-      (async () => {
-        const { data: empData, error: empError } = await supabase
-          .from("employee")
-          .select("*")
-          .eq("email", parsedUser.email)
-          .single();
-        let mergedUser = parsedUser;
-        if (!empError && empData) {
-          mergedUser = { ...parsedUser, ...empData };
-          setUser(mergedUser);
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
-        } else {
-          // If no employee record, fallback to parsedUser
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-          setIsLoading(false);
+    (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session;
+      if (session) {
+        // Only restore user if Supabase session exists and keepLoggedIn (cookie) is set
+        const cookieUser = getCookie("shiftly_user");
+        if (cookieUser) {
+          try {
+            const parsedUser = JSON.parse(cookieUser);
+            const { data: empData, error: empError } = await supabase
+              .from("employee")
+              .select("*")
+              .eq("email", parsedUser.email)
+              .single();
+            let mergedUser = parsedUser;
+            if (!empError && empData) {
+              mergedUser = { ...parsedUser, ...empData };
+              setUser(mergedUser);
+              setIsAuthenticated(true);
+              setIsLoading(false);
+              localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
+            } else {
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+              setIsLoading(false);
+            }
+            return;
+          } catch {}
         }
-      })();
-      return;
-    }
-    // Check cookie for persistent login
-    const cookieUser = getCookie("shiftly_user");
-    if (cookieUser) {
-      try {
-        const parsedUser = JSON.parse(cookieUser);
-        (async () => {
+      }
+      // Check cookie for persistent login (legacy/fallback)
+      const cookieUser = getCookie("shiftly_user");
+      if (cookieUser) {
+        try {
+          const parsedUser = JSON.parse(cookieUser);
           const { data: empData, error: empError } = await supabase
             .from("employee")
             .select("*")
@@ -70,16 +73,23 @@ export const useAuth = () => {
             setUser(parsedUser);
             setIsAuthenticated(true);
           }
-        })();
-      } catch {}
-    }
-    setIsLoading(false);
+          setIsLoading(false);
+          return;
+        } catch {}
+      }
+      // No session, clear local user
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem("shiftly_user");
+      setIsLoading(false);
+    })();
   }, []);
 
   const login = async (email, password, keepLoggedIn = false) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { persistSession: !!keepLoggedIn }
     });
 
     if (error) {
@@ -102,16 +112,18 @@ export const useAuth = () => {
 
     setUser(user);
     setIsAuthenticated(true);
-    localStorage.setItem("shiftly_user", JSON.stringify(user));
     if (keepLoggedIn) {
+      localStorage.setItem("shiftly_user", JSON.stringify(user));
       setCookie("shiftly_user", JSON.stringify(user), 60); // 60 days
     } else {
+      localStorage.removeItem("shiftly_user");
       setCookie("shiftly_user", "", -1); // Remove cookie if not set
     }
     return true;
   };
 
   const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("shiftly_user");
