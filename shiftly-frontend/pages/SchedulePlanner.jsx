@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import CalendarWidget from '../components/CalendarWidget';
 
 // Generate time slots (24-hour format, 30 min steps)
 const generate24hTimes = () => {
@@ -17,7 +18,6 @@ const generate24hTimes = () => {
 
 const timeOptions = generate24hTimes();
 
-// Generate week days based on offset (0 = next week, 1 = week after, etc.)
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
@@ -31,7 +31,7 @@ const getWeekDates = (offset = 0) => {
         const date = new Date(baseDate);
         date.setDate(baseDate.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
-        const label = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         dates.push({ dateString, label });
     }
 
@@ -46,6 +46,8 @@ const SchedulePlanner = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [weekOffset, setWeekOffset] = useState(0);
+    const [selectedEmployee, setSelectedEmployee] = useState('');
+    const [editingCell, setEditingCell] = useState(null);
     const weekDates = getWeekDates(weekOffset);
 
     useEffect(() => {
@@ -69,7 +71,6 @@ const SchedulePlanner = () => {
         if (!storeId) return;
 
         const fetchEmployeesAndSchedules = async () => {
-            // Fetch employees
             const { data: employeeData, error: empErr } = await supabase
                 .from('employee')
                 .select('employee_id, first_name, last_name')
@@ -80,7 +81,6 @@ const SchedulePlanner = () => {
             }
             setEmployees(employeeData || []);
 
-            // Fetch schedules
             const startDate = weekDates[0].dateString;
             const endDate = weekDates[6].dateString;
 
@@ -117,8 +117,9 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
+
         // eslint-disable-next-line
-    }, [storeId, weekOffset, isAuthenticated, user]);
+    }, [storeId, weekOffset, user]);
 
     const handleCheckboxChange = (empId, date) => {
         setScheduleData(prev => ({
@@ -144,6 +145,44 @@ const SchedulePlanner = () => {
                 }
             }
         }));
+    };
+
+    const handleCellClick = (empId, dateString) => {
+        const shift = scheduleData[empId]?.[dateString];
+        if (!shift?.checked) {
+            // Create a new shift if it doesn't exist
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        checked: true,
+                        start: '',
+                        end: '',
+                        existing: false,
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        } else if (shift.existing && !shift.editable) {
+            // Make existing shift editable
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        ...prev[empId][dateString],
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        }
+    };
+
+    const handleInputBlur = () => {
+        setEditingCell(null);
     };
 
     const handleSubmit = async () => {
@@ -179,7 +218,6 @@ const SchedulePlanner = () => {
             }
         }
 
-        // Update existing shifts
         if (entriesToUpdate.length > 0) {
             for (const entry of entriesToUpdate) {
                 const { error } = await supabase
@@ -197,7 +235,6 @@ const SchedulePlanner = () => {
             }
         }
 
-        // Insert new shifts
         if (entriesToInsert.length > 0) {
             const { error } = await supabase.from('store_schedule').insert(entriesToInsert);
 
@@ -214,7 +251,7 @@ const SchedulePlanner = () => {
     };
 
     // Block access if not authenticated or not a manager
-    if (!isAuthenticated || user.role_id !== 3) {
+    if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
                 Access Denied: Managers Only
@@ -223,113 +260,153 @@ const SchedulePlanner = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-bold">Schedule Planner</h2>
-                <div className="space-x-2">
-                    <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-3 py-1 border rounded">← Prev Week</button>
-                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-3 py-1 border rounded">Next Week →</button>
-                </div>
-            </div>
+        <div className="lg:ml-[16.67%] min-h-screen bg-white" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
+            <div className="layout-container flex h-full grow flex-col">
+                <div className="gap-1 pr-6 flex flex-1 justify-center py-5">
+                    {/* Calendar Section */}
+                    <div className="layout-content-container flex flex-col w-80">
+                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
+                            Schedule
+                        </h2>
+                        <div className="flex flex-wrap items-center justify-center gap-6 p-4">
+                            <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
+                                <CalendarWidget />
+                            </div>
+                        </div>
 
-            {message && <p className="mb-4 text-sm text-center text-red-600">{message}</p>}
-
-            {employees.map(emp => (
-                <div key={emp.employee_id} className="mb-8 border border-gray-200 rounded-lg shadow-sm p-4">
-                    <h3 className="text-xl font-semibold mb-3">{emp.first_name} {emp.last_name}</h3>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm text-left">
-                            <thead>
-                                <tr>
-                                    {weekDates.map(({ dateString, label }) => (
-                                        <th key={dateString} className="px-3 py-2 font-semibold text-gray-700">
-                                            {label}
-                                        </th>
+                        {/* Filters Section */}
+                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
+                            Filters
+                        </h2>
+                        <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                            <label className="flex flex-col min-w-40 flex-1">
+                                <select 
+                                    className="form-input flex w-full rounded-xl text-[#121416] border border-[#dde1e3] bg-white h-14 px-4 text-base"
+                                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                                    value={selectedEmployee}
+                                >
+                                    <option value="">All Employees</option>
+                                    {employees.map(emp => (
+                                        <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>
                                     ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    {weekDates.map(({ dateString }) => {
-                                        const shift = scheduleData[emp.employee_id]?.[dateString];
-                                        return (
-                                            <td key={dateString} className="px-3 py-2 border-t align-top">
-                                                <label className="flex items-center space-x-2 mb-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={shift?.checked || false}
-                                                        onChange={() => handleCheckboxChange(emp.employee_id, dateString)}
-                                                    />
-                                                    <span className="text-xs">Shift</span>
-                                                </label>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
 
-                                                {shift?.checked && (
-                                                    <div className="space-y-1">
-                                                        {shift.existing && !shift.editable ? (
-                                                            <div className="text-xs">
-                                                                <p>{shift.start} - {shift.end}</p>
-                                                                <button
-                                                                    className="text-blue-500 underline text-xs mt-1"
-                                                                    onClick={() => {
-                                                                        setScheduleData(prev => ({
-                                                                            ...prev,
-                                                                            [emp.employee_id]: {
-                                                                                ...prev[emp.employee_id],
-                                                                                [dateString]: {
-                                                                                    ...prev[emp.employee_id][dateString],
-                                                                                    editable: true
-                                                                                }
-                                                                            }
-                                                                        }));
-                                                                    }}
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <select
-                                                                    value={shift.start || ''}
-                                                                    onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
-                                                                    className="w-full border rounded p-1 text-xs"
-                                                                >
-                                                                    <option value="">--</option>
-                                                                    {timeOptions.map(time => (
-                                                                        <option key={time} value={time}>{time}</option>
-                                                                    ))}
-                                                                </select>
+                    {/* Schedule Table */}
+                    <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+                        <div className="flex flex-wrap justify-between gap-3 p-4">
+                            <div className="flex min-w-72 flex-col gap-3">
+                                <p className="text-[#121416] text-[32px] font-bold">Schedule</p>
+                                <p className="text-[#6a7681] text-sm">Manage and view employee schedules</p>
+                            </div>
+                            <div className="flex space-x-3">
+                                <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
+                                <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
+                            </div>
+                        </div>
+                        
+                        <div className="pb-3">
+                            <div className="flex border-b border-[#dde1e3] px-4 gap-8">
+                                {["Day", "Week", "Month"].map((tab) => (
+                                    <a
+                                        key={tab}
+                                        href="#"
+                                        className={`flex flex-col items-center pb-[13px] pt-4 border-b-[3px] ${
+                                            tab === "Week"
+                                                ? "border-b-[#121416] text-[#121416]"
+                                                : "border-b-transparent text-[#6a7681]"
+                                        }`}
+                                    >
+                                        <p className="text-sm font-bold tracking-[0.015em]">{tab}</p>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
 
-                                                                <select
-                                                                    value={shift.end || ''}
-                                                                    onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'end', e.target.value)}
-                                                                    className="w-full border rounded p-1 text-xs"
-                                                                >
-                                                                    <option value="">--</option>
-                                                                    {timeOptions.map(time => (
-                                                                        <option key={time} value={time}>{time}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            </tbody>
-                        </table>
+                        {message && <p className="mb-6 text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg mx-4">{message}</p>}
+
+                        {/* Schedule table */}
+                        <div className="px-4 py-3">
+                            <div className="overflow-x-auto border border-[#dde1e3] rounded-xl">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-white">
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-[#121416]">Employee</th>
+                                            {weekDates.map(({ label }) => (
+                                                <th key={label} className="px-4 py-3 text-left text-sm font-medium text-[#121416]">{label}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {employees
+                                            .filter(emp => !selectedEmployee || emp.employee_id === parseInt(selectedEmployee))
+                                            .map(emp => (
+                                                <tr key={emp.employee_id} className="border-t border-[#dde1e3] hover:bg-gray-50 transition h-12">
+                                                    <td className="px-4 py-3 text-sm text-[#121416] font-medium h-12">
+                                                        {emp.first_name} {emp.last_name}
+                                                    </td>
+                                                    {weekDates.map(({ dateString }) => {
+                                                        const shift = scheduleData[emp.employee_id]?.[dateString];
+                                                        const isEditing = editingCell === `${emp.employee_id}-${dateString}`;
+                                                        return (
+                                                            <td 
+                                                                key={dateString} 
+                                                                className="px-4 py-3 text-sm text-[#6a7681] h-12 cursor-pointer hover:bg-gray-100 transition"
+                                                                onClick={() => handleCellClick(emp.employee_id, dateString)}
+                                                            >
+                                                                {shift?.checked ? (
+                                                                    shift.editable || isEditing ? (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={shift.start || ''}
+                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
+                                                                                onBlur={handleInputBlur}
+                                                                                className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                                placeholder="Start (e.g. 9:00)"
+                                                                                autoFocus={isEditing}
+                                                                            />
+                                                                            <input
+                                                                                type="text"
+                                                                                value={shift.end || ''}
+                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'end', e.target.value)}
+                                                                                onBlur={handleInputBlur}
+                                                                                className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                                placeholder="End (e.g. 17:00)"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-[#121416] font-medium">
+                                                                            {shift.start} - {shift.end}
+                                                                        </span>
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-[#9ca3af] opacity-60">Off</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="px-4 py-3">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={saving}
+                                className="flex min-w-[84px] max-w-[200px] items-center justify-center rounded-xl h-10 px-4 bg-[#dce8f3] text-[#121416] text-sm font-bold hover:bg-[#c8daf0] transition disabled:opacity-50"
+                            >
+                                <span className="truncate">{saving ? 'Saving...' : 'Save Schedule'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            ))}
-
-            <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-                {saving ? 'Saving...' : 'Save Schedule'}
-            </button>
+            </div>
         </div>
     );
 };
