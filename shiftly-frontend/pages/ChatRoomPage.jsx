@@ -13,51 +13,58 @@ const ChatRoomPage = () => {
   const { user } = useAuth();
   const [employee, setEmployee] = useState(null);
   const [room, setRoom] = useState(null);
-  const [storeName, setStoreName] = useState('');   // ← store-name state
+  const [storeName, setStoreName] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // 1️⃣ Fetch current employee ID
+  // 1️⃣ Fetch full current employee record (including store_id)
   useEffect(() => {
     if (!user?.id) return;
-    supabase
-      .from('employee')
-      .select('employee_id')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => setEmployee(data));
+    (async () => {
+      const { data, error } = await supabase
+        .from('employee')
+        .select('employee_id, first_name, last_name, role_id, store_id, profile_photo_path')
+        .eq('id', user.id)
+        .single();
+      if (error) console.error('Error fetching employee:', error);
+      else setEmployee(data);
+    })();
   }, [user]);
 
   // 2️⃣ Fetch room metadata (including store_id)
   useEffect(() => {
     if (!roomId) return;
-    supabase
-      .from('chat_rooms')
-      .select('id, type, name, store_id')
-      .eq('id', roomId)
-      .single()
-      .then(async ({ data }) => {
-        setRoom(data);
+    (async () => {
+      const { data, error } = await supabase
+        .from('chat_rooms')
+        .select('id, type, name, store_id')
+        .eq('id', roomId)
+        .single();
+      if (error) {
+        console.error('Error fetching room:', error);
         setLoading(false);
+        return;
+      }
+      setRoom(data);
 
-        // 3️⃣ If it's a store room, fetch the real store_name
-        if (data.type === 'store') {
-          const { data: storeRec, error: storeErr } = await supabase
-            .from('store')
-            .select('store_name')
-            .eq('store_id', data.store_id)
-            .single();
-          if (!storeErr && storeRec) {
-            setStoreName(storeRec.store_name);
-          }
-        }
-      });
+      // 3️⃣ If it's a store-type room, fetch the store's name
+      if (data.type === 'store' && data.store_id != null) {
+        const { data: storeRec, error: storeErr } = await supabase
+          .from('store')
+          .select('store_name')
+          .eq('store_id', data.store_id)
+          .single();
+        if (storeErr) console.error('Error fetching store name:', storeErr);
+        else setStoreName(storeRec.store_name);
+      }
+      setLoading(false);
+    })();
   }, [roomId]);
 
   if (loading || !employee || !room) {
-    return <div className="p-6 text-center">Loading chat...</div>;
+    return <div className="p-6 text-center">Loading chat…</div>;
   }
 
-  // 4️⃣ Choose the right chat component
+  // 4️⃣ Pick which chat component to render
   let ChatComponent;
   if (room.type === 'store') ChatComponent = StoreChat;
   else if (room.type === 'group') ChatComponent = GroupChatRoom;
@@ -66,7 +73,6 @@ const ChatRoomPage = () => {
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
-      {/* Display storeName for store rooms, otherwise room.name */}
       <h1 className="text-2xl font-semibold mb-4">
         {room.type === 'store' ? storeName : room.name}
       </h1>
