@@ -1,20 +1,24 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import Mailjet from 'node-mailjet';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+dotenv.config();
 
+const mailjet = Mailjet.apiConnect(
+  process.env.VITE_MAILJET_API_KEY,
+  process.env.VITE_MAILJET_API_SECRET
+);
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+app.post('/send-invite', async (req, res) => {
   const { email, link } = req.body;
-
   if (!email || !link) {
     return res.status(400).json({ error: 'Missing email or link' });
   }
-
-  const mailjet = Mailjet.apiConnect(
-    process.env.MAILJET_API_KEY,
-    process.env.MAILJET_API_SECRET
-  );
 
   try {
     await mailjet
@@ -65,18 +69,26 @@ export default async function handler(req, res) {
         ],
       });
 
-    res.status(200).json({ status: 'sent' });
+    res.json({ status: 'sent' });
   } catch (err) {
+     // 1) Log the full error to your console
     console.error('Mailjet error:', {
       statusCode: err.statusCode,
       message: err.message,
+      // Mailjet puts the API response in err.response.body
       responseBody: err.response && err.response.body,
     });
 
+    // 2) Return that info to the front-end for easier debugging
     res.status(500).json({
       error: err.message,
       statusCode: err.statusCode,
       details: err.response && err.response.body,
     });
   }
-}
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () =>
+  console.log(`Mailjet mailer listening on port ${PORT}`)
+);

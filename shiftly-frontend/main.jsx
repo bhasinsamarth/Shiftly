@@ -20,6 +20,8 @@ import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
+import ChatPage from "./pages/ChatPage";
+import ChatRoomPage from "./pages/ChatRoomPage";
 
 // Auth context provider
 import { AuthProvider } from "./context/AuthContext";
@@ -45,6 +47,8 @@ function AppWithRoutes() {
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
         <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+        <Route path="/chat/room/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
         
         {/* Catch-all route for 404 */}
         <Route path="*" element={

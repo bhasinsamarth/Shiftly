@@ -108,6 +108,9 @@ const Navbar = () => {
                   <Link to="/dashboard" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                     Dashboard
                   </Link>
+                  <Link to="/chat" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                    Chat
+                  </Link>
                   {(user?.role_id === 1 || user?.role_id === 2) && (
                     <>
                       <Link to="/employees" className="border-transparent text-gray-500 hover:border-blue-500 hover:text-blue-600 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
@@ -176,6 +179,7 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
           <div className="flex items-center sm:hidden">
             <button
               type="button"
@@ -193,6 +197,31 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {mobileMenuOpen && isAuthenticated && (
+        <div className="sm:hidden px-2 pt-2 pb-3 space-y-1">
+          <Link to="/dashboard" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Dashboard</Link>
+          <Link to="/chat" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Chat</Link>
+
+          {(user?.role_id === 1 || user?.role_id === 2) && (
+            <>
+              <Link to="/employees" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Employees</Link>
+              <Link to="/teams" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">Teams</Link>
+            </>
+          )}
+
+          {user?.role_id === 3 && (
+            <Link to="/employee-requests" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 relative">
+              Employee Requests
+              {pendingTimeOffCount > 0 && (
+                <span className="absolute top-2 right-3 inline-flex items-center justify-center px-1 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                  {pendingTimeOffCount}
+                </span>
+              )}
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Report Modal */}
       {showReportModal && (
