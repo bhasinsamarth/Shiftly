@@ -23,38 +23,75 @@ export const useAuth = () => {
 
   // On mount, check for cookie if no localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem("shiftly_user");
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      // Fetch employee record to get latest role_id and other fields
-      (async () => {
-        const { data: empData, error: empError } = await supabase
-          .from("employee")
-          .select("*")
-          .eq("email", parsedUser.email)
-          .single();
-        let mergedUser = parsedUser;
-        if (!empError && empData) {
-          mergedUser = { ...parsedUser, ...empData };
+    (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session;
+      if (session) {
+        // Check if session has expired (for non-persistent sessions)
+        const expiration = localStorage.getItem("session_expiration");
+        const now = new Date().getTime();
+        
+        if (expiration && now > parseInt(expiration, 10)) {
+          // Session expired, sign out
+          await supabase.auth.signOut();
+          localStorage.removeItem("session_expiration");
+          localStorage.removeItem("shiftly_user");
+          setCookie("shiftly_user", "", -1);
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Restore user from valid Supabase session
+        const cookieUser = getCookie("shiftly_user");
+        if (cookieUser) {
+          // User has persistent login (cookie exists)
+          try {
+            const parsedUser = JSON.parse(cookieUser);
+            const { data: empData, error: empError } = await supabase
+              .from("employee")
+              .select("*")
+              .eq("email", parsedUser.email)
+              .single();
+            let mergedUser = parsedUser;
+            if (!empError && empData) {
+              mergedUser = { ...parsedUser, ...empData };
+              setUser(mergedUser);
+              setIsAuthenticated(true);
+              setIsLoading(false);
+              localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
+            } else {
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+              setIsLoading(false);
+            }
+            return;
+          } catch {}
+        } else {
+          // No cookie but valid session - restore from session user
+          const { data: empData, error: empError } = await supabase
+            .from("employee")
+            .select("*")
+            .eq("email", session.user.email)
+            .single();
+          
+          let mergedUser = session.user;
+          if (!empError && empData) {
+            mergedUser = { ...session.user, ...empData };
+          }
+          
           setUser(mergedUser);
           setIsAuthenticated(true);
           setIsLoading(false);
-          localStorage.setItem("shiftly_user", JSON.stringify(mergedUser));
-        } else {
-          // If no employee record, fallback to parsedUser
-          setUser(parsedUser);
-          setIsAuthenticated(true);
-          setIsLoading(false);
+          return;
         }
-      })();
-      return;
-    }
-    // Check cookie for persistent login
-    const cookieUser = getCookie("shiftly_user");
-    if (cookieUser) {
-      try {
-        const parsedUser = JSON.parse(cookieUser);
-        (async () => {
+      }
+      // Check cookie for persistent login (legacy/fallback)
+      const cookieUser = getCookie("shiftly_user");
+      if (cookieUser) {
+        try {
+          const parsedUser = JSON.parse(cookieUser);
           const { data: empData, error: empError } = await supabase
             .from("employee")
             .select("*")
@@ -70,16 +107,23 @@ export const useAuth = () => {
             setUser(parsedUser);
             setIsAuthenticated(true);
           }
-        })();
-      } catch {}
-    }
-    setIsLoading(false);
+          setIsLoading(false);
+          return;
+        } catch {}
+      }
+      // No session, clear local user
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem("shiftly_user");
+      setIsLoading(false);
+    })();
   }, []);
 
   const login = async (email, password, keepLoggedIn = false) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { persistSession: !!keepLoggedIn }
     });
 
     if (error) {
@@ -102,19 +146,27 @@ export const useAuth = () => {
 
     setUser(user);
     setIsAuthenticated(true);
-    localStorage.setItem("shiftly_user", JSON.stringify(user));
+    
     if (keepLoggedIn) {
+      localStorage.setItem("shiftly_user", JSON.stringify(user));
       setCookie("shiftly_user", JSON.stringify(user), 60); // 60 days
+      localStorage.removeItem("session_expiration"); // Remove short expiration
     } else {
+      localStorage.removeItem("shiftly_user");
       setCookie("shiftly_user", "", -1); // Remove cookie if not set
+      // Set 30 minute expiration for non-persistent sessions
+      const expiration = new Date().getTime() + (30 * 60 * 1000); // 30 minutes
+      localStorage.setItem("session_expiration", expiration.toString());
     }
     return true;
   };
 
   const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("shiftly_user");
+    localStorage.removeItem("session_expiration");
     setCookie("shiftly_user", "", -1);
     return true;
   };
