@@ -1,110 +1,49 @@
 // src/pages/ChatPage.jsx
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  lazy,
+  Suspense,
+} from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CheckSquare } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-const ChatPage = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+const DEFAULT_AVATAR_URL =
+  "https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg";
 
-  // employee & store info
-  const [employee, setEmployee] = useState(null);
-  const [storeName, setStoreName] = useState("");
-  const [allEmployees, setAllEmployees] = useState([]);
+// Lazy imports for the modals
+const NewGroupModal = lazy(() =>
+  import("../components/Chat/NewGroupModal.jsx")
+);
+const NewPrivateModal = lazy(() =>
+  import("../components/Chat/NewPrivateModal.jsx")
+);
 
-  // chat room lists
-  const [groupChats, setGroupChats] = useState([]);     // store + custom groups
-  const [privateChats, setPrivateChats] = useState([]); // { roomId, name }[]
 
-  // UI state
-  const [mode, setMode] = useState("group");
-  const [showNewGroupModal, setShowNewGroupModal] = useState(false);
-  const [showNewPrivateModal, setShowNewPrivateModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [selectedGroupParticipants, setSelectedGroupParticipants] = useState([]);
-  const [selectedPrivateParticipant, setSelectedPrivateParticipant] = useState(null);
-
-  // 1️⃣ Load current employee, storeName, and coworkers
-  useEffect(() => {
-    (async () => {
-      if (!user?.id) return;
-
-      // a) fetch employee record
-      const { data: emp } = await supabase
-        .from("employee")
-        .select("employee_id, store_id")
-        .eq("id", user.id)
-        .single();
-      setEmployee(emp);
-
-      // b) fetch store name
-      const { data: storeRec } = await supabase
-        .from("store")
-        .select("store_name")
-        .eq("store_id", emp.store_id)
-        .single();
-      setStoreName(storeRec?.store_name || `Store ${emp.store_id}`);
-
-      // c) fetch coworkers
-      const { data: others } = await supabase
-        .from("employee")
-        .select("employee_id, first_name, last_name, email")
-        .neq("employee_id", emp.employee_id);
-      setAllEmployees(others || []);
-    })();
-  }, [user]);
-
-  // 2️⃣ Ensure default **store** room exists, upsert this user, then fetch **all** their rooms
-  useEffect(() => {
-    if (!employee || !storeName) return;
-
-    (async () => {
-      // a) find-or-create the store chat room
-      let { data: storeRoom } = await supabase
-        .from("chat_rooms")
-        .select("id, type, name")
-        .eq("type", "store")
-        .eq("store_id", employee.store_id)
-        .maybeSingle();
-
-      if (!storeRoom) {
-        const { data: created } = await supabase
-          .from("chat_rooms")
-          .insert([{
-            type: "store",
-            store_id: employee.store_id,
-            name: storeName
-          }])
-          .select("id, type, name")
-          .single();
-        storeRoom = created;
-      }
-
-      // b) make sure this employee is a participant
-      await supabase
-        .from("chat_room_participants")
-        .upsert(
-          { room_id: storeRoom.id, employee_id: employee.employee_id },
-          { onConflict: ["room_id", "employee_id"] }
-        );
-
-      // c) now fetch **all** rooms this user is in
+// React Query hook for fetching and caching rooms
+function useRooms(employee) {
+  return useQuery({
+    queryKey: ["rooms", employee.employee_id],
+    queryFn: async () => {
       const { data: parts } = await supabase
         .from("chat_room_participants")
         .select("chat_rooms(id, type, name)")
         .eq("employee_id", employee.employee_id);
 
-      const rooms = parts.map(p => p.chat_rooms);
+      const rooms = parts.map((p) => p.chat_rooms);
+      const store = rooms.find((r) => r.type === "store");
+      const groups = rooms.filter((r) => r.type === "group");
+      const groupChats = [...(store ? [store] : []), ...groups];
 
-      // split store vs custom groups
-      const store = rooms.find(r => r.type === "store");
-      const custom = rooms.filter(r => r.type === "group");
-      setGroupChats([...(store ? [store] : []), ...custom]);
+      const privIds = rooms
+        .filter((r) => r.type === "private")
+        .map((r) => r.id);
 
-      // private chats: find all private rooms and grab the **other** participant’s name
-      const privIds = rooms.filter(r => r.type === "private").map(r => r.id);
+      let privateChats = [];
       if (privIds.length) {
         const { data: otherParts } = await supabase
           .from("chat_room_participants")
@@ -116,21 +55,169 @@ const ChatPage = () => {
         otherParts.forEach(({ room_id, employee }) => {
           namesByRoom[room_id] = `${employee.first_name} ${employee.last_name}`;
         });
-
-        setPrivateChats(
-          privIds.map(id => ({ roomId: id, name: namesByRoom[id] }))
-        );
-      } else {
-        setPrivateChats([]);
+        privateChats = privIds.map((id) => ({
+          roomId: id,
+          name: namesByRoom[id],
+        }));
       }
+
+      return { groupChats, privateChats };
+    },
+    staleTime: Infinity,
+    cacheTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+export default function ChatPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { search } = useLocation();
+
+  // employee & coworker state
+  const [employee, setEmployee] = useState(null);
+  const [storeName, setStoreName] = useState("");
+  const [allEmployees, setAllEmployees] = useState([]);
+
+  // load current employee, storeName, coworkers
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const { data: idRec } = await supabase
+        .from("employee")
+        .select("employee_id, store_id")
+        .eq("id", user.id)
+        .single();
+      if (!idRec) return;
+      const empId = idRec.employee_id;
+      const storeId = idRec.store_id;
+
+      const [empRes, storeRes, coworkersRes] = await Promise.all([
+        supabase
+          .from("employee")
+          .select("employee_id, store_id, profile_photo_path")
+          .eq("id", user.id)
+          .single(),
+        supabase
+          .from("store")
+          .select("store_name")
+          .eq("store_id", storeId)
+          .single(),
+        supabase
+          .from("employee")
+          .select(
+            "employee_id, first_name, last_name, email, profile_photo_path"
+          )
+          .neq("employee_id", empId),
+      ]);
+
+      if (empRes.data) setEmployee(empRes.data);
+      setStoreName(storeRes.data?.store_name || `Store ${storeId}`);
+
+      setAllEmployees(
+        (coworkersRes.data || []).map((e) => ({
+          ...e,
+          avatar: e.profile_photo_path
+            ? supabase
+                .storage
+                .from("profile-photo")
+                .getPublicUrl(e.profile_photo_path)
+                .data.publicUrl
+            : DEFAULT_AVATAR_URL,
+        }))
+      );
     })();
-  }, [employee, storeName]);
+  }, [user]);
 
-  const openChat = (roomId) => navigate(`/chat/room/${roomId}`);
+  // once employee exists, ensure store-room & participant
+  useEffect(() => {
+    if (!employee) return;
+    (async () => {
+      const { store_id, employee_id } = employee;
+      const { data: storeRec } = await supabase
+        .from("store")
+        .select("store_name")
+        .eq("store_id", store_id)
+        .single();
+      const name = storeRec?.store_name || `Store ${store_id}`;
+      setStoreName(name);
 
-  // 3️⃣ Create new group chat (creator marked admin)
+      let { data: storeRoom } = await supabase
+        .from("chat_rooms")
+        .select("id, type, name")
+        .eq("type", "store")
+        .eq("store_id", store_id)
+        .maybeSingle();
+      if (!storeRoom) {
+        const { data: created } = await supabase
+          .from("chat_rooms")
+          .insert([{ type: "store", store_id, name }])
+          .select("id, type, name")
+          .single();
+        storeRoom = created;
+      }
+
+      await supabase
+        .from("chat_room_participants")
+        .upsert(
+          { room_id: storeRoom.id, employee_id },
+          { onConflict: ["room_id", "employee_id"] }
+        );
+    })();
+  }, [employee]);
+
+  // use React Query to get your group/private chats
+  const {
+    data: roomData,
+    isLoading: roomsLoading,
+  } = useRooms(employee || { employee_id: null });
+
+  // UI state for modals, tabs, form inputs
+  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const initialMode =
+    params.get("mode") === "private" ? "private" : "group";
+  const [mode, setMode] = useState(initialMode);
+
+  const [showNewGroupModal, setShowNewGroupModal] = useState(false);
+  const [showNewPrivateModal, setShowNewPrivateModal] =
+    useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedGroupParticipants, setSelectedGroupParticipants] =
+    useState([]);
+  const [selectedPrivateParticipant, setSelectedPrivateParticipant] =
+    useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [groupError, setGroupError] = useState("");
+
+  // filter coworkers
+  const filteredEmployees = useMemo(
+    () =>
+      allEmployees.filter((emp) =>
+        `${emp.first_name} ${emp.last_name}`
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
+      ),
+    [allEmployees, searchQuery]
+  );
+
+  // helpers
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    navigate(`/chat?mode=${newMode}`, { replace: true });
+  };
+  const openChat = (roomId) =>
+    navigate(`/chat/room/${roomId}?mode=${mode}`);
+
+  // create group chat
   const createGroupChat = async () => {
-    if (!newGroupName.trim() || selectedGroupParticipants.length === 0) return;
+    if (!newGroupName.trim()) {
+      setGroupError("Group name is required.");
+      return;
+    }
+    if (selectedGroupParticipants.length === 0) {
+      setGroupError("Select at least one member.");
+      return;
+    }
+    setGroupError("");
 
     const { data: newRoom } = await supabase
       .from("chat_rooms")
@@ -138,19 +225,24 @@ const ChatPage = () => {
       .select("id")
       .single();
 
-    // mark creator as admin, others as regular members
     const participants = [
-      { room_id: newRoom.id, employee_id: employee.employee_id, is_admin: true },
-      ...selectedGroupParticipants.map(id => ({
+      {
+        room_id: newRoom.id,
+        employee_id: employee.employee_id,
+        is_admin: true,
+      },
+      ...selectedGroupParticipants.map((id) => ({
         room_id: newRoom.id,
         employee_id: id,
-        is_admin: false
-      }))
+        is_admin: false,
+      })),
     ];
 
     await supabase
       .from("chat_room_participants")
-      .upsert(participants, { onConflict: ["room_id","employee_id"] });
+      .upsert(participants, {
+        onConflict: ["room_id", "employee_id"],
+      });
 
     setShowNewGroupModal(false);
     setNewGroupName("");
@@ -158,7 +250,7 @@ const ChatPage = () => {
     openChat(newRoom.id);
   };
 
-  // 4️⃣ Create brand-new private chat
+  // create private chat
   const createPrivateChat = async () => {
     if (!selectedPrivateParticipant) return;
     const userA = employee.employee_id;
@@ -169,20 +261,28 @@ const ChatPage = () => {
       .insert([{ type: "private" }])
       .select("id")
       .single();
-    const roomId = newRoom.id;
 
-    for (let pid of [userA, userB]) {
-      await supabase
-        .from("chat_room_participants")
-        .upsert({ room_id: roomId, employee_id: pid }, { onConflict: ["room_id","employee_id"] });
-    }
+    await Promise.all(
+      [userA, userB].map((pid) =>
+        supabase
+          .from("chat_room_participants")
+          .upsert(
+            { room_id: newRoom.id, employee_id: pid },
+            { onConflict: ["room_id", "employee_id"] }
+          )
+      )
+    );
 
     setShowNewPrivateModal(false);
     setSelectedPrivateParticipant(null);
-    openChat(roomId);
+    openChat(newRoom.id);
   };
 
-  if (!employee) return <div className="p-6 text-center">Loading…</div>;
+  if (!employee || roomsLoading) {
+    return <div className="p-6 text-center">Loading…</div>;
+  }
+
+  const { groupChats, privateChats } = roomData;
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -191,33 +291,47 @@ const ChatPage = () => {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button
-          onClick={() => setMode("group")}
-          className={`px-4 py-2 rounded ${mode==="group" ? "bg-blue-600 text-white":"bg-gray-200"}`}
-        >Group Chats</button>
+          onClick={() => switchMode("group")}
+          className={`px-4 py-2 rounded ${
+            mode === "group"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200"
+          }`}
+        >
+          Group Chats
+        </button>
         <button
-          onClick={() => setMode("private")}
-          className={`px-4 py-2 rounded ${mode==="private" ? "bg-blue-600 text-white":"bg-gray-200"}`}
-        >Private Chats</button>
+          onClick={() => switchMode("private")}
+          className={`px-4 py-2 rounded ${
+            mode === "private"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200"
+          }`}
+        >
+          Private Chats
+        </button>
       </div>
 
       {/* Group Chats */}
-      {mode==="group" && (
+      {mode === "group" && (
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Your Groups</h2>
             <button
-              onClick={()=>setShowNewGroupModal(true)}
+              onClick={() => setShowNewGroupModal(true)}
               className="bg-green-600 text-white px-3 py-1 rounded"
-            >+ New Group</button>
+            >
+              + New Group
+            </button>
           </div>
           <ul className="space-y-2">
-            {groupChats.map(room => (
+            {groupChats.map((room) => (
               <li
                 key={room.id}
-                onClick={()=>openChat(room.id)}
+                onClick={() => openChat(room.id)}
                 className="cursor-pointer p-3 border rounded hover:bg-gray-50"
               >
-                {room.type==="store" ? storeName : room.name}
+                {room.type === "store" ? storeName : room.name}
               </li>
             ))}
           </ul>
@@ -225,110 +339,64 @@ const ChatPage = () => {
       )}
 
       {/* Private Chats */}
-      {mode==="private" && (
+      {mode === "private" && (
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Your Chats</h2>
             <button
-              onClick={()=>setShowNewPrivateModal(true)}
+              onClick={() => setShowNewPrivateModal(true)}
               className="bg-green-600 text-white px-3 py-1 rounded"
-            >+ New Chat</button>
+            >
+              + New Chat
+            </button>
           </div>
           <ul className="space-y-2">
-            {privateChats.map(({roomId,name})=>(
+            {privateChats.map(({ roomId, name }) => (
               <li
                 key={roomId}
-                onClick={()=>openChat(roomId)}
+                onClick={() => openChat(roomId)}
                 className="cursor-pointer p-3 border rounded hover:bg-gray-50"
-              >{name}</li>
+              >
+                {name}
+              </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* New Group Modal */}
-      {showNewGroupModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white p-6 rounded shadow-lg w-96">
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <CheckSquare className="mr-2 h-5 w-5 text-gray-600" /> Create New Group
-            </h3>
-            <input
-              type="text"
-              placeholder="Group Name"
-              value={newGroupName}
-              onChange={e=>setNewGroupName(e.target.value)}
-              className="border p-2 w-full rounded mb-3"
-            />
-            <label className="flex items-center mb-2 text-sm font-medium">
-              <CheckSquare className="mr-2 h-4 w-4 text-gray-600" /> Select Members
-            </label>
-            <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
-              {allEmployees.map(emp=>(
-                <label key={emp.employee_id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    className="form-checkbox h-4 w-4 text-blue-600"
-                    checked={selectedGroupParticipants.includes(emp.employee_id)}
-                    onChange={e=>{
-                      const id = emp.employee_id;
-                      setSelectedGroupParticipants(prev=>
-                        e.target.checked
-                          ? [...prev,id]
-                          : prev.filter(pid=>pid!==id)
-                      );
-                    }}
-                  />
-                  <span className="ml-2">{emp.first_name} {emp.last_name}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={()=>setShowNewGroupModal(false)}
-                className="px-3 py-1 rounded border"
-              >Cancel</button>
-              <button
-                onClick={createGroupChat}
-                className="px-3 py-1 bg-blue-600 text-white rounded"
-              >Create</button>
-            </div>
+      {/* Lazy-loaded Modals */}
+      <Suspense
+        fallback={
+          <div className="fixed inset-0 flex items-center justify-center">
+            Loading…
           </div>
-        </div>
-      )}
-
-      {/* New Private Modal */}
-      {showNewPrivateModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white p-6 rounded shadow-lg w-80">
-            <h3 className="text-lg font-semibold mb-3">New Direct Message</h3>
-            <select
-              value={selectedPrivateParticipant||""}
-              onChange={e=>setSelectedPrivateParticipant(Number(e.target.value))}
-              className="border p-2 w-full rounded mb-4"
-            >
-              <option value="" disabled>Select a user...</option>
-              {allEmployees.map(emp=>(
-                <option key={emp.employee_id} value={emp.employee_id}>
-                  {emp.first_name} {emp.last_name}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={()=>setShowNewPrivateModal(false)}
-                className="px-3 py-1 rounded border"
-              >Cancel</button>
-              <button
-                onClick={createPrivateChat}
-                className="px-3 py-1 bg-blue-600 text-white rounded"
-              >Start</button>
-            </div>
-          </div>
-        </div>
-      )}
+        }
+      >
+        {showNewGroupModal && (
+          <NewGroupModal
+            allEmployees={filteredEmployees}
+            onCreate={createGroupChat}
+            onClose={() => {
+              setShowNewGroupModal(false);
+              setGroupError("");
+            }}
+            selected={selectedGroupParticipants}
+            setSelected={setSelectedGroupParticipants}
+            groupName={newGroupName}
+            setGroupName={setNewGroupName}
+            error={groupError}
+          />
+        )}
+        {showNewPrivateModal && (
+          <NewPrivateModal
+            allEmployees={filteredEmployees}
+            onCreate={createPrivateChat}
+            onClose={() => setShowNewPrivateModal(false)}
+            selected={selectedPrivateParticipant}
+            setSelected={setSelectedPrivateParticipant}
+          />
+        )}
+      </Suspense>
     </div>
   );
-};
-
-export default ChatPage;
+}

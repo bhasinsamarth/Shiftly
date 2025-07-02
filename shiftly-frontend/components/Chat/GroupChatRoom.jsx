@@ -3,29 +3,36 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
-const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
+const DEFAULT_AVATAR_URL =
+  'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
+
+export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
   const navigate = useNavigate();
   const rid = roomId;
 
-  // ── Chat messages ──────────────────────────────────────────────────────────────
+  // Chat messages
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // ── Admin & members state ─────────────────────────────────────────────────────
-  const [showMembers, setShowMembers] = useState(false);
-  const [participants, setParticipants] = useState([]);         // { id, name, avatar, isAdmin }
+  // Participants & admin state
+  const [participants, setParticipants] = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
-  const [newMemberId, setNewMemberId] = useState(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [selectedNewMembers, setSelectedNewMembers] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
 
-  // ── Group‐name editing ─────────────────────────────────────────────────────────
+  // Group name editing
   const [groupName, setGroupName] = useState(roomName);
   const [editingName, setEditingName] = useState(false);
 
-  // ── Options menu ───────────────────────────────────────────────────────────────
+  // Admin flag
+  const [isGroupAdmin, setIsGroupAdmin] = useState(false);
+
+  // Options menu
   const [showOptions, setShowOptions] = useState(false);
   const optionsRef = useRef();
-
   useEffect(() => {
     function onClickOutside(e) {
       if (optionsRef.current && !optionsRef.current.contains(e.target)) {
@@ -36,87 +43,79 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  // ── 1️⃣ Load messages + subscribe ───────────────────────────────────────────────
+  // Determine if current user is admin
   useEffect(() => {
     if (!rid) return;
-    async function loadMessages() {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          id, message, created_at, sender_id,
-          employee(first_name, last_name, profile_photo_path)
-        `)
-        .eq('chat_room_id', rid)
-        .order('created_at', { ascending: true });
-      if (!error && data) {
-        const enriched = await Promise.all(data.map(msg => {
-          const emp = msg.employee || {};
-          let avatar = 'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
-          if (emp.profile_photo_path) {
-            const { data: urlData } = supabase
-              .storage
-              .from('profile-photo')
-              .getPublicUrl(emp.profile_photo_path);
-            avatar = urlData.publicUrl;
-          }
-          return {
-            id: msg.id,
-            text: msg.message,
-            ts: msg.created_at,
-            senderId: msg.sender_id,
-            senderName: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-            senderAvatar: avatar,
-          };
-        }));
-        setMessages(enriched);
-      }
-      setLoading(false);
-    }
-    loadMessages();
+    (async () => {
+      const { data } = await supabase
+        .from('chat_room_participants')
+        .select('is_admin')
+        .eq('room_id', rid)
+        .eq('employee_id', currentEmployee.employee_id)
+        .single();
+      if (data) setIsGroupAdmin(data.is_admin);
+    })();
+  }, [rid, currentEmployee.employee_id]);
 
+  // Load messages (with embedded employee) and subscribe
+  const loadMessages = async () => {
+    const { data } = await supabase
+      .from('messages')
+      .select(`
+        id,
+        message,
+        created_at,
+        sender_id,
+        employee!inner(
+          first_name,
+          last_name,
+          profile_photo_path
+        )
+      `)
+      .eq('chat_room_id', rid)
+      .order('created_at', { ascending: true });
+
+    if (data) {
+      const msgs = data.map(m => {
+        const path = m.employee.profile_photo_path;
+        const avatar = path
+          ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
+          : DEFAULT_AVATAR_URL;
+        return {
+          id: m.id,
+          text: m.message,
+          ts: m.created_at,
+          senderId: m.sender_id,
+          senderName: `${m.employee.first_name} ${m.employee.last_name}`.trim(),
+          senderAvatar: avatar,
+        };
+      });
+      setMessages(msgs);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!rid) return;
+    loadMessages();
     const channel = supabase
       .channel(`group-${rid}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'messages',
-        filter: `chat_room_id=eq.${rid}`
-      }, async ({ new: m }) => {
-        const { data: emp } = await supabase
-          .from('employee')
-          .select('first_name, last_name, profile_photo_path')
-          .eq('employee_id', m.sender_id)
-          .single();
-        let avatar = 'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
-        if (emp?.profile_photo_path) {
-          const { data: urlData } = supabase
-            .storage
-            .from('profile-photo')
-            .getPublicUrl(emp.profile_photo_path);
-          avatar = urlData.publicUrl;
-        }
-        setMessages(prev => [
-          ...prev,
-          {
-            id: m.id,
-            text: m.message,
-            ts: m.created_at,
-            senderId: m.sender_id,
-            senderName: `${emp.first_name} ${emp.last_name}`.trim(),
-            senderAvatar: avatar,
-          },
-        ]);
-      })
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
+        () => loadMessages()
+      )
       .subscribe();
-
     return () => supabase.removeChannel(channel);
   }, [rid]);
 
-  // ── 2️⃣ Auto-scroll ─────────────────────────────────────────────────────────────
+  // Auto-scroll
   useEffect(() => {
     const c = document.getElementById('group-chat-container');
     if (c) c.scrollTop = c.scrollHeight;
   }, [messages]);
 
-  // ── 3️⃣ Send message ────────────────────────────────────────────────────────────
+  // Send message
   const sendMessage = async () => {
     if (!newMsg.trim() || !rid) return;
     await supabase.from('messages').insert({
@@ -127,194 +126,176 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
     setNewMsg('');
   };
 
-  // ── 4️⃣ Group by date ───────────────────────────────────────────────────────────
-  const groupedMessages = useMemo(() => {
-    return Object.entries(
-      messages.reduce((acc, msg) => {
-        const dateKey = new Date(msg.ts).toLocaleDateString(undefined, {
-          month: 'long', day: 'numeric', year: 'numeric'
-        });
-        acc[dateKey] = acc[dateKey] || [];
-        acc[dateKey].push(msg);
-        return acc;
-      }, {})
-    );
-  }, [messages]);
+  // Group messages by date
+  const groupedMessages = useMemo(
+    () =>
+      Object.entries(
+        messages.reduce((acc, msg) => {
+          const key = new Date(msg.ts).toLocaleDateString(undefined, {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          (acc[key] = acc[key] || []).push(msg);
+          return acc;
+        }, {})
+      ),
+    [messages]
+  );
 
-  // ── 5️⃣ Fetch members when showing modal ────────────────────────────────────────
+  // Load participants & available employees when showing members
   useEffect(() => {
     if (!showMembers || !rid) return;
     (async () => {
-      const { data: parts, error: partErr } = await supabase
+      const { data: parts } = await supabase
         .from('chat_room_participants')
-        .select('employee_id, is_admin')
+        .select(`
+          employee_id,
+          is_admin,
+          employee!inner(
+            first_name,
+            last_name,
+            profile_photo_path
+          )
+        `)
         .eq('room_id', rid);
-      if (partErr) {
-        console.error('Error loading participants:', partErr);
-        return;
-      }
-      const empIds = parts.map(p => p.employee_id);
-      const { data: emps, error: empErr } = await supabase
-        .from('employee')
-        .select('employee_id, first_name, last_name, profile_photo_path')
-        .in('employee_id', empIds);
-      if (empErr) {
-        console.error('Error loading employee details:', empErr);
-        return;
-      }
-      const list = parts.map(({ employee_id, is_admin }) => {
-        const e = emps.find(x => x.employee_id === employee_id) || {};
-        let avatar = 'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
-        if (e.profile_photo_path) {
-          const { data: urlData } = supabase
-            .storage
-            .from('profile-photo')
-            .getPublicUrl(e.profile_photo_path);
-          avatar = urlData.publicUrl;
-        }
+
+      const list = parts.map(p => {
+        const emp = p.employee;
+        const path = emp.profile_photo_path;
+        const avatar = path
+          ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
+          : DEFAULT_AVATAR_URL;
         return {
-          id: employee_id,
-          name: `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+          id: p.employee_id,
+          name: `${emp.first_name} ${emp.last_name}`.trim(),
           avatar,
-          isAdmin: is_admin,
+          isAdmin: p.is_admin,
         };
       });
       setParticipants(list);
 
       const taken = list.map(p => p.id).join(',');
-      const { data: avail, error: availErr } = await supabase
+      const { data: avail } = await supabase
         .from('employee')
-        .select('employee_id, first_name, last_name')
+        .select('employee_id, first_name, last_name, profile_photo_path')
         .not('employee_id', 'in', `(${taken})`);
-      if (availErr) {
-        console.error('Error loading available employees:', availErr);
-        return;
-      }
-      setAvailableEmployees(avail);
+
+      setAvailableEmployees(
+        avail.map(e => {
+          const path = e.profile_photo_path;
+          return {
+            employee_id: e.employee_id,
+            first_name: e.first_name,
+            last_name: e.last_name,
+            avatar: path
+              ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
+              : DEFAULT_AVATAR_URL,
+          };
+        })
+      );
     })();
   }, [showMembers, rid]);
 
-  // ── 6️⃣ Admin/member actions ───────────────────────────────────────────────────
-  const isCurrentAdmin = participants.some(p => p.id === currentEmployee.employee_id && p.isAdmin);
-
+  // Save group name
   const saveGroupName = async () => {
     await supabase.from('chat_rooms').update({ name: groupName.trim() }).eq('id', rid);
     setEditingName(false);
   };
 
+  // Add multiple new members
   const addMember = async () => {
-    if (!newMemberId) return;
-    await supabase.from('chat_room_participants').insert({
-      room_id: rid,
-      employee_id: newMemberId,
-      is_admin: false
-    });
-    setNewMemberId(null);
-    setShowMembers(false);
-    setTimeout(() => setShowMembers(true), 0);
+    if (!selectedNewMembers.length) return;
+    await supabase.from('chat_room_participants').insert(
+      selectedNewMembers.map(id => ({ room_id: rid, employee_id: id }))
+    );
+    setSelectedNewMembers([]);
+    setShowAddForm(false);
+    setShowMembers(true);
   };
 
-  const removeMember = async (empId) => {
-    await supabase
-      .from('chat_room_participants')
-      .delete()
-      .eq('room_id', rid)
-      .eq('employee_id', empId);
-    setShowMembers(false);
-    setTimeout(() => setShowMembers(true), 0);
-  };
-
+  // Toggle admin (optimistically)
   const toggleAdmin = async (empId, makeAdmin) => {
     await supabase
       .from('chat_room_participants')
       .update({ is_admin: makeAdmin })
       .eq('room_id', rid)
       .eq('employee_id', empId);
-    setShowMembers(false);
-    setTimeout(() => setShowMembers(true), 0);
+    setParticipants(prev =>
+      prev.map(p => (p.id === empId ? { ...p, isAdmin: makeAdmin } : p))
+    );
+    if (empId === currentEmployee.employee_id) {
+      setIsGroupAdmin(makeAdmin);
+    }
   };
 
-  // ── 7️⃣ Leave group (and clean up if empty) ────────────────────────────────────
+  // Remove member
+  const removeMember = async empId => {
+    await supabase
+      .from('chat_room_participants')
+      .delete()
+      .eq('room_id', rid)
+      .eq('employee_id', empId);
+    setParticipants(prev => prev.filter(p => p.id !== empId));
+  };
+
+  // Leave group
   const leaveGroup = async () => {
-    // remove this user
     await supabase
       .from('chat_room_participants')
       .delete()
       .eq('room_id', rid)
       .eq('employee_id', currentEmployee.employee_id);
-
-    // check if any participants remain
-    const { count } = await supabase
-      .from('chat_room_participants')
-      .select('*', { count: 'exact', head: true })
-      .eq('room_id', rid);
-
-    if (count === 0) {
-      // delete all related messages
-      await supabase
-        .from('messages')
-        .delete()
-        .eq('chat_room_id', rid);
-      // delete any leftover participants (should be none)
-      await supabase
-        .from('chat_room_participants')
-        .delete()
-        .eq('room_id', rid);
-      // delete the room
-      await supabase
-        .from('chat_rooms')
-        .delete()
-        .eq('id', rid);
-    }
-
-    navigate('/chat');
+    navigate('/chat?mode=group');
   };
 
-  // ── 8️⃣ Delete group entirely ──────────────────────────────────────────────────
+  // Delete group
   const deleteGroup = async () => {
-    // remove participants
     await supabase.from('chat_room_participants').delete().eq('room_id', rid);
-    // remove messages
     await supabase.from('messages').delete().eq('chat_room_id', rid);
-    // remove room
     await supabase.from('chat_rooms').delete().eq('id', rid);
-    navigate('/chat');
+    navigate('/chat?mode=group');
   };
 
   if (loading) return <div className="p-4 text-center">Loading chat…</div>;
 
   return (
     <>
+      {/* Chat Box */}
       <div className="flex flex-col h-96 border rounded-lg shadow-md overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b bg-gray-50 font-semibold text-lg flex justify-between items-center">
+        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/chat')}
+              onClick={() => navigate('/chat?mode=group')}
               className="text-blue-600 hover:underline"
             >
               ← Back
             </button>
-            {editingName && isCurrentAdmin ? (
+            {editingName && isGroupAdmin ? (
               <>
                 <input
                   value={groupName}
                   onChange={e => setGroupName(e.target.value)}
                   className="border px-2"
                 />
-                <button onClick={saveGroupName} className="text-blue-600">Save</button>
+                <button onClick={saveGroupName} className="text-blue-600">
+                  Save
+                </button>
                 <button
-                  onClick={() => { setGroupName(roomName); setEditingName(false); }}
+                  onClick={() => {
+                    setGroupName(roomName);
+                    setEditingName(false);
+                  }}
                   className="text-gray-600"
                 >
                   Cancel
                 </button>
               </>
             ) : (
-              <span>{groupName}</span>
+              <span className="font-semibold text-lg">{groupName}</span>
             )}
           </div>
-
           {/* Options */}
           <div className="relative" ref={optionsRef}>
             <button
@@ -325,10 +306,13 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
             </button>
             {showOptions && (
               <ul className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
-                {isCurrentAdmin && !editingName && (
+                {isGroupAdmin && !editingName && (
                   <li>
                     <button
-                      onClick={() => { setEditingName(true); setShowOptions(false); }}
+                      onClick={() => {
+                        setEditingName(true);
+                        setShowOptions(false);
+                      }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Edit Name
@@ -337,7 +321,11 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
                 )}
                 <li>
                   <button
-                    onClick={() => { setShowMembers(true); setShowOptions(false); }}
+                    onClick={() => {
+                      setShowMembers(true);
+                      setShowAddForm(false);
+                      setShowOptions(false);
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
                     View Members
@@ -351,7 +339,7 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
                     Leave Group
                   </button>
                 </li>
-                {isCurrentAdmin && (
+                {isGroupAdmin && (
                   <li>
                     <button
                       onClick={deleteGroup}
@@ -380,22 +368,40 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
                     key={msg.id}
                     className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`flex items-start space-x-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                    <div
+                      className={`flex items-start space-x-2 ${
+                        isOwn ? 'flex-row-reverse' : ''
+                      }`}
+                    >
                       <img
                         src={msg.senderAvatar}
                         alt={msg.senderName}
                         className="h-8 w-8 rounded-full"
                         style={{ marginTop: '2px' }}
                       />
-                      <div className={`${isOwn ? 'mr-2 text-right' : 'ml-2 text-left'}`} style={{ maxWidth: '75%' }}>
-                        <div className="text-xs font-semibold text-gray-700">{msg.senderName}</div>
-                        <div className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
-                          isOwn ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                      <div
+                        className={`${
+                          isOwn ? 'mr-2 text-right' : 'ml-2 text-left'
+                        }`}
+                        style={{ maxWidth: '75%' }}
+                      >
+                        <div className="text-xs font-semibold text-gray-700">
+                          {msg.senderName}
+                        </div>
+                        <div
+                          className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
+                            isOwn
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
                           {msg.text}
                         </div>
                         <div className="text-[10px] mt-1 opacity-60 text-right">
-                          {new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(msg.ts).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </div>
                       </div>
                     </div>
@@ -411,7 +417,7 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
           <input
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
-            onKeyDown={e => e.key==='Enter' && sendMessage()}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
             placeholder="Type a message..."
             className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -428,56 +434,111 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
       {showMembers && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg w-96 max-h-[80vh] overflow-auto p-4">
-            <h3 className="text-lg font-semibold mb-3">Group Members</h3>
-            {isCurrentAdmin && (
-              <div className="mb-4">
-                <select
-                  value={newMemberId || ''}
-                  onChange={e => setNewMemberId(Number(e.target.value))}
-                  className="border p-2 w-full rounded"
+            <h3 className="text-lg font-semibold mb-3 flex justify-between items-center">
+              Group Members
+              {isGroupAdmin && (
+                <button
+                  onClick={() => setShowAddForm(v => !v)}
+                  className="bg-green-600 text-white px-2 py-1 rounded text-sm"
                 >
-                  <option value="" disabled>Add a member…</option>
-                  {availableEmployees.map(e => (
-                    <option key={e.employee_id} value={e.employee_id}>
-                      {e.first_name} {e.last_name}
-                    </option>
-                  ))}
-                </select>
+                  {showAddForm ? 'Cancel' : 'Add Employee'}
+                </button>
+              )}
+            </h3>
+
+            {/* Add Employee Form */}
+            {showAddForm && isGroupAdmin && (
+              <div className="mb-4 border-t pt-4">
+                <input
+                  type="text"
+                  placeholder="Search employees..."
+                  value={memberSearch}
+                  onChange={e => setMemberSearch(e.target.value)}
+                  className="border p-2 w-full rounded mb-2"
+                />
+                <div className="max-h-32 overflow-y-auto space-y-2 border p-2 rounded">
+                  {availableEmployees
+                    .filter(emp =>
+                      `${emp.first_name} ${emp.last_name}`
+                        .toLowerCase()
+                        .includes(memberSearch.toLowerCase())
+                    )
+                    .map(emp => (
+                      <label key={emp.employee_id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedNewMembers.includes(emp.employee_id)}
+                          onChange={e => {
+                            const id = emp.employee_id;
+                            setSelectedNewMembers(prev =>
+                              e.target.checked
+                                ? [...prev, id]
+                                : prev.filter(x => x !== id)
+                            );
+                          }}
+                          className="form-checkbox"
+                        />
+                        <img
+                          src={emp.avatar}
+                          alt={`${emp.first_name} ${emp.last_name}`}
+                          className="h-6 w-6 rounded-full"
+                        />
+                        <span>
+                          {emp.first_name} {emp.last_name}
+                        </span>
+                      </label>
+                    ))}
+                </div>
                 <button
                   onClick={addMember}
                   className="mt-2 px-3 py-1 bg-blue-600 text-white rounded"
                 >
-                  Add
+                  Add Selected
                 </button>
               </div>
             )}
+
+            {/* Existing Members */}
             <ul className="space-y-2">
               {participants.map(p => (
                 <li key={p.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <img src={p.avatar} alt={p.name} className="h-8 w-8 rounded-full" />
                     <span className="text-sm">
-                      {p.name} {p.isAdmin && <em className="text-xs text-green-600">(admin)</em>}
+                      {p.name}{' '}
+                      {p.isAdmin && <em className="text-xs text-green-600">(admin)</em>}
                     </span>
                   </div>
-                  {isCurrentAdmin && p.id!==currentEmployee.employee_id && (
-                    <div className="flex gap-2 text-xs">
-                      <button onClick={() => toggleAdmin(p.id, !p.isAdmin)} className="text-blue-600 hover:underline">
-                        {p.isAdmin ? 'Revoke' : 'Make'} Admin
+                  <div className="flex gap-2 text-xs">
+                    {isGroupAdmin && p.id !== currentEmployee.employee_id && (
+                      <>
+                        <button
+                          onClick={() => toggleAdmin(p.id, !p.isAdmin)}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {p.isAdmin ? 'Revoke' : 'Make'} Admin
+                        </button>
+                        <button
+                          onClick={() => removeMember(p.id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                    {p.id === currentEmployee.employee_id && (
+                      <button
+                        onClick={leaveGroup}
+                        className="text-red-600 hover:underline text-xs"
+                      >
+                        Leave
                       </button>
-                      <button onClick={() => removeMember(p.id)} className="text-red-600 hover:underline">
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                  {p.id===currentEmployee.employee_id && (
-                    <button onClick={leaveGroup} className="text-red-600 text-xs hover:underline">
-                      Leave
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
+
             <div className="mt-4 text-right">
               <button
                 onClick={() => setShowMembers(false)}
@@ -491,6 +552,4 @@ const GroupChatRoom = ({ roomId, currentEmployee, roomName }) => {
       )}
     </>
   );
-};
-
-export default GroupChatRoom;
+}

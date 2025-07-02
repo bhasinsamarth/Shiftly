@@ -1,9 +1,10 @@
-import React from "react";
+// src/main.jsx
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 
-// Import layout and pages
+// Core pages & components
 import App from "./App";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -20,12 +21,20 @@ import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
-import ChatPage from "./pages/ChatPage";
 import ChatRoomPage from "./pages/ChatRoomPage";
 
-// Auth context provider
-import { AuthProvider } from "./context/AuthContext";
+// Auth & routing
 import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
+
+// React Query
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Lazy-loaded ChatPage
+const ChatPage = lazy(() => import("./pages/ChatPage"));
+
+// Create a single React Query client
+const queryClient = new QueryClient();
 
 function AppWithRoutes() {
   return (
@@ -34,44 +43,153 @@ function AppWithRoutes() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/schedules" element={<ProtectedRoute><SchedulePlanner /></ProtectedRoute>} />
-        <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-        <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
-        <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
-        <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
-        <Route path="/employee-requests" element={<ProtectedRoute><EmployeeRequests /></ProtectedRoute>} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/setup-account" element={<SetupAccountPage />} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
-        <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
-        <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-        <Route path="/chat/room/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
-        
-        {/* Catch-all route for 404 */}
-        <Route path="*" element={
-          <div className="text-center py-20">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Page Not Found</h2>
-            <p className="text-gray-600 mb-8">The page you're looking for doesn't exist or has been moved.</p>
-            <a href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-md transition-colors">
-              Go Home
-            </a>
-          </div>
-        } />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/schedules"
+          element={
+            <ProtectedRoute>
+              <SchedulePlanner />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/employees"
+          element={
+            <ProtectedRoute>
+              <Employees />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/add-employee"
+          element={
+            <ProtectedRoute>
+              <AddEmployee />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/edit-employee/:id"
+          element={
+            <ProtectedRoute>
+              <EditEmployee />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teams"
+          element={
+            <ProtectedRoute>
+              <TeamsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/employee-requests"
+          element={
+            <ProtectedRoute>
+              <EmployeeRequests />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={<ForgotPasswordPage />}
+        />
+        <Route
+          path="/reset-password"
+          element={<ResetPasswordPage />}
+        />
+        <Route
+          path="/setup-account"
+          element={<SetupAccountPage />}
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/FetchSchedule"
+          element={
+            <ProtectedRoute>
+              <FetchSchedule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/change-availability"
+          element={
+            <ProtectedRoute>
+              <ChangeAvailabity />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<div>Loading chat…</div>}>
+                <ChatPage />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/room/:roomId"
+          element={
+            <ProtectedRoute>
+              <ChatRoomPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 catch-all */}
+        <Route
+          path="*"
+          element={
+            <div className="text-center py-20">
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                Page Not Found
+              </h2>
+              <p className="text-gray-600 mb-8">
+                The page you’re looking for doesn’t exist.
+              </p>
+              <a
+                href="/"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-md"
+              >
+                Go Home
+              </a>
+            </div>
+          }
+        />
       </Routes>
     </App>
   );
 }
 
-// Render the application
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <AppWithRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    {/* Provide the React Query client */}
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppWithRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   </React.StrictMode>
 );

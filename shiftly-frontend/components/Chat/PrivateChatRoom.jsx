@@ -1,13 +1,19 @@
 // src/components/Chat/PrivateChatRoom.jsx
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
+const DEFAULT_AVATAR_URL =
+  'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
+
 const PrivateChatRoom = ({ roomId, currentEmployee }) => {
-  const rid = roomId; // keep as UUID string
+  const navigate = useNavigate();
+  const rid = roomId;
+
   const [partnerName, setPartnerName] = useState('Chat');
-  const [partnerAvatar, setPartnerAvatar] = useState('');
+  const [partnerAvatar, setPartnerAvatar] = useState(DEFAULT_AVATAR_URL);
   const [myName, setMyName] = useState('');
-  const [myAvatar, setMyAvatar] = useState('');
+  const [myAvatar, setMyAvatar] = useState(DEFAULT_AVATAR_URL);
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState('');
   const [loading, setLoading] = useState(true);
@@ -21,7 +27,7 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
         .eq('employee_id', currentEmployee.employee_id)
         .single();
       const name = data?.preferred_name || data?.first_name || 'Me';
-      let avatar = 'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
+      let avatar = DEFAULT_AVATAR_URL;
       if (data?.profile_photo_path) {
         const { data: urlData } = supabase
           .storage
@@ -47,7 +53,7 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
       const emp = row?.employee;
       if (!emp) return;
       const name = `${emp.first_name} ${emp.last_name}`.trim();
-      let avatar = 'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
+      let avatar = DEFAULT_AVATAR_URL;
       if (emp.profile_photo_path) {
         const { data: urlData } = supabase
           .storage
@@ -78,14 +84,14 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
-        ({ new: m }) => setMessages((prev) => [...prev, m])
+        ({ new: m }) => setMessages(prev => [...prev, m])
       )
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [rid]);
+  }, [rid, currentEmployee]);
 
-  // auto-scroll
+  // Auto-scroll
   useEffect(() => {
     const c = document.getElementById('private-chat-container');
     if (c) c.scrollTop = c.scrollHeight;
@@ -101,7 +107,7 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
     setNewMsg('');
   };
 
-  // memoized grouping
+  // Group messages by date
   const groupedMessages = useMemo(() => {
     return Object.entries(
       messages.reduce((acc, msg) => {
@@ -110,8 +116,7 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
           day: 'numeric',
           year: 'numeric',
         });
-        acc[dateKey] = acc[dateKey] || [];
-        acc[dateKey].push(msg);
+        (acc[dateKey] = acc[dateKey] || []).push(msg);
         return acc;
       }, {})
     );
@@ -121,17 +126,30 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
 
   return (
     <div className="flex flex-col h-96 border rounded-lg shadow-md overflow-hidden">
-      {/* Header */}
-      <div className="p-4 border-b bg-gray-50 font-semibold text-lg flex items-center space-x-2">
-        <img src={partnerAvatar} alt={partnerName} className="h-8 w-8 rounded-full" />
+      {/* Header with Back button */}
+      <div className="p-4 border-b bg-gray-50 font-semibold text-lg flex items-center space-x-4">
+        <button
+          onClick={() => navigate('/chat?mode=private')}
+          className="text-blue-600 hover:underline"
+        >
+          ← Back
+        </button>
+        <img
+          src={partnerAvatar}
+          alt={partnerName}
+          className="h-8 w-8 rounded-full"
+        />
         <span>{partnerName}</span>
       </div>
+
       {/* Messages */}
       <div id="private-chat-container" className="flex-1 overflow-y-auto p-4">
         {groupedMessages.map(([date, msgs]) => (
           <div key={date} className="space-y-4">
-            <div className="text-center my-2 text-gray-500 text-xs font-medium">{date}</div>
-            {msgs.map((msg) => {
+            <div className="text-center my-2 text-gray-500 text-xs font-medium">
+              {date}
+            </div>
+            {msgs.map(msg => {
               const isOwn = msg.sender_id === currentEmployee.employee_id;
               const avatar = isOwn ? myAvatar : partnerAvatar;
               const name = isOwn ? myName : partnerName;
@@ -151,7 +169,9 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
                       <div className="text-xs font-semibold text-gray-700">{name}</div>
                       <div className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
                         isOwn ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
-                      }`}>{msg.message}</div>
+                      }`}>
+                        {msg.message}
+                      </div>
                       <div className="text-[10px] mt-1 opacity-60 text-right">
                         {new Date(msg.created_at).toLocaleTimeString([], {
                           hour: '2-digit',
@@ -166,16 +186,20 @@ const PrivateChatRoom = ({ roomId, currentEmployee }) => {
           </div>
         ))}
       </div>
+
       {/* Input */}
       <div className="p-4 border-t bg-white flex gap-2">
         <input
           value={newMsg}
-          onChange={(e) => setNewMsg(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+          onChange={e => setNewMsg(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
           placeholder="Type a message..."
           className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button onClick={sendMessage} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+        <button
+          onClick={sendMessage}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+        >
           Send
         </button>
       </div>
