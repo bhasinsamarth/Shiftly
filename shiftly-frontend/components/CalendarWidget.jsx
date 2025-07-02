@@ -16,8 +16,7 @@ function getToday() {
   return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
 }
 
-// Modular calendar with range selection
-const CalendarWidget = ({ initialDate, onRangeChange }) => {
+const CalendarWidget = ({ initialDate, onDateSelect }) => {
   const today = getToday();
   const initial = initialDate ? new Date(initialDate) : new Date();
   const [currentYear, setCurrentYear] = useState(initial.getFullYear());
@@ -59,23 +58,6 @@ const CalendarWidget = ({ initialDate, onRangeChange }) => {
     days.push(null);
   }
 
-  // Helper: check if a date is between start and end (exclusive)
-  function isInRange(year, month, day) {
-    if (!range.start || !range.end) return false;
-    const date = new Date(year, month, day).setHours(0,0,0,0);
-    const start = new Date(range.start).setHours(0,0,0,0);
-    const end = new Date(range.end).setHours(0,0,0,0);
-    return date > start && date < end;
-  }
-  function isSameDay(date, year, month, day) {
-    if (!date) return false;
-    return (
-      date.getFullYear() === year &&
-      date.getMonth() === month &&
-      date.getDate() === day
-    );
-  }
-
   // Responsive month/year label
   const monthLabel = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -84,6 +66,7 @@ const CalendarWidget = ({ initialDate, onRangeChange }) => {
       className="rounded-2xl shadow bg-white p-4 flex flex-col items-center"
       style={{ aspectRatio: '1 / 1', width: '100%', maxWidth: 320, minWidth: 200 }}
     >
+      {/* Header and grid in one container */}
       <div className="flex flex-col w-full h-full">
         <div className="flex items-center justify-between w-full mb-2">
           <button
@@ -112,12 +95,8 @@ const CalendarWidget = ({ initialDate, onRangeChange }) => {
           {WEEKDAYS.map((wd) => (
             <div key={wd} className="text-gray-500 font-medium text-sm pb-1 select-none">{wd}</div>
           ))}
-          {days.map((d, i) => {
-            if (!d) return <div key={i} className="py-1" />;
-            const isStart = isSameDay(range.start, currentYear, currentMonth, d);
-            const isEnd = isSameDay(range.end, currentYear, currentMonth, d);
-            const inRange = isInRange(currentYear, currentMonth, d);
-            return (
+          {days.map((d, i) =>
+            d ? (
               <button
                 key={i}
                 className={`py-1 text-base select-none w-full h-full flex items-center justify-center rounded-full transition ${
@@ -137,8 +116,10 @@ const CalendarWidget = ({ initialDate, onRangeChange }) => {
               >
                 {d}
               </button>
-            );
-          })}
+            ) : (
+              <div key={i} className="py-1" />
+            )
+          )}
         </div>
       </div>
     </div>
