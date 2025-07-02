@@ -27,9 +27,26 @@ export const useAuth = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData?.session;
       if (session) {
-        // Only restore user if Supabase session exists and keepLoggedIn (cookie) is set
+        // Check if session has expired (for non-persistent sessions)
+        const expiration = localStorage.getItem("session_expiration");
+        const now = new Date().getTime();
+        
+        if (expiration && now > parseInt(expiration, 10)) {
+          // Session expired, sign out
+          await supabase.auth.signOut();
+          localStorage.removeItem("session_expiration");
+          localStorage.removeItem("shiftly_user");
+          setCookie("shiftly_user", "", -1);
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Restore user from valid Supabase session
         const cookieUser = getCookie("shiftly_user");
         if (cookieUser) {
+          // User has persistent login (cookie exists)
           try {
             const parsedUser = JSON.parse(cookieUser);
             const { data: empData, error: empError } = await supabase
@@ -51,6 +68,23 @@ export const useAuth = () => {
             }
             return;
           } catch {}
+        } else {
+          // No cookie but valid session - restore from session user
+          const { data: empData, error: empError } = await supabase
+            .from("employee")
+            .select("*")
+            .eq("email", session.user.email)
+            .single();
+          
+          let mergedUser = session.user;
+          if (!empError && empData) {
+            mergedUser = { ...session.user, ...empData };
+          }
+          
+          setUser(mergedUser);
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
         }
       }
       // Check cookie for persistent login (legacy/fallback)
@@ -112,12 +146,17 @@ export const useAuth = () => {
 
     setUser(user);
     setIsAuthenticated(true);
+    
     if (keepLoggedIn) {
       localStorage.setItem("shiftly_user", JSON.stringify(user));
       setCookie("shiftly_user", JSON.stringify(user), 60); // 60 days
+      localStorage.removeItem("session_expiration"); // Remove short expiration
     } else {
       localStorage.removeItem("shiftly_user");
       setCookie("shiftly_user", "", -1); // Remove cookie if not set
+      // Set 30 minute expiration for non-persistent sessions
+      const expiration = new Date().getTime() + (30 * 60 * 1000); // 30 minutes
+      localStorage.setItem("session_expiration", expiration.toString());
     }
     return true;
   };
@@ -127,6 +166,7 @@ export const useAuth = () => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("shiftly_user");
+    localStorage.removeItem("session_expiration");
     setCookie("shiftly_user", "", -1);
     return true;
   };
