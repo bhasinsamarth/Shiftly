@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import CalendarWidget from '../components/CalendarWidget';
+import WeeklyCalendar from '../components/WeeklyCalendar';
 
 // Generate time slots (24-hour format, 30 min steps)
 const generate24hTimes = () => {
@@ -18,18 +18,19 @@ const generate24hTimes = () => {
 
 const timeOptions = generate24hTimes();
 
-const getWeekDates = (offset = 0) => {
+// In getWeekDates, allow passing a base date
+const getWeekDates = (offset = 0, baseDate = null) => {
     const dates = [];
-    const today = new Date();
+    let today = baseDate ? new Date(baseDate) : new Date();
     const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
     // Calculate the date for Sunday of the current week, then add offset*7 days
-    const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() - dayOfWeek + offset * 7);
-    baseDate.setHours(0, 0, 0, 0);
+    const base = new Date(today);
+    base.setDate(today.getDate() - dayOfWeek + offset * 7);
+    base.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < 7; i++) {
-        const date = new Date(baseDate);
-        date.setDate(baseDate.getDate() + i);
+        const date = new Date(base);
+        date.setDate(base.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
         const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         dates.push({ dateString, label });
@@ -48,7 +49,8 @@ const SchedulePlanner = () => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
-    const weekDates = getWeekDates(weekOffset);
+    const [selectedWeekStart, setSelectedWeekStart] = useState(null);
+    const [weekDates, setWeekDates] = useState(getWeekDates(weekOffset));
 
     useEffect(() => {
         const fetchManagerStore = async () => {
@@ -250,6 +252,66 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
+    // When selectedWeekStart or weekOffset changes, update weekDates
+    useEffect(() => {
+        if (selectedWeekStart) {
+            setWeekDates(getWeekDates(0, selectedWeekStart));
+        } else {
+            setWeekDates(getWeekDates(weekOffset));
+        }
+    }, [selectedWeekStart, weekOffset]);
+
+    // When weekDates changes, refetch employees and schedules
+    useEffect(() => {
+        if (!storeId) return;
+        const fetchEmployeesAndSchedules = async () => {
+            const { data: employeeData, error: empErr } = await supabase
+                .from('employee')
+                .select('employee_id, first_name, last_name')
+                .eq('store_id', storeId);
+            if (empErr) {
+                setEmployees([]);
+                return;
+            }
+            setEmployees(employeeData || []);
+
+            const startDate = weekDates[0].dateString;
+            const endDate = weekDates[6].dateString;
+
+            const { data: scheduleEntries, error: schedErr } = await supabase
+                .from('store_schedule')
+                .select('employee_id, start_time, end_time')
+                .eq('store_id', storeId)
+                .gte('start_time', `${startDate}T00:00`)
+                .lte('end_time', `${endDate}T23:59`);
+
+            if (schedErr) {
+                setScheduleData({});
+                return;
+            }
+
+            const updatedSchedule = {};
+            (scheduleEntries || []).forEach(entry => {
+                const empId = entry.employee_id;
+                const dateKey = entry.start_time.split('T')[0];
+                const startTime = entry.start_time.split('T')[1].slice(0, 5);
+                const endTime = entry.end_time.split('T')[1].slice(0, 5);
+
+                if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
+                updatedSchedule[empId][dateKey] = {
+                    checked: true,
+                    start: startTime,
+                    end: endTime,
+                    existing: true,
+                    editable: false
+                };
+            });
+
+            setScheduleData(updatedSchedule);
+        };
+        fetchEmployeesAndSchedules();
+    }, [storeId, weekDates]);
+
     // Block access if not authenticated or not a manager
     if (!user || user.role_id !== 3) {
         return (
@@ -270,7 +332,7 @@ const SchedulePlanner = () => {
                         </h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
-                                <CalendarWidget />
+                                <WeeklyCalendar onWeekSelect={date => setSelectedWeekStart(require('../components/calendarUtils').getWeekRange(date)[0])} />
                             </div>
                         </div>
 
