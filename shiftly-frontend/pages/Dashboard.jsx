@@ -807,7 +807,9 @@ const Dashboard = () => {
                 Clock in
               </button>
             </Link>
-            <Link to="/FetchSchedule">
+
+            <Link to="/fetch-schedule">
+
               <button className='mb-4 flex items-center justify-center bg-blue-100 hover:bg-blue-200 text-black font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
                 My Schedule
               </button>
@@ -822,7 +824,8 @@ const Dashboard = () => {
           <div className=" rounded-lg mb-6">
           </div>
           {/* My Schedule */}
-          <Link to="/FetchSchedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
+
+          <Link to="/fetch-schedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
             {(() => {
               const now = new Date();
               const upcomingShift = storeShifts
