@@ -655,7 +655,7 @@ const Dashboard = () => {
           <div className=" rounded-lg mb-6">
           </div>
           {/* My Schedule */}
-          <Link to="/FetchSchedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
+          <Link to="/fetch-schedule" className="col-span-1  rounded-xl flex flex-col min-h-[200px] cursor-pointer">
             {(() => {
               const now = new Date();
               const upcomingShift = storeShifts
