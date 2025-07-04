@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+
 import WeeklyCalendar from "../components/WeeklyCalendar";
 
 function getShiftTypeAndColor(start, end) {
   if (!start || !end) return { label: "Unknown", color: "bg-gray-400" };
   const startHour = new Date(start).getHours();
   const endHour = new Date(end).getHours();
+
+
   if (startHour >= 22 || endHour <= 6) {
     return { label: "Night Shift", color: "bg-purple-600 text-white" };
   } else if (startHour >= 15 && startHour < 22) {
@@ -22,13 +25,16 @@ export const FetchSchedule = () => {
   const [employeeId, setEmployeeId] = useState(null);
   const [availability, setAvailability] = useState([]);
   const [tab, setTab] = useState("schedule");
+
   const [selectedWeek, setSelectedWeek] = useState([]);
   const [weekStartDate, setWeekStartDate] = useState(null);
   const [weekEndDate, setWeekEndDate] = useState(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchShifts = async () => {
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -49,12 +55,14 @@ export const FetchSchedule = () => {
         .order("start_time", { ascending: true });
 
       setShifts(shiftData || []);
+
     };
 
     fetchShifts();
   }, []);
 
   useEffect(() => {
+
     if (!employeeId) return;
 
     const fetchAvailability = async () => {
@@ -64,6 +72,7 @@ export const FetchSchedule = () => {
         .eq("employee_id", employeeId);
 
       if (data) {
+
         const byDay = Array(7).fill(null);
         data.forEach(row => {
           const d = new Date(row.start_time);
@@ -72,6 +81,7 @@ export const FetchSchedule = () => {
         setAvailability(byDay);
       }
     };
+
 
     fetchAvailability();
   }, [employeeId]);
@@ -94,6 +104,7 @@ export const FetchSchedule = () => {
       const day = new Date(sunday);
       day.setDate(sunday.getDate() + i);
       week.push(day);
+
     }
 
     setSelectedWeek(week);
@@ -114,6 +125,7 @@ export const FetchSchedule = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 pt-8 items-start">
+
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 w-full md:w-1/3 max-w-xs flex flex-col min-h-[320px]">
           <h2 className="text-lg font-semibold mb-2">Select Week</h2>
           <WeeklyCalendar onWeekSelect={handleWeekSelect} />
@@ -125,6 +137,7 @@ export const FetchSchedule = () => {
               <span
                 className={tab === "schedule" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"}
                 onClick={() => setTab("schedule")}
+
               >
                 My Schedule
               </span>
@@ -145,10 +158,12 @@ export const FetchSchedule = () => {
 
           {tab === "schedule" ? (
             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
+
               <div className="text-lg font-semibold mb-4">
                 {weekStartDate && weekEndDate
                   ? `${weekStartDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekEndDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
                   : "Select a week"}
+
               </div>
               {weekShiftData.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">No shifts scheduled for this week.</div>

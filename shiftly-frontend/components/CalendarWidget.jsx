@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { WEEKDAYS } from './calendarUtils';
 
@@ -16,6 +17,7 @@ const CalendarWidget = ({
   const todayMonth = today.getMonth();
   const todayDate = today.getDate();
 
+
   const days = [];
   for (let i = 0; i < firstDay; i++) {
     days.push(null);
@@ -26,6 +28,7 @@ const CalendarWidget = ({
   while (days.length % 7 !== 0) {
     days.push(null);
   }
+
 
   const monthLabel = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -41,11 +44,13 @@ const CalendarWidget = ({
     date.getMonth() === selectedDate.getMonth() &&
     date.getDate() === selectedDate.getDate();
 
+
   return (
     <div
       className="rounded-2xl shadow bg-white p-4 flex flex-col items-center"
       style={{ aspectRatio: '1 / 1', width: '100%', maxWidth: 320, minWidth: 200 }}
     >
+
       <div className="text-lg font-semibold mb-2">{monthLabel}</div>
       <div className="grid grid-cols-7 gap-y-1 w-full text-center flex-1">
         {WEEKDAYS.map((wd) => (
@@ -81,6 +86,7 @@ const CalendarWidget = ({
             </button>
           );
         })}
+
       </div>
     </div>
   );
