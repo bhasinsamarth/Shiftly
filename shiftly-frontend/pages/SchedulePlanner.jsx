@@ -146,41 +146,7 @@ const SchedulePlanner = () => {
         }));
     };
 
-    const handleCellClick = (empId, dateString) => {
-        const shift = scheduleData[empId]?.[dateString];
-        if (!shift?.checked) {
-            setScheduleData(prev => ({
-                ...prev,
-                [empId]: {
-                    ...prev[empId],
-                    [dateString]: {
-                        checked: true,
-                        start: '',
-                        end: '',
-                        existing: false,
-                        editable: true
-                    }
-                }
-            }));
-            setEditingCell(`${empId}-${dateString}`);
-        } else if (shift.existing && !shift.editable) {
-            setScheduleData(prev => ({
-                ...prev,
-                [empId]: {
-                    ...prev[empId],
-                    [dateString]: {
-                        ...prev[empId][dateString],
-                        editable: true
-                    }
-                }
-            }));
-            setEditingCell(`${empId}-${dateString}`);
-        }
-    };
-
-    const handleInputBlur = () => {
-        setEditingCell(null);
-    };
+    // Duplicate handleCellClick and handleInputBlur removed
 
     const handleCellClick = (empId, dateString) => {
         const shift = scheduleData[empId]?.[dateString];
