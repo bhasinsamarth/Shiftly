@@ -23,8 +23,8 @@ import ManagerStorePage from "./pages/MyStore";
 import TimeOffPage from "./pages/TimeOffPage";
 import ClockDashboard from "./pages/ClockDashboard";
 import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
-import TimeOffRequestPage from "./pages/TimeOffRequestPage";
 
+import TimeOffRequestPage from "./pages/TimeOffRequestPage";
 
 // Context providers
 import { AuthProvider } from "./context/AuthContext";
