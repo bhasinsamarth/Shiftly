@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ClockInOut from '../components/ClockInOut';
@@ -10,6 +10,21 @@ const ClockDashboard = () => {
     const [storeLocation, setStoreLocation] = useState(null);
     const [recentClockEvents, setRecentClockEvents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Add state for date filters
+    const [fromDate, setFromDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - d.getDay()); // Start of week
+        return d.toISOString().split('T')[0];
+    });
+    const [tillDate, setTillDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - d.getDay() + 6); // End of week
+        return d.toISOString().split('T')[0];
+    });
+    // Always show timecard for current week by default
+    const [showTimecard, setShowTimecard] = useState(true);
+    const [filterKey, setFilterKey] = useState(0); // To force re-render WeeklyActivityTable
 
     useEffect(() => {
         if (user) {
@@ -191,12 +206,12 @@ const ClockDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-6">
+        <div className="min-h-screen bg-gray-50 py-8 text-base">
+            <div className="max-w-6xl mx-auto px-4">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Clock Dashboard</h1>
-                    <p className="text-gray-600 mt-2">
+                <div className="mb-8 text-left">
+                    <h1 className="text-2xl font-bold text-gray-900">Clock Dashboard</h1>
+                    <p className="text-gray-700 mt-2">
                         Welcome, {userProfile.first_name} {userProfile.last_name}
                     </p>
                     <p className="text-sm text-gray-500">
@@ -204,81 +219,229 @@ const ClockDashboard = () => {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Clock In/Out Component */}
                     <div className="lg:col-span-1">
-                        <ClockInOut
-                            storeLocation={storeLocation}
-                            userId={userProfile.employee_id}
-                            employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
-                            onClockEvent={handleClockEvent}
-                            allowedRadius={50}
-                        />
-                    </div>
+                            <ClockInOut
+                                storeLocation={storeLocation}
+                                userId={userProfile.employee_id}
+                                employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
+                                onClockEvent={handleClockEvent}
+                                allowedRadius={2000}
+                            />
+                        </div>
 
-                    {/* Recent Clock Events */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Clock Events</h2>
-                            
-                            {recentClockEvents.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8">No clock events found.</p>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full table-auto">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Clock In</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Clock Out</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Hours</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Distance</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {recentClockEvents.map((event) => (
-                                                <tr key={event.id} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-3 text-sm text-gray-900">
-                                                        {formatDateTime(event.clock_in_time)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">
-                                                        {formatDateTime(event.clock_out_time)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">
-                                                        {calculateHoursWorked(event.clock_in_time, event.clock_out_time, event.time_log)}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-900">
-                                                        {event.distance_from_store ? `${event.distance_from_store}m` : 'N/A'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                    {/*  Activity */}
+                    <div className="lg:col-span-3">
+                        <div className="bg-white rounded-2xl shadow-lg p-10 min-h-[500px] flex flex-col">
+                            <h2 className="text-lg font-semibold text-gray-800 mb-4">Activity</h2>
+                            {/* Filter Controls */}
+                            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="from-date" className="font-medium text-gray-700">From</label>
+                                    <input
+                                        id="from-date"
+                                        type="date"
+                                        className="border rounded px-2 py-1 text-base"
+                                        value={fromDate}
+                                        max={tillDate}
+                                        onChange={e => setFromDate(e.target.value)}
+                                    />
                                 </div>
-                            )}
+                                <div className="flex items-center gap-2">
+                                    <label htmlFor="till-date" className="font-medium text-gray-700">Till</label>
+                                    <input
+                                        id="till-date"
+                                        type="date"
+                                        className="border rounded px-2 py-1 text-base"
+                                        value={tillDate}
+                                        min={fromDate}
+                                        onChange={e => setTillDate(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    className="w-full md:w-auto min-w-[140px] py-3 px-4 rounded-lg font-medium transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white shadow"
+                                    style={{height: '48px'}} 
+                                    onClick={() => { setShowTimecard(true); setFilterKey(k => k+1); }}
+                                >
+                                    View Timecard
+                                </button>
+                            </div>
+                            {/* Table */}
+                            {/* Always show the table for the current range; button just updates the range */}
+                            <WeeklyActivityTable
+                                key={filterKey}
+                                userId={userProfile.employee_id}
+                                fromDate={fromDate}
+                                tillDate={tillDate}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">This Week</h3>
-                        <p className="text-3xl font-bold text-blue-600">0h</p>
-                        <p className="text-sm text-gray-500">Hours worked</p>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">This Month</h3>
-                        <p className="text-3xl font-bold text-green-600">0h</p>
-                        <p className="text-sm text-gray-500">Hours worked</p>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Total</h3>
-                        <p className="text-3xl font-bold text-purple-600">{recentClockEvents.length}</p>
-                        <p className="text-sm text-gray-500">Clock events</p>
-                    </div>
-                </div>
+                {/* Quick Stats removed as requested */}
+            </div>
+        </div>
+    );
+};
+
+// Weekly Activity Table Component
+const WeeklyActivityTable = ({ userId, fromDate, tillDate }) => {
+    const [weeklyData, setWeeklyData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [cumulativeHours, setCumulativeHours] = useState(0);
+
+    useEffect(() => {
+        fetchWeeklyData();
+    }, [userId, fromDate, tillDate]);
+
+    const fetchWeeklyData = async () => {
+        try {
+            setLoading(true);
+            const start = new Date(fromDate);
+            const end = new Date(tillDate);
+            const days = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                days.push(new Date(d));
+            }
+
+            const weeklyScheduleData = [];
+            let totalCumulativeHours = 0;
+
+            for (const date of days) {
+                const dateStr = date.toISOString().split('T')[0];
+                // Fetch schedule data for this date
+                const { data, error } = await supabase
+                    .from('store_schedule')
+                    .select('time_log')
+                    .eq('employee_id', userId)
+                    .gte('start_time', `${dateStr}T00:00:00`)
+                    .lte('start_time', `${dateStr}T23:59:59`)
+                    .single();
+
+                const dayData = {
+                    date: new Date(date),
+                    clockedIn: null,
+                    breakIn: null,
+                    breakOut: null,
+                    clockedOut: null,
+                    hoursWorked: 0,
+                    tillDateHours: 0
+                };
+
+                if (data && data.time_log) {
+                    const timeLogs = Array.isArray(data.time_log) ? data.time_log : [];
+                    // Find the times for each event
+                    const clockIn = timeLogs.find(log => log.type === 'clock_in');
+                    const clockOut = timeLogs.find(log => log.type === 'clock_out');
+                    const breakStart = timeLogs.find(log => log.type === 'break_start');
+                    const breakEnd = timeLogs.find(log => log.type === 'break_end');
+
+                    dayData.clockedIn = clockIn ? new Date(clockIn.timestamp) : null;
+                    dayData.clockedOut = clockOut ? new Date(clockOut.timestamp) : null;
+                    dayData.breakIn = breakStart ? new Date(breakStart.timestamp) : null;
+                    dayData.breakOut = breakEnd ? new Date(breakEnd.timestamp) : null;
+
+                    // Calculate hours worked
+                    if (clockIn && clockOut) {
+                        const workMilliseconds = new Date(clockOut.timestamp) - new Date(clockIn.timestamp);
+                        let breakMilliseconds = 0;
+                        if (breakStart && breakEnd) {
+                            breakMilliseconds = new Date(breakEnd.timestamp) - new Date(breakStart.timestamp);
+                        }
+                        const totalWorkMilliseconds = workMilliseconds - breakMilliseconds;
+                        dayData.hoursWorked = Math.max(0, totalWorkMilliseconds / (1000 * 60 * 60)); // Convert to hours
+                    }
+                }
+
+                totalCumulativeHours += dayData.hoursWorked;
+                dayData.tillDateHours = totalCumulativeHours;
+                weeklyScheduleData.push(dayData);
+            }
+
+            setWeeklyData(weeklyScheduleData);
+            setCumulativeHours(totalCumulativeHours);
+        } catch (error) {
+            console.error('Error fetching weekly data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatTime = (date) => {
+        return date ? date.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+        }) : '-';
+    };
+
+    const formatDate = (date) => {
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    };
+
+    const formatHours = (hours) => {
+        return hours > 0 ? `${hours.toFixed(1)}h` : '0h';
+    };
+
+    if (loading) {
+        return (
+            <div className="text-center py-8 text-gray-500">Loading data...</div>
+        );
+    }
+
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="bg-gray-50">
+                        <th className="px-2 py-2 text-left font-medium text-gray-700">Date</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Clock In</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Break In</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Break Out</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Clock Out</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Hrs Worked</th>
+                        <th className="px-2 py-2 text-center font-medium text-gray-700">Till Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {weeklyData.map((day, index) => (
+                        <tr key={index} className={`border-b border-gray-100 ${
+                            day.date.toDateString() === new Date().toDateString() ? 'bg-blue-50' : 'hover:bg-gray-50'
+                        }`} style={{ height: '48px' }}>
+                            <td className="px-2 py-2 font-medium text-gray-700 align-middle">
+                                {formatDate(day.date)}
+                            </td>
+                            <td className="px-2 py-2 text-center text-gray-700 align-middle">
+                                {formatTime(day.clockedIn)}
+                            </td>
+                            <td className="px-2 py-2 text-center text-gray-700 align-middle">
+                                {formatTime(day.breakIn)}
+                            </td>
+                            <td className="px-2 py-2 text-center text-gray-700 align-middle">
+                                {formatTime(day.breakOut)}
+                            </td>
+                            <td className="px-2 py-2 text-center text-gray-700 align-middle">
+                                {formatTime(day.clockedOut)}
+                            </td>
+                            <td className="px-2 py-2 text-center font-medium text-gray-800 align-middle">
+                                {formatHours(day.hoursWorked)}
+                            </td>
+                            <td className="px-2 py-2 text-center font-medium text-blue-700 align-middle">
+                                {formatHours(day.tillDateHours)}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <div className="mt-2 text-right">
+                <span className="text-xs text-gray-500">
+                    Total Hours: <span className="font-medium text-gray-700">{formatHours(cumulativeHours)}</span>
+                </span>
             </div>
         </div>
     );
