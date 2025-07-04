@@ -6,7 +6,9 @@ export default function App({ children }) {
   return (
     <>
       <Navbar />
-      <div className="lg:w-4/5 w-full lg:ml-auto">
+
+      <div className="lg:w-5/6 w-full lg:ml-auto">
+
         {children}
       </div>
     </>

@@ -24,6 +24,8 @@ import TimeOffPage from "./pages/TimeOffPage";
 import ClockDashboard from "./pages/ClockDashboard";
 import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
 
+import TimeOffRequestPage from "./pages/TimeOffRequestPage";
+
 // Context providers
 import { AuthProvider } from "./context/AuthContext";
 import { LocationProvider } from "./context/LocationContext";
@@ -55,6 +57,8 @@ function AppWithRoutes() {
         <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
         <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
         <Route path="timecards" element={<ProtectedRoute><TimecardsPage /></ProtectedRoute>} />
+        <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
+        
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={
