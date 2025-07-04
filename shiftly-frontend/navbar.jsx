@@ -87,6 +87,7 @@ const Navbar = () => {
     <>
       <Link to="/fetch-schedule" className={`block text-gray-700 hover:text-blue-600 ${isActive('/fetch-schedule') ? 'bg-blue-100' : ''}`}>📆 View My Schedule</Link>
       <Link to="/clock" className={`block text-gray-700 hover:text-blue-600 ${isActive('/clock') ? 'bg-blue-100' : ''}`}>🕐 Clock In/Out</Link>
+      <Link to="/Timecards" className={`block text-gray-700 hover:text-blue-600 ${isActive('/Timecards') ? 'bg-blue-100' : ''}`}>⌛ Timecard</Link>
     </>
   );
 
@@ -111,6 +112,8 @@ const Navbar = () => {
                 <Link to="/teams" className={`block text-gray-700 hover:text-blue-600 ${isActive('/teams') ? 'bg-blue-100' : ''}`}>🏢 Teams</Link>
                 <Link to="/add-employee" className={`block text-gray-700 hover:text-blue-600 ${isActive('/add-employee') ? 'bg-blue-100' : ''}`}>📝 Hiring</Link>
                 <Link to="/bulk-geocoding" className={`block text-gray-700 hover:text-blue-600 ${isActive('/bulk-geocoding') ? 'bg-blue-100' : ''}`}>📍 Setup Store Locations</Link>
+                <Link to="/clock" className={`block text-gray-700 hover:text-blue-600 ${isActive('/clock') ? 'bg-blue-100' : ''}`}>🕐 Clock In/Out</Link>
+                <Link to="/Timecards" className={`block text-gray-700 hover:text-blue-600 ${isActive('/Timecards') ? 'bg-blue-100' : ''}`}>⌛ Timecard</Link>
               </>
             )}
 
@@ -138,7 +141,6 @@ const Navbar = () => {
               <>
                 {commonLinks}
                 <Link to="/" className="w-full block text-gray-700 hover:text-blue-600">🕐 Time off</Link>
-                <Link to="/shifts" className="w-full block text-gray-700 hover:text-blue-600">⌛ Timecard</Link>
                 <Link to="/requests" className="w-full block text-gray-700 hover:text-blue-600">🔔 Notifications</Link>
               </>
             )}
