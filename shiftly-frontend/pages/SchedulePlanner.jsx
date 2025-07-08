@@ -48,13 +48,17 @@ const SchedulePlanner = () => {
     const [scheduleData, setScheduleData] = useState({});
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
-    const [weekOffset, setWeekOffset] = useState(0);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
-
-    const [selectedWeekStart, setSelectedWeekStart] = useState(null);
-    const [weekDates, setWeekDates] = useState(getWeekDates(weekOffset));
-
+    // Align to Sunday for initial week
+    const getSunday = (date) => {
+        const d = new Date(date);
+        d.setDate(d.getDate() - d.getDay());
+        d.setHours(0, 0, 0, 0);
+        return d;
+    };
+    const [selectedWeekStart, setSelectedWeekStart] = useState(() => getSunday(new Date()));
+    const [weekDates, setWeekDates] = useState(getWeekDates(0, getSunday(new Date())));
 
     useEffect(() => {
         const fetchManagerStore = async () => {
@@ -130,8 +134,20 @@ const SchedulePlanner = () => {
 
 
         // eslint-disable-next-line
+    }, [storeId, user]);
 
-    }, [storeId, weekOffset, user]);
+    const handleCheckboxChange = (empId, date) => {
+        setScheduleData(prev => ({
+            ...prev,
+            [empId]: {
+                ...prev[empId],
+                [date]: {
+                    ...prev[empId]?.[date],
+                    checked: !prev[empId]?.[date]?.checked
+                }
+            }
+        }));
+    };
 
     const handleTimeChange = (empId, date, field, value) => {
         setScheduleData(prev => ({
@@ -252,15 +268,10 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-
-    // When selectedWeekStart or weekOffset changes, update weekDates
+    // When selectedWeekStart changes, update weekDates
     useEffect(() => {
-        if (selectedWeekStart) {
-            setWeekDates(getWeekDates(0, selectedWeekStart));
-        } else {
-            setWeekDates(getWeekDates(weekOffset));
-        }
-    }, [selectedWeekStart, weekOffset]);
+        setWeekDates(getWeekDates(0, selectedWeekStart));
+    }, [selectedWeekStart]);
 
     // When weekDates changes, refetch employees and schedules
     useEffect(() => {
@@ -313,6 +324,27 @@ const SchedulePlanner = () => {
         fetchEmployeesAndSchedules();
     }, [storeId, weekDates]);
 
+    // Week navigation handlers
+    const handlePrevWeek = () => {
+        setSelectedWeekStart(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(newDate.getDate() - 7);
+            return getSunday(newDate);
+        });
+    };
+    const handleNextWeek = () => {
+        setSelectedWeekStart(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(newDate.getDate() + 7);
+            return getSunday(newDate);
+        });
+    };
+
+    // Calendar week select handler (align to Sunday)
+    const handleCalendarWeekSelect = (date) => {
+        setSelectedWeekStart(getSunday(date));
+    };
+
     // Block access if not authenticated or not a manager
 
     if (!user || user.role_id !== 3) {
@@ -335,7 +367,10 @@ const SchedulePlanner = () => {
                         </h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
-                                <WeeklyCalendar onWeekSelect={date => setSelectedWeekStart(require('../components/calendarUtils').getWeekRange(date)[0])} />
+                                <WeeklyCalendar 
+                                    onWeekSelect={handleCalendarWeekSelect}
+                                    selectedDate={selectedWeekStart}
+                                />
                             </div>
                         </div>
 
@@ -372,8 +407,8 @@ const SchedulePlanner = () => {
                                 <p className="text-[#6a7681] text-sm">Manage and view employee schedules</p>
                             </div>
                             <div className="flex space-x-3">
-                                <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
-                                <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
+                                <button onClick={handlePrevWeek} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
+                                <button onClick={handleNextWeek} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
                             </div>
                         </div>
 
