@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import dayjs from 'dayjs';
 
-const SchedulePlanner = () => {
+const TimecardsPage = () => {
     const { user } = useAuth();
     const [storeId, setStoreId] = useState(null);
     const [employees, setEmployees] = useState([]);
@@ -86,6 +86,7 @@ const SchedulePlanner = () => {
 
     const saveChanges = async () => {
         setSaving(true);
+
         for (const empId in timecardData) {
             if (!editing[empId]) continue;
 
@@ -103,9 +104,22 @@ const SchedulePlanner = () => {
                 }
             }
 
+            const { data: existingData, error: fetchErr } = await supabase
+                .from('store_schedule')
+                .select('time_log')
+                .eq('employee_id', empId)
+                .eq('store_id', storeId)
+                .single();
+
+            let newTimeLog = (existingData?.time_log || []).filter(log => {
+                return !dayjs(log.timestamp).isSame(date, 'day');
+            });
+
+            newTimeLog = [...newTimeLog, ...updatedLogs];
+
             const { error } = await supabase
                 .from('store_schedule')
-                .update({ time_log: updatedLogs })
+                .update({ time_log: newTimeLog })
                 .eq('employee_id', empId)
                 .eq('store_id', storeId);
 
@@ -126,7 +140,6 @@ const SchedulePlanner = () => {
         return time ? time : <span className="text-gray-400">No data</span>;
     };
 
-    // Update handleChange to only allow editing if cell is active
     const handleInputChange = (empId, type, value) => {
         setTimecardData(prev => ({
             ...prev,
@@ -137,7 +150,6 @@ const SchedulePlanner = () => {
         }));
     };
 
-    // Make cell editable only when clicked
     const handleCellClick = (empId, type) => {
         setEditingCell(`${empId}-${type}`);
     };
@@ -146,7 +158,6 @@ const SchedulePlanner = () => {
         setEditingCell(null);
     };
 
-    // Handler for calendar date selection
     const handleCalendarDateChange = (selectedDateObj) => {
         setDate(dayjs(selectedDateObj).startOf('day'));
     };
@@ -159,10 +170,7 @@ const SchedulePlanner = () => {
                         <h2 className="text-[#121416] text-[22px] font-bold leading-tight px-4 pb-3 pt-5">Timecard</h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
-                                <CalendarWidget
-                                    initialDate={date.toDate()}
-                                    onDateSelect={handleCalendarDateChange}
-                                />
+                                <CalendarWidget onDateClick={handleCalendarDateChange} selectedDate={date.toDate()} year={date.year()} month={date.month()} />
                             </div>
                         </div>
                         <h2 className="text-[#121416] text-[22px] font-bold leading-tight px-4 pt-6">Filters</h2>
@@ -296,4 +304,4 @@ const SchedulePlanner = () => {
     );
 };
 
-export default SchedulePlanner;
+export default TimecardsPage;
