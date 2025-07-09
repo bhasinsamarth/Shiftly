@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import dayjs from 'dayjs';
 
-const TimecardsPage = () => {
+const SchedulePlanner = () => {
     const { user } = useAuth();
     const [storeId, setStoreId] = useState(null);
     const [employees, setEmployees] = useState([]);
@@ -35,8 +35,8 @@ const TimecardsPage = () => {
         if (!storeId) return;
 
         const fetchData = async () => {
-            const start = date.startOf('day').toISOString();
-            const end = date.endOf('day').toISOString();
+            const start = date.startOf('day');
+            const end = date.endOf('day');
 
             const { data: employeesData } = await supabase
                 .from('employee')
@@ -50,12 +50,15 @@ const TimecardsPage = () => {
                 .select('employee_id, time_log')
                 .eq('store_id', storeId);
 
+
+
             const formatted = {};
 
             (scheduleData || []).forEach(({ employee_id, time_log }) => {
+                console.log(employee_id, 'Raw logs from DB:', time_log);
                 const logsForDay = (time_log || []).filter(entry => {
                     const entryDate = dayjs(entry.timestamp);
-                    return entryDate.isSame(date, 'day');
+                    return entryDate.isSame(start, 'day');
                 });
 
                 const shifts = {};
@@ -68,21 +71,22 @@ const TimecardsPage = () => {
             });
 
             setTimecardData(formatted);
+
         };
 
         fetchData();
     }, [storeId, date]);
 
-    const handleChange = (empId, type, value) => {
-        setTimecardData(prev => ({
-            ...prev,
-            [empId]: {
-                ...prev[empId],
-                [type]: value
-            }
-        }));
-        setEditing(prev => ({ ...prev, [empId]: true }));
-    };
+    // const handleChange = (empId, type, value) => {
+    //     setTimecardData(prev => ({
+    //         ...prev,
+    //         [empId]: {
+    //             ...prev[empId],
+    //             [type]: value
+    //         }
+    //     }));
+    //     setEditing(prev => ({ ...prev, [empId]: true }));
+    // };
 
     const saveChanges = async () => {
         setSaving(true);
@@ -136,9 +140,9 @@ const TimecardsPage = () => {
         setEditing({});
     };
 
-    const formatTime = (time) => {
-        return time ? time : <span className="text-gray-400">No data</span>;
-    };
+    // const formatTime = (time) => {
+    //     return time ? time : <span className="text-gray-400">No data</span>;
+    // };
 
     const handleInputChange = (empId, type, value) => {
         setTimecardData(prev => ({
@@ -148,6 +152,7 @@ const TimecardsPage = () => {
                 [type]: value
             }
         }));
+        setEditing(prev => ({ ...prev, [empId]: true }));
     };
 
     const handleCellClick = (empId, type) => {
@@ -304,4 +309,4 @@ const TimecardsPage = () => {
     );
 };
 
-export default TimecardsPage;
+export default SchedulePlanner;
