@@ -2,6 +2,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "dotenv": "^16.5.0",
+    "luxon": "^3.7.1",
     "mailgun-js": "^0.22.0",
     "node-fetch": "^2.7.0",
     "node-mailjet": "^6.0.8",

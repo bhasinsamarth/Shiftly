@@ -110,7 +110,7 @@ const Navbar = () => {
                 <Link to="/employees" className={`block text-gray-700 hover:text-blue-600 ${isActive('/employees') ? 'bg-blue-100' : ''}`}>👨‍💼 Employees</Link>
                 <Link to="/teams" className={`block text-gray-700 hover:text-blue-600 ${isActive('/teams') ? 'bg-blue-100' : ''}`}>🏢 Teams</Link>
                 <Link to="/add-employee" className={`block text-gray-700 hover:text-blue-600 ${isActive('/add-employee') ? 'bg-blue-100' : ''}`}>📝 Hiring</Link>
-                <Link to="/bulk-geocoding" className={`block text-gray-700 hover:text-blue-600 ${isActive('/bulk-geocoding') ? 'bg-blue-100' : ''}`}>📍 Setup Store Locations</Link>
+                <Link to="/bulk-geocoding" className={`block text-gray-700 hover:text-blue-600 ${isActive('/bulk-geocoding') ? 'bg-blue-100' : ''}`}>📍 Stores</Link>
               </>
             )}
 
