@@ -4,13 +4,13 @@ import Navbar from "./navbar";
 
 export default function App({ children }) {
   return (
-    <>
+    <div className="mt-10 pt-4">
       <Navbar />
 
-      <div className="lg:w-5/6 w-full lg:ml-auto pt-10">
+      <div className="lg:w-5/6 w-full lg:ml-auto">
 
         {children}
       </div>
-    </>
+    </div>
   );
 }
