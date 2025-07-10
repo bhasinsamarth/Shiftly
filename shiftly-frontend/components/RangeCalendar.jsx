@@ -1,13 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import CalendarWidget from './CalendarWidget';
 
-const RangeCalendar = ({ selectedRange, onRangeSelect, onDateClick, activePick }) => {
+const RangeCalendar = () => {
   const today = new Date();
-  const [currentYear, setCurrentYear] = React.useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = React.useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [start, setStart] = useState(null);
+  const [end, setEnd] = useState(null);
 
-  // Highlighted dates logic
-  const { start, end } = selectedRange || {};
+  const handleDateClick = (date) => {
+    if (!start || (start && end)) {
+      setStart(date);
+      setEnd(null);
+    } else if (start && !end) {
+      if (date < start) {
+        setStart(date);
+        setEnd(start);
+      } else {
+        setEnd(date);
+      }
+    }
+  };
+
   const highlightedDates = [];
   if (start && end) {
     let d = new Date(start);
@@ -19,47 +33,12 @@ const RangeCalendar = ({ selectedRange, onRangeSelect, onDateClick, activePick }
     highlightedDates.push(start);
   }
 
-  // Handle date click
-  const handleDateClick = (date) => {
-    if (onDateClick) {
-      onDateClick(date);
-    } else if (onRangeSelect) {
-      // fallback: old behavior
-      if (!start || (start && end)) {
-        onRangeSelect({ start: date, end: null });
-      } else if (start && !end) {
-        if (date < start) {
-          onRangeSelect({ start: date, end: start });
-        } else {
-          onRangeSelect({ start, end: date });
-        }
-      }
-    }
-  };
-
-  // Add month navigation handler
-  const handleMonthChange = (year, month) => {
-    let newYear = year;
-    let newMonth = month;
-    if (newMonth < 0) {
-      newYear -= 1;
-      newMonth = 11;
-    } else if (newMonth > 11) {
-      newYear += 1;
-      newMonth = 0;
-    }
-    setCurrentYear(newYear);
-    setCurrentMonth(newMonth);
-  };
-
   return (
     <CalendarWidget
       year={currentYear}
       month={currentMonth}
       highlightedDates={highlightedDates}
       onDateClick={handleDateClick}
-      onMonthChange={handleMonthChange}
-      activePick={activePick}
     />
   );
 };
