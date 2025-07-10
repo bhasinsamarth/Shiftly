@@ -1,38 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import CalendarWidget from '../components/CalendarWidget';
 
-import WeeklyCalendar from '../components/WeeklyCalendar';
-
-// Generate time slots (24-hour format, 30 min steps)
-const generate24hTimes = () => {
-    const times = [];
-    for (let hour = 0; hour < 24; hour++) {
-        for (let minute = 0; minute < 60; minute += 30) {
-            const h = hour.toString().padStart(2, '0');
-            const m = minute.toString().padStart(2, '0');
-            times.push(`${h}:${m}`);
-        }
-    }
-    return times;
-};
-
-const timeOptions = generate24hTimes();
-
-// In getWeekDates, allow passing a base date
-const getWeekDates = (offset = 0, baseDate = null) => {
+const getWeekDates = (offset = 0) => {
     const dates = [];
-    let today = baseDate ? new Date(baseDate) : new Date();
-    const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
-    // Calculate the date for Sunday of the current week, then add offset*7 days
-    const base = new Date(today);
-    base.setDate(today.getDate() - dayOfWeek + offset * 7);
-    base.setHours(0, 0, 0, 0);
-
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const baseDate = new Date(today);
+    baseDate.setDate(today.getDate() - dayOfWeek + offset * 7);
+    baseDate.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < 7; i++) {
-        const date = new Date(base);
-        date.setDate(base.getDate() + i);
+        const date = new Date(baseDate);
+        date.setDate(baseDate.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
         const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         dates.push({ dateString, label });
@@ -50,6 +31,7 @@ const SchedulePlanner = () => {
     const [message, setMessage] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
+
     // Align to Sunday for initial week
     const getSunday = (date) => {
         const d = new Date(date);
@@ -60,6 +42,7 @@ const SchedulePlanner = () => {
     const [selectedWeekStart, setSelectedWeekStart] = useState(() => getSunday(new Date()));
     const [weekDates, setWeekDates] = useState(getWeekDates(0, getSunday(new Date())));
 
+
     useEffect(() => {
         const fetchManagerStore = async () => {
             const { data, error } = await supabase
@@ -68,12 +51,10 @@ const SchedulePlanner = () => {
                 .eq('email', user.email)
                 .single();
 
-
-            if (error || !data?.store_id) {
-                setStoreId(null);
-            } else {
+            if (!error && data?.store_id) {
                 setStoreId(data.store_id);
-
+            } else {
+                setStoreId(null);
             }
         };
         if (user) fetchManagerStore();
@@ -133,10 +114,12 @@ const SchedulePlanner = () => {
         fetchEmployeesAndSchedules();
 
 
+
         // eslint-disable-next-line
     }, [storeId, user]);
 
     const handleCheckboxChange = (empId, date) => {
+
         setScheduleData(prev => ({
             ...prev,
             [empId]: {
@@ -163,44 +146,6 @@ const SchedulePlanner = () => {
     };
 
     // Duplicate handleCellClick and handleInputBlur removed
-
-    const handleCellClick = (empId, dateString) => {
-        const shift = scheduleData[empId]?.[dateString];
-        if (!shift?.checked) {
-            // Create a new shift if it doesn't exist
-            setScheduleData(prev => ({
-                ...prev,
-                [empId]: {
-                    ...prev[empId],
-                    [dateString]: {
-                        checked: true,
-                        start: '',
-                        end: '',
-                        existing: false,
-                        editable: true
-                    }
-                }
-            }));
-            setEditingCell(`${empId}-${dateString}`);
-        } else if (shift.existing && !shift.editable) {
-            // Make existing shift editable
-            setScheduleData(prev => ({
-                ...prev,
-                [empId]: {
-                    ...prev[empId],
-                    [dateString]: {
-                        ...prev[empId][dateString],
-                        editable: true
-                    }
-                }
-            }));
-            setEditingCell(`${empId}-${dateString}`);
-        }
-    };
-
-    const handleInputBlur = () => {
-        setEditingCell(null);
-    };
 
     const handleSubmit = async () => {
         if (!window.confirm('Are you sure you want to save the schedule?')) return;
@@ -235,22 +180,18 @@ const SchedulePlanner = () => {
             }
         }
 
+        for (const entry of entriesToUpdate) {
+            const { error } = await supabase
+                .from('store_schedule')
+                .update({ start_time: entry.start_time, end_time: entry.end_time })
+                .eq('store_id', entry.store_id)
+                .eq('employee_id', entry.employee_id)
+                .eq('start_time', entry.start_time);
 
-        if (entriesToUpdate.length > 0) {
-            for (const entry of entriesToUpdate) {
-                const { error } = await supabase
-                    .from('store_schedule')
-                    .update({ start_time: entry.start_time, end_time: entry.end_time })
-                    .eq('store_id', entry.store_id)
-                    .eq('employee_id', entry.employee_id)
-                    .eq('start_time', entry.start_time);
-
-                if (error) {
-                    setMessage('❌ Failed to update schedule.');
-                    setSaving(false);
-                    return;
-                }
-
+            if (error) {
+                setMessage('❌ Failed to update schedule.');
+                setSaving(false);
+                return;
             }
         }
 
@@ -267,6 +208,7 @@ const SchedulePlanner = () => {
         setScheduleData({});
         setSaving(false);
     };
+
 
     // When selectedWeekStart changes, update weekDates
     useEffect(() => {
@@ -347,6 +289,7 @@ const SchedulePlanner = () => {
 
     // Block access if not authenticated or not a manager
 
+
     if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
@@ -359,46 +302,37 @@ const SchedulePlanner = () => {
         <div className="lg:ml-[16.67%] min-h-screen bg-white" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
             <div className="layout-container flex h-full grow flex-col">
                 <div className="gap-1 pr-6 flex flex-1 justify-center py-5">
-
-                    {/* Calendar Section */}
                     <div className="layout-content-container flex flex-col w-80">
-                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
-                            Schedule
-                        </h2>
+                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Schedule</h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
+
                                 <WeeklyCalendar 
                                     onWeekSelect={handleCalendarWeekSelect}
                                     selectedDate={selectedWeekStart}
+
                                 />
                             </div>
                         </div>
 
-                        {/* Filters Section */}
-                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">
-                            Filters
-                        </h2>
+                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Filters</h2>
                         <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
                             <label className="flex flex-col min-w-40 flex-1">
-                                <select 
-
+                                <select
                                     className="form-input flex w-full rounded-xl text-[#121416] border border-[#dde1e3] bg-white h-14 px-4 text-base"
                                     onChange={(e) => setSelectedEmployee(e.target.value)}
                                     value={selectedEmployee}
                                 >
                                     <option value="">All Employees</option>
                                     {employees.map(emp => (
-
-                                        <option key={emp.employee_id} value={emp.employee_id}>{emp.first_name} {emp.last_name}</option>
-
+                                        <option key={emp.employee_id} value={emp.employee_id}>
+                                            {emp.first_name} {emp.last_name}
+                                        </option>
                                     ))}
                                 </select>
                             </label>
                         </div>
                     </div>
-
-
-                    {/* Schedule Table */}
 
                     <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
                         <div className="flex flex-wrap justify-between gap-3 p-4">
@@ -412,21 +346,13 @@ const SchedulePlanner = () => {
                             </div>
                         </div>
 
-                        
-
                         <div className="pb-3">
                             <div className="flex border-b border-[#dde1e3] px-4 gap-8">
                                 {["Day", "Week", "Month"].map((tab) => (
                                     <a
                                         key={tab}
                                         href="#"
-
-                                        className={`flex flex-col items-center pb-[13px] pt-4 border-b-[3px] ${
-                                            tab === "Week"
-                                                ? "border-b-[#121416] text-[#121416]"
-                                                : "border-b-transparent text-[#6a7681]"
-                                        }`}
-
+                                        className={`flex flex-col items-center pb-[13px] pt-4 border-b-[3px] ${tab === "Week" ? "border-b-[#121416] text-[#121416]" : "border-b-transparent text-[#6a7681]"}`}
                                     >
                                         <p className="text-sm font-bold tracking-[0.015em]">{tab}</p>
                                     </a>
@@ -435,9 +361,6 @@ const SchedulePlanner = () => {
                         </div>
 
                         {message && <p className="mb-6 text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg mx-4">{message}</p>}
-
-
-                        {/* Schedule table */}
 
                         <div className="px-4 py-3">
                             <div className="overflow-x-auto border border-[#dde1e3] rounded-xl">
@@ -462,13 +385,7 @@ const SchedulePlanner = () => {
                                                         const shift = scheduleData[emp.employee_id]?.[dateString];
                                                         const isEditing = editingCell === `${emp.employee_id}-${dateString}`;
                                                         return (
-
-                                                            <td 
-                                                                key={dateString} 
-                                                                className="px-4 py-3 text-sm text-[#6a7681] h-12 cursor-pointer hover:bg-gray-100 transition"
-                                                                onClick={() => handleCellClick(emp.employee_id, dateString)}
-                                                            >
-
+                                                            <td key={dateString} className="px-4 py-3 text-sm text-[#6a7681] h-12 cursor-pointer hover:bg-gray-100 transition" onClick={() => handleCellClick(emp.employee_id, dateString)}>
                                                                 {shift?.checked ? (
                                                                     shift.editable || isEditing ? (
                                                                         <div className="flex flex-col gap-1">
@@ -478,9 +395,7 @@ const SchedulePlanner = () => {
                                                                                 onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
                                                                                 onBlur={handleInputBlur}
                                                                                 className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
-
-                                                                                placeholder="Start (e.g. 9:00)"
-
+                                                                                placeholder="Start (e.g. 09:00)"
                                                                                 autoFocus={isEditing}
                                                                             />
                                                                             <input
@@ -493,11 +408,7 @@ const SchedulePlanner = () => {
                                                                             />
                                                                         </div>
                                                                     ) : (
-
-                                                                        <span className="text-[#121416] font-medium">
-                                                                            {shift.start} - {shift.end}
-                                                                        </span>
-
+                                                                        <span className="text-[#121416] font-medium">{shift.start} - {shift.end}</span>
                                                                     )
                                                                 ) : (
                                                                     <span className="text-[#9ca3af] opacity-60">Off</span>

@@ -41,7 +41,7 @@ const ClockDashboard = () => {
     const fetchUserData = async () => {
         try {
             setIsLoading(true);
-            
+
             // Get user profile and store information
             const { data: profile, error: profileError } = await supabase
                 .from('employee')
@@ -65,7 +65,7 @@ const ClockDashboard = () => {
             if (profileError) throw profileError;
 
             setUserProfile(profile);
-            
+
             if (profile.store && profile.store.coordinates) {
                 // Handle coordinates - check if it's already parsed or needs parsing
                 let coords;
@@ -74,7 +74,7 @@ const ClockDashboard = () => {
                 } else {
                     coords = JSON.parse(profile.store.coordinates);
                 }
-                
+
                 setStoreLocation({
                     latitude: coords.latitude,
                     longitude: coords.longitude,
@@ -103,18 +103,18 @@ const ClockDashboard = () => {
                 .limit(10);
 
             if (error) throw error;
-            
+
             // Transform time_log data into clock events format
             const clockEvents = [];
-            
+
             data?.forEach(schedule => {
                 if (schedule.time_log && Array.isArray(schedule.time_log)) {
                     const logs = schedule.time_log.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                    
+
                     let clockIn = null;
                     let clockOut = null;
                     let breaks = [];
-                    
+
                     logs.forEach(log => {
                         switch (log.type) {
                             case 'clock_in':
@@ -129,7 +129,7 @@ const ClockDashboard = () => {
                                 break;
                         }
                     });
-                    
+
                     if (clockIn) {
                         clockEvents.push({
                             id: schedule.schedule_id,
@@ -153,7 +153,7 @@ const ClockDashboard = () => {
     const handleClockEvent = (eventType, eventData) => {
         // Refresh recent events when a clock event occurs
         fetchRecentClockEvents();
-        
+
         // You could also show a toast notification here
         console.log(`${eventType} successful:`, eventData);
     };
@@ -165,20 +165,20 @@ const ClockDashboard = () => {
 
     const calculateHoursWorked = (clockIn, clockOut, timeLogs = null) => {
         if (!clockIn || !clockOut) return 'In Progress';
-        
+
         // If we have time logs, use the proper calculation that includes breaks
         if (timeLogs && Array.isArray(timeLogs)) {
             const { workTime } = calculateHoursFromTimeLogs(timeLogs);
             return formatDuration(workTime);
         }
-        
+
         // Fallback to simple calculation
         const start = new Date(clockIn);
         const end = new Date(clockOut);
         const diffMs = end - start;
         const hours = Math.floor(diffMs / (1000 * 60 * 60));
         const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         return `${hours}h ${minutes}m`;
     };
 
@@ -222,6 +222,7 @@ const ClockDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Clock In/Out Component */}
                     <div className="lg:col-span-1">
+
                             <ClockInOut
                                 storeLocation={storeLocation}
                                 userId={userProfile.employee_id}
@@ -247,6 +248,54 @@ const ClockDashboard = () => {
                                         max={tillDate}
                                         onChange={e => setFromDate(e.target.value)}
                                     />
+
+                        <ClockInOut
+                            storeLocation={storeLocation}
+                            userId={userProfile.employee_id}
+                            employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
+                            onClockEvent={handleClockEvent}
+                            allowedRadius={10000}
+                        />
+                    </div>
+
+                    {/* Recent Clock Events */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Clock Events</h2>
+
+                            {recentClockEvents.length === 0 ? (
+                                <p className="text-gray-500 text-center py-8">No clock events found.</p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full table-auto">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Clock In</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Clock Out</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Hours</th>
+                                                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Distance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {recentClockEvents.map((event) => (
+                                                <tr key={event.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-3 text-sm text-gray-900">
+                                                        {formatDateTime(event.clock_in_time)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">
+                                                        {formatDateTime(event.clock_out_time)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">
+                                                        {calculateHoursWorked(event.clock_in_time, event.clock_out_time, event.time_log)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900">
+                                                        {event.distance_from_store ? `${event.distance_from_store}m` : 'N/A'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <label htmlFor="till-date" className="font-medium text-gray-700">Till</label>
@@ -278,6 +327,7 @@ const ClockDashboard = () => {
                         </div>
                     </div>
                 </div>
+
 
                 {/* Quick Stats removed as requested */}
             </div>
@@ -442,6 +492,7 @@ const WeeklyActivityTable = ({ userId, fromDate, tillDate }) => {
                 <span className="text-xs text-gray-500">
                     Total Hours: <span className="font-medium text-gray-700">{formatHours(cumulativeHours)}</span>
                 </span>
+
             </div>
         </div>
     );
