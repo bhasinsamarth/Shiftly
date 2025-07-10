@@ -29,19 +29,10 @@ const SchedulePlanner = () => {
     const [scheduleData, setScheduleData] = useState({});
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [weekOffset, setWeekOffset] = useState(0);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
-
-    // Align to Sunday for initial week
-    const getSunday = (date) => {
-        const d = new Date(date);
-        d.setDate(d.getDate() - d.getDay());
-        d.setHours(0, 0, 0, 0);
-        return d;
-    };
-    const [selectedWeekStart, setSelectedWeekStart] = useState(() => getSunday(new Date()));
-    const [weekDates, setWeekDates] = useState(getWeekDates(0, getSunday(new Date())));
-
+    const weekDates = getWeekDates(weekOffset);
 
     useEffect(() => {
         const fetchManagerStore = async () => {
@@ -112,25 +103,7 @@ const SchedulePlanner = () => {
         };
 
         fetchEmployeesAndSchedules();
-
-
-
-        // eslint-disable-next-line
-    }, [storeId, user]);
-
-    const handleCheckboxChange = (empId, date) => {
-
-        setScheduleData(prev => ({
-            ...prev,
-            [empId]: {
-                ...prev[empId],
-                [date]: {
-                    ...prev[empId]?.[date],
-                    checked: !prev[empId]?.[date]?.checked
-                }
-            }
-        }));
-    };
+    }, [storeId, weekOffset, user]);
 
     const handleTimeChange = (empId, date, field, value) => {
         setScheduleData(prev => ({
@@ -145,7 +118,41 @@ const SchedulePlanner = () => {
         }));
     };
 
-    // Duplicate handleCellClick and handleInputBlur removed
+    const handleCellClick = (empId, dateString) => {
+        const shift = scheduleData[empId]?.[dateString];
+        if (!shift?.checked) {
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        checked: true,
+                        start: '',
+                        end: '',
+                        existing: false,
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        } else if (shift.existing && !shift.editable) {
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        ...prev[empId][dateString],
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        }
+    };
+
+    const handleInputBlur = () => {
+        setEditingCell(null);
+    };
 
     const handleSubmit = async () => {
         if (!window.confirm('Are you sure you want to save the schedule?')) return;
@@ -209,87 +216,6 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-
-    // When selectedWeekStart changes, update weekDates
-    useEffect(() => {
-        setWeekDates(getWeekDates(0, selectedWeekStart));
-    }, [selectedWeekStart]);
-
-    // When weekDates changes, refetch employees and schedules
-    useEffect(() => {
-        if (!storeId) return;
-        const fetchEmployeesAndSchedules = async () => {
-            const { data: employeeData, error: empErr } = await supabase
-                .from('employee')
-                .select('employee_id, first_name, last_name')
-                .eq('store_id', storeId);
-            if (empErr) {
-                setEmployees([]);
-                return;
-            }
-            setEmployees(employeeData || []);
-
-            const startDate = weekDates[0].dateString;
-            const endDate = weekDates[6].dateString;
-
-            const { data: scheduleEntries, error: schedErr } = await supabase
-                .from('store_schedule')
-                .select('employee_id, start_time, end_time')
-                .eq('store_id', storeId)
-                .gte('start_time', `${startDate}T00:00`)
-                .lte('end_time', `${endDate}T23:59`);
-
-            if (schedErr) {
-                setScheduleData({});
-                return;
-            }
-
-            const updatedSchedule = {};
-            (scheduleEntries || []).forEach(entry => {
-                const empId = entry.employee_id;
-                const dateKey = entry.start_time.split('T')[0];
-                const startTime = entry.start_time.split('T')[1].slice(0, 5);
-                const endTime = entry.end_time.split('T')[1].slice(0, 5);
-
-                if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
-                updatedSchedule[empId][dateKey] = {
-                    checked: true,
-                    start: startTime,
-                    end: endTime,
-                    existing: true,
-                    editable: false
-                };
-            });
-
-            setScheduleData(updatedSchedule);
-        };
-        fetchEmployeesAndSchedules();
-    }, [storeId, weekDates]);
-
-    // Week navigation handlers
-    const handlePrevWeek = () => {
-        setSelectedWeekStart(prev => {
-            const newDate = new Date(prev);
-            newDate.setDate(newDate.getDate() - 7);
-            return getSunday(newDate);
-        });
-    };
-    const handleNextWeek = () => {
-        setSelectedWeekStart(prev => {
-            const newDate = new Date(prev);
-            newDate.setDate(newDate.getDate() + 7);
-            return getSunday(newDate);
-        });
-    };
-
-    // Calendar week select handler (align to Sunday)
-    const handleCalendarWeekSelect = (date) => {
-        setSelectedWeekStart(getSunday(date));
-    };
-
-    // Block access if not authenticated or not a manager
-
-
     if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
@@ -306,11 +232,11 @@ const SchedulePlanner = () => {
                         <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Schedule</h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
-
-                                <WeeklyCalendar 
-                                    onWeekSelect={handleCalendarWeekSelect}
-                                    selectedDate={selectedWeekStart}
-
+                                <CalendarWidget
+                                    // year={date.year()}
+                                    // month={date.month()}
+                                    // selectedDate={date.toDate()}
+                                    // onDateClick={(selectedDateObj) => setDate(dayjs(selectedDateObj).startOf('day'))}
                                 />
                             </div>
                         </div>
@@ -341,8 +267,8 @@ const SchedulePlanner = () => {
                                 <p className="text-[#6a7681] text-sm">Manage and view employee schedules</p>
                             </div>
                             <div className="flex space-x-3">
-                                <button onClick={handlePrevWeek} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
-                                <button onClick={handleNextWeek} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
+                                <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
+                                <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
                             </div>
                         </div>
 

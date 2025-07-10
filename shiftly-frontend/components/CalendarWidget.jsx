@@ -8,7 +8,6 @@ const CalendarWidget = ({
   highlightedDates = [],
   selectedDate = null,
   onDateClick,
-  onMonthChange, // <-- add this prop
 }) => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
@@ -51,25 +50,8 @@ const CalendarWidget = ({
       className="rounded-2xl shadow bg-white p-4 flex flex-col items-center"
       style={{ aspectRatio: '1 / 1', width: '100%', maxWidth: 320, minWidth: 200 }}
     >
-      <div className="flex items-center justify-between w-full mb-2">
-        <button
-          className="px-2 py-1 text-lg font-bold text-blue-700 hover:bg-blue-100 rounded"
-          onClick={() => onMonthChange && onMonthChange(year, month - 1)}
-          aria-label="Previous Month"
-          type="button"
-        >
-          &#8592;
-        </button>
-        <div className="text-lg font-semibold">{monthLabel}</div>
-        <button
-          className="px-2 py-1 text-lg font-bold text-blue-700 hover:bg-blue-100 rounded"
-          onClick={() => onMonthChange && onMonthChange(year, month + 1)}
-          aria-label="Next Month"
-          type="button"
-        >
-          &#8594;
-        </button>
-      </div>
+
+      <div className="text-lg font-semibold mb-2">{monthLabel}</div>
       <div className="grid grid-cols-7 gap-y-1 w-full text-center flex-1">
         {WEEKDAYS.map((wd) => (
           <div key={wd} className="text-gray-500 font-medium text-sm pb-1 select-none">{wd}</div>
