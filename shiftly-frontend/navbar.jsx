@@ -70,6 +70,7 @@ const Navbar = () => {
                   <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
                 </div>
 
+
               )}
 
               {/* Manager */}

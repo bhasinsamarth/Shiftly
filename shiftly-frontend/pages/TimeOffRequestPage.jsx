@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import RangeCalendar from '../components/RangeCalendar';
+import { submitEmployeeRequest } from '../utils/requestHandler';
 
 const TimeOffRequestPage = () => {
   const { user } = useAuth();
@@ -29,18 +30,34 @@ const TimeOffRequestPage = () => {
     }
 
     try {
-      const { error } = await supabase.from('time_off_requests').insert([{
-        employee_id: user.id,
-        start_date: start.toISOString().split('T')[0],
-        end_date: end.toISOString().split('T')[0],
-        reason,
-        status: 'pending',
-      }]);
+      // Look up the integer employee_id for this user by email (as in ChangeAvailabity)
+      const { data: empData, error: empError } = await supabase
+        .from('employee')
+        .select('employee_id')
+        .eq('email', user.email)
+        .single();
+      if (empError || !empData) {
+        setMessage('Could not find employee record.');
+        setLoading(false);
+        return;
+      }
+      const employeeId = empData.employee_id;
 
-      if (error) {
-        setMessage('Failed to submit request.');
+      // Submit time-off request for approval
+      const requestPayload = {
+        employee_id: employeeId,
+        request_type: 'time-off',
+        request: {
+          start_date: start.toISOString().split('T')[0],
+          end_date: end.toISOString().split('T')[0],
+          reason,
+        },
+      };
+      const result = await submitEmployeeRequest(requestPayload);
+      if (!result.success) {
+        setMessage('Failed to submit request: ' + result.error);
       } else {
-        setMessage('Time off request submitted!');
+        setMessage('Time off request submitted for approval!');
         setRange({ start: null, end: null });
         setReason('');
       }
@@ -51,8 +68,17 @@ const TimeOffRequestPage = () => {
     setLoading(false);
   };
 
-  const handleRangeSelect = ({ start, end }) => {
-    setRange({ start, end });
+  // Range selection logic: 1st click sets start, 2nd click sets end, 3rd click resets
+  const handleDateClick = (date) => {
+    if (!range.start || (range.start && range.end)) {
+      setRange({ start: date, end: null });
+    } else if (range.start && !range.end) {
+      if (date < range.start) {
+        setRange({ start: date, end: range.start });
+      } else {
+        setRange({ start: range.start, end: date });
+      }
+    }
   };
 
   return (
@@ -60,13 +86,19 @@ const TimeOffRequestPage = () => {
       {/* Calendar on the left */}
       <div className="md:w-1/2 w-full flex flex-col items-center justify-center bg-gray-50 p-6 border-r">
         <h3 className="text-lg font-semibold mb-4 text-center">Select Date Range</h3>
-        <RangeCalendar onRangeSelect={handleRangeSelect} />
-        {range.start && range.end && (
-          <div className="mt-4 text-center text-sm">
-            <strong>Selected Range:</strong>
-            <div>{range.start.toDateString()} &ndash; {range.end.toDateString()}</div>
-          </div>
-        )}
+        <div className="flex gap-2 mb-2">
+          <button
+            type="button"
+            className="px-3 py-1 rounded text-xs font-semibold border bg-gray-200 text-gray-700"
+            onClick={() => setRange({ start: null, end: null })}
+          >
+            Clear Selection
+          </button>
+        </div>
+        <RangeCalendar
+          selectedRange={range}
+          onDateClick={handleDateClick}
+        />
       </div>
 
       {/* Form on the right */}
@@ -98,10 +130,18 @@ const TimeOffRequestPage = () => {
             <textarea
               className="w-full border rounded px-3 py-2"
               value={reason}
-              onChange={e => setReason(e.target.value)}
+              onChange={e => {
+                // Only allow up to 500 alphabetic characters
+                const alphaCount = (e.target.value.match(/[a-zA-Z]/g) || []).length;
+                if (alphaCount <= 500) setReason(e.target.value);
+              }}
               required
               rows={3}
+              maxLength={2000} // fallback for very long text
             />
+            <div className="text-xs text-gray-500 text-right mt-1">
+              {(reason.match(/[a-zA-Z]/g) || []).length} / 500 letters
+            </div>
           </div>
           <button
             type="submit"

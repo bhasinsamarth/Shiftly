@@ -73,7 +73,7 @@ const ClockInOut = ({
                     )
                 );
                 // Check if there's an active break (break_start without break_end)
-                const hasActiveBreak = timeLogs.some(log => 
+                const hasActiveBreak = hasActiveClock && timeLogs.some(log => 
                     log.type === 'break_start' && 
                     !timeLogs.find(endLog => 
                         endLog.type === 'break_end' && 
@@ -148,6 +148,7 @@ const ClockInOut = ({
             if (error) throw error;
 
             setIsClockedIn(true);
+            setIsOnBreak(false); // Reset break status on new clock-in
             setClockEvents(updatedLogs);
             if (onClockEvent) {
                 onClockEvent('clock_in', newClockEvent);
@@ -354,7 +355,7 @@ const ClockInOut = ({
 
             if (error) throw error;
 
-            setIsOnBreak(false);
+            setIsOnBreak(false); // Reset break status on break end
             setClockEvents(updatedLogs);
             if (onClockEvent) {
                 onClockEvent('break_end', newBreakEvent);
@@ -418,61 +419,39 @@ const ClockInOut = ({
                         </div>
 
                         <div className="space-y-2">
+                            {/* Clock In/Out Button */}
                             <button
-                                onClick={handleClockIn}
-                                disabled={!canClockInOut || isClockedIn}
-                                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-                                    canClockInOut && !isClockedIn
-                                        ? 'bg-green-500 hover:bg-green-600 text-white'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                onClick={isClockedIn ? handleClockOut : handleClockIn}
+                                disabled={!canClockInOut || isProcessing || (isClockedIn && isOnBreak)}
+                                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors text-sm ${
+                                    isClockedIn
+                                        ? (!isOnBreak && canClockInOut && !isProcessing ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50')
+                                        : (canClockInOut && !isProcessing ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50')
                                 }`}
                             >
-                                {isProcessing ? 'Processing...' : 'Clock In'}
+                                {isProcessing ? 'Processing...' : isClockedIn ? 'Clock Out' : 'Clock In'}
                             </button>
 
+                            {/* Break Button */} 
                             <button
-                                onClick={handleClockOut}
-                                disabled={!canClockInOut || !isClockedIn}
-                                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-                                    canClockInOut && isClockedIn
-                                        ? 'bg-red-500 hover:bg-red-600 text-white'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                onClick={isOnBreak ? handleEndBreak : handleStartBreak}
+                                disabled={isProcessing || (!isClockedIn && !isOnBreak)}
+                                className={`w-full py-3 px-4 rounded-lg font-medium transition-colors text-sm ${
+                                    isOnBreak
+                                        ? '!bg-orange-500 !text-white hover:!bg-orange-600 !cursor-pointer !opacity-100'
+                                        : (!isProcessing && isClockedIn && canClockInOut 
+                                            ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50')
                                 }`}
+                                style={isOnBreak ? { 
+                                    backgroundColor: '#f97316', 
+                                    color: 'white',
+                                    opacity: 1,
+                                    cursor: 'pointer'
+                                } : {}}
                             >
-                                {isProcessing ? 'Processing...' : 'Clock Out'}
+                                {isProcessing ? 'Processing...' : isOnBreak ? 'End Break' : 'Start Break'}
                             </button>
-
-                            {/* Break Buttons - Only show when clocked in */}
-                            {isClockedIn && (
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Break Controls</h4>
-                                    <div className="space-y-2">
-                                        <button
-                                            onClick={handleStartBreak}
-                                            disabled={!canClockInOut || isOnBreak}
-                                            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors text-sm ${
-                                                canClockInOut && !isOnBreak
-                                                    ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            {isProcessing ? 'Processing...' : 'Start Break'}
-                                        </button>
-
-                                        <button
-                                            onClick={handleEndBreak}
-                                            disabled={!canClockInOut || !isOnBreak}
-                                            className={`w-full py-2 px-4 rounded-lg font-medium transition-colors text-sm ${
-                                                canClockInOut && isOnBreak
-                                                    ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            {isProcessing ? 'Processing...' : 'End Break'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Status Indicator */}
@@ -491,21 +470,6 @@ const ClockInOut = ({
                                     : 'Clocked Out'
                             }
                         </div>
-
-                        {/* Recent Activity Log */}
-                        {clockEvents.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <h4 className="text-sm font-medium text-gray-700 mb-2">Today's Activity</h4>
-                                <div className="max-h-32 overflow-y-auto space-y-1">
-                                    {clockEvents.slice(-5).reverse().map((event, index) => (
-                                        <div key={index} className="text-xs bg-gray-50 p-2 rounded flex justify-between">
-                                            <span className="capitalize">{event.type.replace('_', ' ')}</span>
-                                            <span>{new Date(event.timestamp).toLocaleTimeString()}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>
