@@ -60,7 +60,7 @@ const Navbar = () => {
             <div >
               {/* Admin/Owner */}
               {(user?.role_id === 1 || user?.role_id === 2) && (
-                <div className='space-y-6'>
+                <div>
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}>#️⃣ Dashboard</Link>
                   <Link to="/employees" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/employees') ? activeLinkClass : inactiveLinkClass}`}>👨‍💼 Employees</Link>
                   <Link to="/teams" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/teams') ? activeLinkClass : inactiveLinkClass}`}>🏢 Teams</Link>

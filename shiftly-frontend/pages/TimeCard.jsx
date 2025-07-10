@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import dayjs from 'dayjs';
 
-const SchedulePlanner = () => {
+const Timecards = () => {
     const { user } = useAuth();
     const [storeId, setStoreId] = useState(null);
     const [employees, setEmployees] = useState([]);
@@ -309,4 +309,4 @@ const SchedulePlanner = () => {
     );
 };
 
-export default SchedulePlanner;
+export default Timecards;

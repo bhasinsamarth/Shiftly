@@ -64,8 +64,8 @@ const BreadcrumbsSidebar = () => {
     };
 
     return (
-        <nav className="w-full bg-gray-50 border-b border-gray-200 px-6 py-3 flex items-center text-sm justify-between">
-            <ol className="flex items-center space-x-2">
+        <nav className="w-full top-0 left-0 z-50 fixed bg-gray-50 border-b border-gray-200 px-6 py-3 flex items-center text-sm justify-between">
+            <ol className="flex items-center space-x-1">
                 <li>
                     <Link to="/" className="text-blue-600 hover:underline font-medium">Shiftly</Link>
                 </li>
