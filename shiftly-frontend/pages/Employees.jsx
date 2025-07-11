@@ -33,7 +33,7 @@ export default function Employees() {
   }, [searchTerm, employees]);
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
+    <div className="max-w-full mx-auto p-6">
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mb-4">
           <h1 className="text-2xl font-bold text-gray-800">Employees</h1>
@@ -66,7 +66,6 @@ export default function Employees() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
-                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th> */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
@@ -78,7 +77,6 @@ export default function Employees() {
                 <tr key={emp.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.first_name} {emp.last_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.role_id}</td>
-                  {/* <td className="px-6 py-4 text-sm text-gray-700">{emp.department}</td> */}
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.phone || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.salary ? `$${emp.salary}` : 'N/A'}</td>

@@ -505,15 +505,10 @@ const Dashboard = () => {
   if (user && (user.role_id === 1 || user.role_id === 2)) {
     // ADMIN AND OWNER dashboard
     return (
-      <div className="max-w-6xl mx-auto p-2 sm:p-4 lg:p-6">
+      <div className="max-w-full mx-auto p-2 sm:p-4 lg:p-6">
         {accessDenied && (
           <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="..." clipRule="evenodd" />
-                </svg>
-              </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">{accessMessage || 'You do not have permission to access the requested page.'}</p>
               </div>
@@ -521,7 +516,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        <section className="py-5">
+        <section className="">
           <h1 className="text-2xl font-bold mb-1 text-gray-800">Dashboard</h1>
           <p className="text-md text-gray-500 mb-6">Welcome back, Admin</p>
 
@@ -543,7 +538,7 @@ const Dashboard = () => {
 
           {/* QUICK ACTIONS */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
             <div className="flex flex-col md:flex-row gap-4">
               <Link to="/employees">
                 <button className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow transition">
@@ -624,7 +619,7 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <section className="mb-4 py-5">
           <h1 className="text-2xl font-bold  mb-1">Dashboard</h1>
           <p className="text-md mt-4 text-gray-500 mb-1">Welcome back, {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</p>
@@ -791,10 +786,10 @@ const Dashboard = () => {
       return <div className="p-4 text-gray-600 bg-gray-100 rounded-md">No employee data found for your account. Please contact support.</div>;
     }
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto  px-4 sm:px-6 lg:px-8">
         <section className="mb-4 py-5">
-          <h1 className="text-2xl md:text-3xl font-bold  mb-1">Dashboard</h1>
-          <p className="text-md mt-4 text-gray-500 mb-1">Welcome back, {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</p>
+          <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
+          <p className="text-md  text-gray-500 mb-1">Welcome back, {myEmployee.first_name} {myEmployee.last_name ? ` ${myEmployee.last_name}` : ''}</p>
         </section>
         {/* Quick Actions div */}
         <div>
@@ -802,7 +797,7 @@ const Dashboard = () => {
             <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4">Quick Actions</h2>
           </div>
           <div className='flex flex-col md:flex-row gap-4 mb-6'>
-            <Link to="/">
+            <Link to="/clock">
               <button className='mb-4 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition'>
                 Clock in
               </button>
