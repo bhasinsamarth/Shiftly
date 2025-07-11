@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
-import dayjs from 'dayjs';
 import { utcToLocal } from '../utils/timezoneUtils';
+import dayjs from 'dayjs';
 
 const Timecards = () => {
     const { user } = useAuth();
@@ -16,8 +16,9 @@ const Timecards = () => {
     const [message, setMessage] = useState('');
     const [saving, setSaving] = useState(false);
     const [editingCell, setEditingCell] = useState(null);
-    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default fallback
+    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default timezone
 
+    // Fetch store and timezone based on user email
     useEffect(() => {
         const fetchStore = async () => {
             const { data, error } = await supabase
@@ -36,6 +37,7 @@ const Timecards = () => {
         if (user) fetchStore();
     }, [user]);
 
+    // Fetch all the employees and their timecard data for the selected store and date
     useEffect(() => {
         if (!storeId) return;
 
@@ -56,11 +58,10 @@ const Timecards = () => {
                 .eq('store_id', storeId);
 
 
-
             const formatted = {};
 
             (scheduleData || []).forEach(({ employee_id, time_log }) => {
-                console.log(employee_id, 'Raw logs from DB:', time_log);
+                // console.log(employee_id, 'Raw logs from DB:', time_log);
                 const logsForDay = (time_log || []).filter(entry => {
                     const entryDate = dayjs(entry.timestamp);
                     return entryDate.isSame(start, 'day');
@@ -82,17 +83,6 @@ const Timecards = () => {
 
         fetchData();
     }, [storeId, date]);
-
-    // const handleChange = (empId, type, value) => {
-    //     setTimecardData(prev => ({
-    //         ...prev,
-    //         [empId]: {
-    //             ...prev[empId],
-    //             [type]: value
-    //         }
-    //     }));
-    //     setEditing(prev => ({ ...prev, [empId]: true }));
-    // };
 
     const saveChanges = async () => {
         setSaving(true);
@@ -149,10 +139,6 @@ const Timecards = () => {
         setSaving(false);
         setEditing({});
     };
-
-    // const formatTime = (time) => {
-    //     return time ? time : <span className="text-gray-400">No data</span>;
-    // };
 
     const handleInputChange = (empId, type, value) => {
         setTimecardData(prev => ({
