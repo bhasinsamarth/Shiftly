@@ -1,37 +1,35 @@
-// src/components/Chat/GroupChatRoom.jsx
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../supabaseClient';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
 
-export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
-  const navigate = useNavigate();
-  const rid = roomId;
+export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }) {
+  const navigate     = useNavigate();
+  const queryClient  = useQueryClient();
 
-  // Chat messages
+  // ── Messages ───────────────────────────────────────────────────────────────
   const [messages, setMessages] = useState([]);
-  const [newMsg, setNewMsg] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [newMsg, setNewMsg]     = useState('');
+  const [loading, setLoading]   = useState(true);
 
-  // Participants & admin state
-  const [participants, setParticipants] = useState([]);
+  // ── Participants & admin state ─────────────────────────────────────────────
+  const [participants, setParticipants]             = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
-  const [showMembers, setShowMembers] = useState(false);
+  const [showMembers, setShowMembers]               = useState(false);
   const [selectedNewMembers, setSelectedNewMembers] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [memberSearch, setMemberSearch] = useState('');
+  const [showAddForm, setShowAddForm]               = useState(false);
+  const [memberSearch, setMemberSearch]             = useState('');
 
-  // Group name editing
-  const [groupName, setGroupName] = useState(roomName);
+  // ── Group name editing ─────────────────────────────────────────────────────
+  const [groupName, setGroupName]     = useState(roomName);
   const [editingName, setEditingName] = useState(false);
 
-  // Admin flag
+  // ── Admin flag & Options dropdown ──────────────────────────────────────────
   const [isGroupAdmin, setIsGroupAdmin] = useState(false);
-
-  // Options menu
-  const [showOptions, setShowOptions] = useState(false);
+  const [showOptions, setShowOptions]   = useState(false);
   const optionsRef = useRef();
   useEffect(() => {
     function onClickOutside(e) {
@@ -43,7 +41,7 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  // Determine if current user is admin
+  // ── Determine if current user is admin ─────────────────────────────────────
   useEffect(() => {
     if (!rid) return;
     (async () => {
@@ -57,8 +55,9 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     })();
   }, [rid, currentEmployee.employee_id]);
 
-  // Load messages (with embedded employee) and subscribe
+  // ── Load & subscribe messages, then mark as read & clear badge ────────────
   const loadMessages = async () => {
+    // fetch all messages with employee info
     const { data } = await supabase
       .from('messages')
       .select(`
@@ -93,29 +92,48 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
       setMessages(msgs);
     }
     setLoading(false);
+
+    // mark this room read up to now
+    await supabase
+      .from('chat_room_participants')
+      .update({ last_read: new Date().toISOString() })
+      .eq('room_id', rid)
+      .eq('employee_id', currentEmployee.employee_id);
+
+    // re-fetch room list so badge clears
+    queryClient.invalidateQueries(['rooms', currentEmployee.employee_id]);
   };
 
   useEffect(() => {
     if (!rid) return;
+    // initial load & mark-as-read
     loadMessages();
+
+    // subscribe to new messages
     const channel = supabase
       .channel(`group-${rid}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_room_id=eq.${rid}`,
+        },
         () => loadMessages()
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [rid]);
 
-  // Auto-scroll
+    return () => supabase.removeChannel(channel);
+  }, [rid, currentEmployee.employee_id, queryClient]);
+
+  // ── Auto-scroll when messages change ───────────────────────────────────────
   useEffect(() => {
     const c = document.getElementById('group-chat-container');
     if (c) c.scrollTop = c.scrollHeight;
   }, [messages]);
 
-  // Send message
+  // ── Send a message ─────────────────────────────────────────────────────────
   const sendMessage = async () => {
     if (!newMsg.trim() || !rid) return;
     await supabase.from('messages').insert({
@@ -126,24 +144,22 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     setNewMsg('');
   };
 
-  // Group messages by date
-  const groupedMessages = useMemo(
-    () =>
-      Object.entries(
-        messages.reduce((acc, msg) => {
-          const key = new Date(msg.ts).toLocaleDateString(undefined, {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          });
-          (acc[key] = acc[key] || []).push(msg);
-          return acc;
-        }, {})
-      ),
-    [messages]
-  );
+  // ── Group messages by date ─────────────────────────────────────────────────
+  const groupedMessages = useMemo(() => {
+    return Object.entries(
+      messages.reduce((acc, msg) => {
+        const key = new Date(msg.ts).toLocaleDateString(undefined, {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        });
+        (acc[key] = acc[key] || []).push(msg);
+        return acc;
+      }, {})
+    );
+  }, [messages]);
 
-  // Load participants & available employees when showing members
+  // ── Load participants & available employees for “View Members” ────────────
   useEffect(() => {
     if (!showMembers || !rid) return;
     (async () => {
@@ -197,13 +213,12 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     })();
   }, [showMembers, rid]);
 
-  // Save group name
+  // ── Persistence actions ────────────────────────────────────────────────────
   const saveGroupName = async () => {
     await supabase.from('chat_rooms').update({ name: groupName.trim() }).eq('id', rid);
     setEditingName(false);
   };
 
-  // Add multiple new members
   const addMember = async () => {
     if (!selectedNewMembers.length) return;
     await supabase.from('chat_room_participants').insert(
@@ -214,7 +229,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     setShowMembers(true);
   };
 
-  // Toggle admin (optimistically)
   const toggleAdmin = async (empId, makeAdmin) => {
     await supabase
       .from('chat_room_participants')
@@ -229,7 +243,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     }
   };
 
-  // Remove member
   const removeMember = async empId => {
     await supabase
       .from('chat_room_participants')
@@ -239,7 +252,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     setParticipants(prev => prev.filter(p => p.id !== empId));
   };
 
-  // Leave group
   const leaveGroup = async () => {
     await supabase
       .from('chat_room_participants')
@@ -249,7 +261,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
     navigate('/chat?mode=group');
   };
 
-  // Delete group
   const deleteGroup = async () => {
     await supabase.from('chat_room_participants').delete().eq('room_id', rid);
     await supabase.from('messages').delete().eq('chat_room_id', rid);
@@ -262,7 +273,7 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
   return (
     <>
       {/* Chat Box */}
-      <div className="flex flex-col h-96 border rounded-lg shadow-md overflow-hidden">
+      <div className="flex flex-col h-96 w-[80vw] max-w-3xl mx-auto border rounded-lg shadow-md overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -296,7 +307,8 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
               <span className="font-semibold text-lg">{groupName}</span>
             )}
           </div>
-          {/* Options */}
+
+          {/* Options dropdown */}
           <div className="relative" ref={optionsRef}>
             <button
               onClick={() => setShowOptions(v => !v)}
@@ -446,7 +458,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
               )}
             </h3>
 
-            {/* Add Employee Form */}
             {showAddForm && isGroupAdmin && (
               <div className="mb-4 border-t pt-4">
                 <input
@@ -498,7 +509,6 @@ export default function GroupChatRoom({ roomId, currentEmployee, roomName }) {
               </div>
             )}
 
-            {/* Existing Members */}
             <ul className="space-y-2">
               {participants.map(p => (
                 <li key={p.id} className="flex items-center justify-between">

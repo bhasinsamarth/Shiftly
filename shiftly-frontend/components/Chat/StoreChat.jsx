@@ -195,7 +195,7 @@ const StoreChat = ({ roomId, currentEmployee, roomName }) => {
   return (
     <>
       {/* Chat Box */}
-      <div className="flex flex-col h-96 border rounded-lg shadow-md overflow-hidden">
+      <div className="flex flex-col h-96 w-[80vw] max-w-3xl mx-auto border rounded-lg shadow-md overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b bg-gray-50 font-semibold text-lg flex justify-between items-center">
           <div className="flex items-center gap-4">
