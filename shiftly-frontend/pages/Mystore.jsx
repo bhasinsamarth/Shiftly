@@ -101,7 +101,7 @@ const MyStore = () => {
           onClick={() => setOpenTeam(!openTeam)}
           className="w-full text-left text-lg font-semibold text-blue-700 hover:text-blue-900 mb-4"
         >
-          {openTeam ? "▼ Hide staffy" : "▶ View staff"}
+          {openTeam ? "▼ Hide staff" : "▶ View staff"}
         </button>
 
         {openTeam && (
