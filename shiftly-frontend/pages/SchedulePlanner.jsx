@@ -180,15 +180,16 @@ const SchedulePlanner = () => {
                     // Convert local time to UTC for storage
                     const utcStart = localToUTC(`${dateString}T${shift.start}`, storeTimezone);
                     const utcEnd = localToUTC(`${dateString}T${shift.end}`, storeTimezone);
+                    // Only include DB columns in entry
                     const entry = {
                         store_id: storeId,
                         employee_id: parseInt(empId),
                         start_time: utcStart,
-                        end_time: utcEnd,
-                        originalStartTimeUTC: shift.originalStartTimeUTC // Pass along for update
+                        end_time: utcEnd
                     };
+                    // For updates, keep originalStartTimeUTC for filtering
                     if (shift.existing) {
-                        entriesToUpdate.push(entry);
+                        entriesToUpdate.push({ ...entry, originalStartTimeUTC: shift.originalStartTimeUTC });
                     } else {
                         entriesToInsert.push(entry);
                     }
@@ -197,12 +198,18 @@ const SchedulePlanner = () => {
         }
 
         for (const entry of entriesToUpdate) {
+            const { originalStartTimeUTC, ...updateData } = entry;
+            if (!originalStartTimeUTC) {
+                setMessage('❌ Cannot update: missing original start time.');
+                setSaving(false);
+                return;
+            }
             const { error } = await supabase
                 .from('store_schedule')
-                .update({ start_time: entry.start_time, end_time: entry.end_time })
+                .update(updateData)
                 .eq('store_id', entry.store_id)
                 .eq('employee_id', entry.employee_id)
-                .eq('start_time', entry.originalStartTimeUTC); // Use original UTC start_time for update
+                .eq('start_time', originalStartTimeUTC);
             if (error) {
                 setMessage('❌ Failed to update schedule.');
                 setSaving(false);
