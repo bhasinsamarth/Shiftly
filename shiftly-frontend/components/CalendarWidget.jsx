@@ -1,6 +1,6 @@
-
-import React from 'react';
-import { WEEKDAYS } from './calendarUtils';
+import React, { useMemo } from 'react';
+import { WEEKDAYS } from '../utils/calendarUtils';
+import Holidays from 'date-holidays';
 
 const CalendarWidget = ({
   year,
@@ -8,7 +8,8 @@ const CalendarWidget = ({
   highlightedDates = [],
   selectedDate = null,
   onDateClick,
-  onMonthChange, // <-- add this prop
+  onMonthChange,
+  country = 'CA', // default to Canada, can be passed as prop
 }) => {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
@@ -18,6 +19,15 @@ const CalendarWidget = ({
   const todayMonth = today.getMonth();
   const todayDate = today.getDate();
 
+  // Memoize holidays for the year/country/province
+  const holidayDates = useMemo(() => {
+    const hd = new Holidays('CA', 'AB'); // CA = Canada, AB = Alberta
+    const holidays = hd.getHolidays(year);
+    return holidays.map(h => ({
+      date: new Date(h.date),
+      name: h.name
+    }));
+  }, [year]);
 
   const days = [];
   for (let i = 0; i < firstDay; i++) {
@@ -30,7 +40,6 @@ const CalendarWidget = ({
     days.push(null);
   }
 
-
   const monthLabel = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const isHighlighted = (date) => highlightedDates.some(
@@ -38,6 +47,21 @@ const CalendarWidget = ({
            d.getMonth() === date.getMonth() &&
            d.getDate() === date.getDate()
   );
+
+  const isHoliday = (date) => holidayDates.some(
+    (h) => h.date.getFullYear() === date.getFullYear() &&
+           h.date.getMonth() === date.getMonth() &&
+           h.date.getDate() === date.getDate()
+  );
+
+  const getHolidayName = (date) => {
+    const h = holidayDates.find(
+      (h) => h.date.getFullYear() === date.getFullYear() &&
+              h.date.getMonth() === date.getMonth() &&
+              h.date.getDate() === date.getDate()
+    );
+    return h ? h.name : null;
+  };
 
   const isSelected = (date) =>
     selectedDate &&
@@ -58,7 +82,7 @@ const CalendarWidget = ({
           aria-label="Previous Month"
           type="button"
         >
-          &#8592;
+          &#8249;
         </button>
         <div className="text-lg font-semibold">{monthLabel}</div>
         <button
@@ -67,7 +91,7 @@ const CalendarWidget = ({
           aria-label="Next Month"
           type="button"
         >
-          &#8594;
+          &#8250;
         </button>
       </div>
       <div className="grid grid-cols-7 gap-y-1 w-full text-center flex-1">
@@ -80,31 +104,41 @@ const CalendarWidget = ({
           const isToday = todayYear === year && todayMonth === month && todayDate === d;
           const highlighted = isHighlighted(thisDate);
           const selected = isSelected(thisDate);
+          const holiday = isHoliday(thisDate);
+          const holidayName = getHolidayName(thisDate);
 
-          let className = 'py-1 text-base select-none w-full h-full flex items-center justify-center transition ';
+          let className = 'py-1 text-base select-none w-9 h-9 flex items-center justify-center transition rounded-full ';
           if (selected) {
-            className += 'bg-blue-900 text-white font-bold rounded-full ';
+            className += 'bg-blue-900 text-white font-bold shadow-lg ';
+          } else if (holiday) {
+            className += 'bg-red-600 text-white font-bold shadow-lg ';
           } else if (highlighted) {
-            className += 'bg-blue-200 text-blue-800 font-semibold rounded-full ';
+            className += 'bg-blue-200 text-blue-800 font-semibold ';
           } else if (isToday) {
-            className += 'border-2 border-blue-600 text-blue-700 font-bold rounded-full ';
+            className += 'border-2 border-blue-600 text-blue-700 font-bold ';
           } else {
-            className += 'text-gray-800 hover:bg-blue-100 rounded-full ';
+            className += 'text-gray-800 hover:bg-blue-100 ';
           }
 
           return (
-            <button
-              key={i}
-              className={className}
-              onClick={() => onDateClick(thisDate)}
-              aria-label={`Select ${thisDate.toLocaleDateString()}`}
-              type="button"
-            >
-              {d}
-            </button>
+            <div key={i} className="flex flex-col items-center justify-center">
+              <button
+                className={className}
+                onClick={() => onDateClick(thisDate)}
+                aria-label={`Select ${thisDate.toLocaleDateString()}`}
+                type="button"
+                style={{ minWidth: 36, minHeight: 36 }}
+              >
+                {d}
+              </button>
+              {holidayName && (
+                <span className="text-xs text-red-500 mt-1 whitespace-nowrap font-medium">
+                  {holidayName}
+                </span>
+              )}
+            </div>
           );
         })}
-
       </div>
     </div>
   );

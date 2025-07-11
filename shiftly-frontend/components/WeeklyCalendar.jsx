@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import CalendarWidget from './CalendarWidget';
-import { getWeekRange } from './calendarUtils';
+import { getWeekRange } from '../utils/calendarUtils';
 
 const WeeklyCalendar = ({ onWeekSelect }) => {  // <-- accept onWeekSelect prop
   const today = new Date();

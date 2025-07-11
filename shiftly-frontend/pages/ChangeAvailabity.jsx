@@ -4,13 +4,7 @@ import { supabase } from "../supabaseClient";
 import { submitEmployeeRequest } from "../utils/requestHandler";
 
 const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 ];
 
 function getMonthYear(date) {
@@ -35,20 +29,28 @@ const AvailabilityTable = ({ availability, onChange }) => (
           <tr key={day}>
             <td className="px-6 py-4 whitespace-nowrap font-medium">{day}</td>
             <td className="px-6 py-4">
-              <input
-                type="time"
-                value={availability[day]?.start || ""}
-                onChange={(e) => onChange(day, "start", e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1 w-full"
-              />
+              {availability[day]?.start_time ? (
+                <span>{formatToLocalDateTime(availability[day].start_time)}</span>
+              ) : (
+                <input
+                  type="time"
+                  value={availability[day]?.start || ""}
+                  onChange={(e) => onChange(day, "start", e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 w-full"
+                />
+              )}
             </td>
             <td className="px-6 py-4">
-              <input
-                type="time"
-                value={availability[day]?.end || ""}
-                onChange={(e) => onChange(day, "end", e.target.value)}
-                className="border border-gray-300 rounded px-2 py-1 w-full"
-              />
+              {availability[day]?.end_time ? (
+                <span>{formatToLocalDateTime(availability[day].end_time)}</span>
+              ) : (
+                <input
+                  type="time"
+                  value={availability[day]?.end || ""}
+                  onChange={(e) => onChange(day, "end", e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 w-full"
+                />
+              )}
             </td>
           </tr>
         ))}
@@ -58,19 +60,44 @@ const AvailabilityTable = ({ availability, onChange }) => (
 );
 
 function parseLocalDate(str) {
-  // str is 'YYYY-MM-DD'
   const [year, month, day] = str.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
 
+// ✅ Combines a date and time into a UTC ISO string
+function combineDateAndTimeAsLocalISOString(dateObj, timeStr) {
+  const [hour, minute] = timeStr.split(":").map(Number);
+  const local = new Date(
+    dateObj.getFullYear(),
+    dateObj.getMonth(),
+    dateObj.getDate(),
+    hour,
+    minute,
+    0,
+    0
+  );
+  return local.toISOString();
+}
+
+// ✅ Formats UTC string to readable local time
+export function formatToLocalDateTime(utcString) {
+  if (!utcString) return "-";
+  const date = new Date(utcString);
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
 const ChangeAvailability = () => {
-  // State for start/end date selection
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  // State for calendar month/year
   const today = new Date();
   const [{ year, month }, setMonthYear] = useState(getMonthYear(today));
-  // State for weekday availability
+
   const [availability, setAvailability] = useState(() => {
     const initial = {};
     WEEKDAYS.forEach((day) => {
@@ -78,17 +105,16 @@ const ChangeAvailability = () => {
     });
     return initial;
   });
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  // Calendar selection logic
-  const [selecting, setSelecting] = useState(null); // 'start' or 'end'
+  const [selecting, setSelecting] = useState(null);
   const [employeeId, setEmployeeId] = useState(null);
 
   React.useEffect(() => {
     async function fetchEmployeeId() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Fetch employee record by email
         const { data: employee } = await supabase
           .from("employee")
           .select("employee_id")
@@ -100,7 +126,6 @@ const ChangeAvailability = () => {
     fetchEmployeeId();
   }, []);
 
-  // Highlighted dates for calendar
   const highlightedDates = React.useMemo(() => {
     if (!startDate || !endDate) return [];
     const arr = [];
@@ -113,9 +138,7 @@ const ChangeAvailability = () => {
     return arr;
   }, [startDate, endDate]);
 
-  // Calendar date click handler
   const handleDateClick = (date) => {
-    // Format as YYYY-MM-DD in local time, not UTC
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
@@ -129,7 +152,6 @@ const ChangeAvailability = () => {
     }
   };
 
-  // Validation
   const isDateValid = startDate && endDate && startDate <= endDate;
   const isValidTimeForAllDays = Object.values(availability).every(
     ({ start, end }) => start && end && start < end
@@ -152,16 +174,33 @@ const ChangeAvailability = () => {
       setSuccess("");
       return;
     }
-    // Submit approval request instead of direct insert
+
+    const combinedAvailability = {};
+    let d = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
+    while (d <= end) {
+      const dayName = WEEKDAYS[d.getDay()];
+      const { start, end: endTime } = availability[dayName];
+      const startISO = combineDateAndTimeAsLocalISOString(d, start);
+      const endISO = combineDateAndTimeAsLocalISOString(d, endTime);
+      console.log(`${dayName}: ${startISO} to ${endISO}`);
+      combinedAvailability[dayName] = {
+        start_time: startISO,
+        end_time: endISO,
+      };
+      d.setDate(d.getDate() + 1);
+    }
+
     const requestPayload = {
       employee_id: employeeId,
       request_type: "availability",
       request: {
         start_date: startDate,
         end_date: endDate,
-        preferred_hours: availability
+        preferred_hours: combinedAvailability
       }
     };
+
     const result = await submitEmployeeRequest(requestPayload);
     if (!result.success) {
       setError("Failed to submit request: " + result.error);
