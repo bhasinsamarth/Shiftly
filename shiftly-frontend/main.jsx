@@ -6,7 +6,6 @@ import "./index.css";
 // Import layout and pages
 import App from "./App";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import AddEmployee from "./pages/AddEmployee";
@@ -21,18 +20,24 @@ import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
 import ManagerStorePage from "./pages/MyStore";
+import ClockDashboard from "./pages/ClockDashboard";
+import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
 
-// Auth context provider
+import TimeOffRequestPage from "./pages/TimeOffRequestPage";
+
+// Context providers
 import { AuthProvider } from "./context/AuthContext";
+import { LocationProvider } from "./context/LocationContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Timecards from "./pages/TimeCard";
 
 function AppWithRoutes() {
+
   return (
     <App>
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/schedules" element={<ProtectedRoute><SchedulePlanner /></ProtectedRoute>} />
         <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
@@ -44,10 +49,15 @@ function AppWithRoutes() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/FetchSchedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
+        <Route path="/fetch-schedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
         <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
         <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
-        
+        <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
+        <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
+        <Route path="timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
+        <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
+
+
         {/* Catch-all route for 404 */}
         <Route path="*" element={
           <div className="text-center py-20">
@@ -68,7 +78,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <AppWithRoutes />
+        <LocationProvider>
+          <AppWithRoutes />
+        </LocationProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
