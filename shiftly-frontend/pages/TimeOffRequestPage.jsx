@@ -84,21 +84,21 @@ const TimeOffRequestPage = () => {
   return (
     <div className="flex flex-col md:flex-row max-w-4xl mx-auto mt-10 bg-white rounded-lg shadow overflow-hidden">
       {/* Calendar on the left */}
-      <div className="md:w-1/2 w-full flex flex-col items-center justify-center bg-gray-50 p-6 border-r">
+      <div className="md:w-1/2 w-full flex flex-col items-center justify-center bg-gray-50 p-8 border-r min-h-[420px]">
         <h3 className="text-lg font-semibold mb-4 text-center">Select Date Range</h3>
-        <div className="flex gap-2 mb-2">
-          <button
-            type="button"
-            className="px-3 py-1 rounded text-xs font-semibold border bg-gray-200 text-gray-700"
-            onClick={() => setRange({ start: null, end: null })}
-          >
-            Clear Selection
-          </button>
+        <div className="w-full flex justify-center mb-4">
+          <RangeCalendar
+            selectedRange={range}
+            onRangeSelect={setRange}
+          />
         </div>
-        <RangeCalendar
-          selectedRange={range}
-          onDateClick={handleDateClick}
-        />
+        <button
+          type="button"
+          className="px-3 py-1 rounded text-xs font-semibold border bg-gray-200 text-gray-700 mt-2"
+          onClick={() => setRange({ start: null, end: null })}
+        >
+          Clear Selection
+        </button>
       </div>
 
       {/* Form on the right */}
