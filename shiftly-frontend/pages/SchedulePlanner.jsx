@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import WeeklyCalendar from '../components/WeeklyCalendar';
+import { utcToLocal, localToUTC } from '../utils/timezoneUtils';
 
 const getWeekDates = (offset = 0) => {
     const dates = [];
@@ -33,18 +34,22 @@ const SchedulePlanner = () => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
+    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default fallback
     const weekDates = getWeekDates(weekOffset);
 
     useEffect(() => {
         const fetchManagerStore = async () => {
             const { data, error } = await supabase
                 .from('employee')
-                .select('store_id')
+                .select('store_id, store:store_id(timezone)')
                 .eq('email', user.email)
                 .single();
 
             if (!error && data?.store_id) {
                 setStoreId(data.store_id);
+                if (data.store?.timezone) {
+                    setStoreTimezone(data.store.timezone);
+                }
             } else {
                 setStoreId(null);
             }
@@ -86,17 +91,18 @@ const SchedulePlanner = () => {
             const updatedSchedule = {};
             (scheduleEntries || []).forEach(entry => {
                 const empId = entry.employee_id;
-                const dateKey = entry.start_time.split('T')[0];
-                const startTime = entry.start_time.split('T')[1].slice(0, 5);
-                const endTime = entry.end_time.split('T')[1].slice(0, 5);
-
+                // Convert UTC to local time for display
+                const localStart = utcToLocal(entry.start_time, storeTimezone, 'HH:mm');
+                const localEnd = utcToLocal(entry.end_time, storeTimezone, 'HH:mm');
+                const dateKey = utcToLocal(entry.start_time, storeTimezone, 'yyyy-MM-dd');
                 if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
                 updatedSchedule[empId][dateKey] = {
                     checked: true,
-                    start: startTime,
-                    end: endTime,
+                    start: localStart,
+                    end: localEnd,
                     existing: true,
-                    editable: false
+                    editable: false,
+                    originalStartTimeUTC: entry.start_time // Store original UTC start_time for update
                 };
             });
 
@@ -171,14 +177,16 @@ const SchedulePlanner = () => {
                         setSaving(false);
                         return;
                     }
-
+                    // Convert local time to UTC for storage
+                    const utcStart = localToUTC(`${dateString}T${shift.start}`, storeTimezone);
+                    const utcEnd = localToUTC(`${dateString}T${shift.end}`, storeTimezone);
                     const entry = {
                         store_id: storeId,
                         employee_id: parseInt(empId),
-                        start_time: `${dateString}T${shift.start}`,
-                        end_time: `${dateString}T${shift.end}`
+                        start_time: utcStart,
+                        end_time: utcEnd,
+                        originalStartTimeUTC: shift.originalStartTimeUTC // Pass along for update
                     };
-
                     if (shift.existing) {
                         entriesToUpdate.push(entry);
                     } else {
@@ -194,8 +202,7 @@ const SchedulePlanner = () => {
                 .update({ start_time: entry.start_time, end_time: entry.end_time })
                 .eq('store_id', entry.store_id)
                 .eq('employee_id', entry.employee_id)
-                .eq('start_time', entry.start_time);
-
+                .eq('start_time', entry.originalStartTimeUTC); // Use original UTC start_time for update
             if (error) {
                 setMessage('❌ Failed to update schedule.');
                 setSaving(false);
@@ -230,7 +237,7 @@ const SchedulePlanner = () => {
             <div className="layout-container flex h-full grow flex-col">
                 <div className="gap-1 pr-6 flex flex-1 justify-center py-5">
                     <div className="layout-content-container flex flex-col w-80">
-                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Schedule</h2>
+                        <h2 className=" text-2xl font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Schedule</h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
                                 <WeeklyCalendar
@@ -258,31 +265,12 @@ const SchedulePlanner = () => {
                     </div>
 
                     <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-                        <div className="flex flex-wrap justify-between gap-3 p-4">
-                            <div className="flex min-w-72 flex-col gap-3">
-                                <p className="text-[#121416] text-[32px] font-bold">Schedule</p>
-                                <p className="text-[#6a7681] text-sm">Manage and view employee schedules</p>
-                            </div>
+                        <div className="flex flex-wrap justify-end gap-3 p-4">
                             <div className="flex space-x-3">
                                 <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
                                 <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
                             </div>
                         </div>
-
-                        <div className="pb-3">
-                            <div className="flex border-b border-[#dde1e3] px-4 gap-8">
-                                {["Day", "Week", "Month"].map((tab) => (
-                                    <a
-                                        key={tab}
-                                        href="#"
-                                        className={`flex flex-col items-center pb-[13px] pt-4 border-b-[3px] ${tab === "Week" ? "border-b-[#121416] text-[#121416]" : "border-b-transparent text-[#6a7681]"}`}
-                                    >
-                                        <p className="text-sm font-bold tracking-[0.015em]">{tab}</p>
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-
                         {message && <p className="mb-6 text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg mx-4">{message}</p>}
 
                         <div className="px-4 py-3">
@@ -346,12 +334,11 @@ const SchedulePlanner = () => {
                             </div>
                         </div>
 
-                        <div className="px-4 py-3">
+                        <div className="flex justify-end py-4 ">
                             <button
                                 onClick={handleSubmit}
                                 disabled={saving}
-                                className="flex min-w-[84px] max-w-[200px] items-center justify-center rounded-xl h-10 px-4 bg-[#dce8f3] text-[#121416] text-sm font-bold hover:bg-[#c8daf0] transition disabled:opacity-50"
-                            >
+                                className="flex min-w-[84px] max-w-[200px] items-center justify-center rounded-xl h-10 px-4 bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50"   >
                                 <span className="truncate">{saving ? 'Saving...' : 'Save Schedule'}</span>
                             </button>
                         </div>

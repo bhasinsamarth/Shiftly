@@ -41,7 +41,6 @@ const Navbar = () => {
     <>
       <Link to="/fetch-schedule" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/fetch-schedule') ? activeLinkClass : inactiveLinkClass}`}>📆 View My Schedule</Link>
       <Link to="/clock" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/clock') ? activeLinkClass : inactiveLinkClass}`}>🕐 Clock In/Out</Link>
-      <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
     </>
   );
 
@@ -66,6 +65,14 @@ const Navbar = () => {
                   <Link to="/teams" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/teams') ? activeLinkClass : inactiveLinkClass}`}>🏢 Teams</Link>
                   <Link to="/add-employee" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/add-employee') ? activeLinkClass : inactiveLinkClass}`}>📝 Hiring</Link>
                   <Link to="/bulk-geocoding" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/bulk-geocoding') ? activeLinkClass : inactiveLinkClass}`}>📍 Setup Store Locations</Link>
+                  <Link to="/employee-requests" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/time-off') ? activeLinkClass : inactiveLinkClass}`}>
+                    🕐 Time Off
+                    {pendingTimeOffCount > 0 && (
+                      <span className="ml-3 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {pendingTimeOffCount}
+                      </span>
+                    )}
+                  </Link>
                   <Link to="/clock" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/clock') ? activeLinkClass : inactiveLinkClass}`}>🕐 Clock In/Out</Link>
                   <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
                 </div>
@@ -78,9 +85,9 @@ const Navbar = () => {
                 <div >
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}>#️⃣ Dashboard</Link>
                   <Link to="/my-store" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/my-store') ? activeLinkClass : inactiveLinkClass}`}>🏪 My Store</Link>
-                  <Link to="/bulk-geocoding" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/bulk-geocoding') ? activeLinkClass : inactiveLinkClass}`}>📍 Setup Store Location</Link>
+
                   <Link to="/schedules" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/schedules') ? activeLinkClass : inactiveLinkClass}`}>📝 Schedule Planner</Link>
-                  <Link to="/time-off" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/time-off') ? activeLinkClass : inactiveLinkClass}`}>
+                  <Link to="/employee-requests" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/time-off') ? activeLinkClass : inactiveLinkClass}`}>
                     🕐 Time Off
                     {pendingTimeOffCount > 0 && (
                       <span className="ml-3 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
@@ -89,7 +96,7 @@ const Navbar = () => {
                     )}
                   </Link>
                   {commonLinks}
-                  <Link to="/" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/') ? activeLinkClass : inactiveLinkClass}`}>📃 Analytics</Link>
+<Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
                 </div>
               )}
 
@@ -97,10 +104,10 @@ const Navbar = () => {
               {(user?.role_id === 4 || user?.role_id === 5 || user?.role_id === 6) && (
 
                 <div >
-                  {commonLinks}
+                  
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}>#️⃣ Dashboard</Link>
-                  <Link to="/time-off-request" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/time-off-request') ? activeLinkClass : inactiveLinkClass}`}>🕐 Time off</Link>
-                  <Link to="/requests" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/requests') ? activeLinkClass : inactiveLinkClass}`}>🔔 Notifications</Link>
+                  {commonLinks}
+                   <Link to="/time-off-request" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/time-off-request') ? activeLinkClass : inactiveLinkClass}`}>🕐 Time off</Link>
                 </div>
 
               )}

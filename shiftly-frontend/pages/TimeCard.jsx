@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import dayjs from 'dayjs';
+import { utcToLocal } from '../utils/timezoneUtils';
 
 const Timecards = () => {
     const { user } = useAuth();
@@ -15,17 +16,21 @@ const Timecards = () => {
     const [message, setMessage] = useState('');
     const [saving, setSaving] = useState(false);
     const [editingCell, setEditingCell] = useState(null);
+    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default fallback
 
     useEffect(() => {
         const fetchStore = async () => {
             const { data, error } = await supabase
                 .from('employee')
-                .select('store_id')
+                .select('store_id, store:store_id(timezone)')
                 .eq('email', user.email)
                 .single();
 
             if (!error && data?.store_id) {
                 setStoreId(data.store_id);
+                if (data.store?.timezone) {
+                    setStoreTimezone(data.store.timezone);
+                }
             }
         };
         if (user) fetchStore();
@@ -63,8 +68,9 @@ const Timecards = () => {
 
                 const shifts = {};
                 logsForDay.forEach(entry => {
-                    const time = dayjs(entry.timestamp).add(6, 'hour').format('HH:mm');
-                    shifts[entry.type] = time;
+                    // Convert UTC timestamp to local time string for display
+                    const localTime = utcToLocal(entry.timestamp, storeTimezone, 'HH:mm');
+                    shifts[entry.type] = localTime;
                 });
 
                 formatted[employee_id] = shifts;
@@ -98,9 +104,13 @@ const Timecards = () => {
             const entry = timecardData[empId];
             for (const type of ['clock_in', 'break_start', 'break_end', 'clock_out']) {
                 if (entry[type]) {
+                    // Convert local time back to UTC for storage
+                    const localDateTime = dayjs(date.format('YYYY-MM-DD') + 'T' + entry[type]);
+                    // Use storeTimezone to get UTC ISO string
+                    const utcDateTime = dayjs.tz ? dayjs.tz(localDateTime, storeTimezone).utc().toISOString() : localDateTime.toISOString();
                     updatedLogs.push({
                         type,
-                        timestamp: dayjs(date.format('YYYY-MM-DD') + 'T' + entry[type]).subtract(6, 'hour').toISOString(),
+                        timestamp: utcDateTime,
                         latitude: 0,
                         longitude: 0,
                         distance_from_store: 0
@@ -172,7 +182,7 @@ const Timecards = () => {
             <div className="layout-container flex h-full grow flex-col">
                 <div className="gap-1 pr-6 flex flex-1 justify-center py-5">
                     <div className="layout-content-container flex flex-col w-80">
-                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight px-4 pb-3 pt-5">Timecard</h2>
+                        <h2 className=" text-2xl font-bold leading-tight px-4 pb-3 pt-5">Timecard</h2>
                         <div className="flex flex-wrap items-center justify-center gap-6 p-4">
                             <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
                                 <CalendarWidget onDateClick={handleCalendarDateChange} selectedDate={date.toDate()} year={date.year()} month={date.month()} />

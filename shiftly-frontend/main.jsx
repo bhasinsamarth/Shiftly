@@ -20,7 +20,6 @@ import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
 import ManagerStorePage from "./pages/MyStore";
-import TimeOffPage from "./pages/TimeOffPage";
 import ClockDashboard from "./pages/ClockDashboard";
 import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
 
@@ -30,7 +29,7 @@ import TimeOffRequestPage from "./pages/TimeOffRequestPage";
 import { AuthProvider } from "./context/AuthContext";
 import { LocationProvider } from "./context/LocationContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import TimecardsPage from "./pages/TimeCard";
+import Timecards from "./pages/TimeCard";
 
 function AppWithRoutes() {
 
@@ -53,12 +52,11 @@ function AppWithRoutes() {
         <Route path="/fetch-schedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
         <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
         <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
-        <Route path="/time-off" element={<ProtectedRoute><TimeOffPage /></ProtectedRoute>} />
         <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
         <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
-        <Route path="timecards" element={<ProtectedRoute><TimecardsPage /></ProtectedRoute>} />
+        <Route path="timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
         <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
-        
+
 
         {/* Catch-all route for 404 */}
         <Route path="*" element={

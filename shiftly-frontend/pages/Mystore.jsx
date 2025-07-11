@@ -83,13 +83,13 @@ const MyStore = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-gray-50 shadow-lg rounded-xl">
-      <h1 className="text-4xl font-bold text-center text-black mb-8">
+    <div className="max-w-full mx-auto p-6   rounded-xl">
+      <h1 className="text-2xl font-bold  text-black mb-8">
         Revital Health - {store.store_name}
       </h1>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6 border">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-3">Store Overview</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-3">Store Overview</h2>
         <div className="space-y-2 text-gray-700 text-base">
           <p><span className="font-medium">Store ID:</span> {store.store_id}</p>
           <p><span className="font-medium">Team Size:</span> {team.length}</p>
@@ -101,7 +101,7 @@ const MyStore = () => {
           onClick={() => setOpenTeam(!openTeam)}
           className="w-full text-left text-lg font-semibold text-blue-700 hover:text-blue-900 mb-4"
         >
-          {openTeam ? "▼ Hide Team Members" : "▶ View Team Members"}
+          {openTeam ? "▼ Hide staffy" : "▶ View staff"}
         </button>
 
         {openTeam && (

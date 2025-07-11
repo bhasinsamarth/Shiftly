@@ -66,7 +66,7 @@ export default function Employees() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Position</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th> */}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
@@ -77,8 +77,8 @@ export default function Employees() {
               {filteredEmployees.map(emp => (
                 <tr key={emp.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.first_name} {emp.last_name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{emp.position}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{emp.department}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{emp.role_id}</td>
+                  {/* <td className="px-6 py-4 text-sm text-gray-700">{emp.department}</td> */}
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.phone || 'N/A'}</td>
                   <td className="px-6 py-4 text-sm text-gray-700">{emp.salary ? `$${emp.salary}` : 'N/A'}</td>

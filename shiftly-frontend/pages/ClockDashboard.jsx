@@ -206,8 +206,8 @@ const ClockDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8 text-base">
-            <div className="max-w-6xl mx-auto px-4">
+        <div className="min-h-screen py-8 text-base">
+            <div className="max-w-full mx-auto px-4">
                 {/* Header */}
                 <div className="mb-8 text-left">
                     <h1 className="text-2xl font-bold text-gray-900">Clock Dashboard</h1>
