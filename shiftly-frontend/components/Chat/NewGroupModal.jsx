@@ -1,16 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckSquare } from 'lucide-react';
 
 export default function NewGroupModal({
-  allEmployees,    // filtered list
-  selected,        // array of employee_id
-  setSelected,     // fn to update selected[]
+  allEmployees,
+  selected,
+  setSelected,
   groupName,
   setGroupName,
   error,
   onCreate,
   onClose,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const filteredEmployees = useMemo(() =>
+    allEmployees.filter(emp =>
+      `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [allEmployees, searchQuery]
+  );
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center">
       <div className="bg-white p-6 rounded shadow-lg w-96">
@@ -27,7 +34,8 @@ export default function NewGroupModal({
         <input
           type="text"
           placeholder="Search members..."
-          onChange={e => {/* parent controls searchQuery*/}}
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
           className="border p-2 w-full rounded mb-3"
         />
         {error && <div className="text-red-500 mb-2">{error}</div>}
@@ -35,7 +43,7 @@ export default function NewGroupModal({
           <CheckSquare className="mr-2 h-4 w-4 text-gray-600" /> Select Members
         </label>
         <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
-          {allEmployees.map(emp => (
+          {filteredEmployees.map(emp => (
             <label key={emp.employee_id} className="flex items-center">
               <input
                 type="checkbox"
