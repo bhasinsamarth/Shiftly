@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 
-const MAILER_API = import.meta.env.VITE_MAILER_API || '../backend/server.js';
+// endpoint of your mail-sending backend
+const MAILER_API = import.meta.env.VITE_MAILER_API || 'http://localhost:3001/send-invite';
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -13,11 +14,39 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
+  const [stores, setStores] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const { data, error } = await supabase.from('store').select('store_id, store_name');
+        if (error) throw error;
+        setStores(data);
+      } catch (err) {
+        console.error('Error fetching stores:', err);
+      }
+    };
+    fetchStores();
+  }, []);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase.from('role').select('role_id, role_name').neq('role_id', 1);
+        if (error) throw error;
+        setRoles(data);
+      } catch (err) {
+        console.error('Error fetching roles:', err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -31,16 +60,29 @@ const AddEmployee = () => {
       return;
     }
 
+    if (!form.store_id) {
+      setError('Please select a store');
+      return;
+    }
+
+    if (!form.role_id) {
+      setError('Please enter a role ID');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
     setInviteLink('');
 
     try {
+      // Generate a secure random token
       const token = uuidv4();
+      // Set expiry 24 hours from now
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const createdAt = new Date().toISOString();
 
+      // Build the invite object
       const inviteData = {
         token,
         email: form.email,
@@ -50,41 +92,42 @@ const AddEmployee = () => {
         created_at: createdAt,
         is_used: false,
       };
-
       if (form.employee_id) {
         inviteData.employee_id = parseInt(form.employee_id, 10);
       }
 
+      // Insert token into setup_tokens
       const { data: insertData, error: tokenInsertError } = await supabase
         .from('setup_tokens')
         .insert([inviteData])
         .select();
-
       if (tokenInsertError) {
         console.error('Supabase insert error:', tokenInsertError);
         throw new Error('Failed to generate invitation token.');
       }
 
+      // Build the invite link
       const link = `${window.location.origin}/setup-account?token=${token}`;
       setSuccess('Invitation link generated!');
       setInviteLink(link);
 
+      // --- Send the invitation email ---
       const mailResp = await fetch(MAILER_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, link }),
       });
-
       if (!mailResp.ok) {
-        const result = await mailResp.json().catch(() => null);
-        console.error('Mail send error:', result);
-        throw new Error(result?.error || 'Failed to send invitation email.');
+        const { error: mailError } = await mailResp.json().catch(() => ({}));
+        console.error('Mail send error:', mailError);
+        setError('Failed to send invite email.');
       }
 
+      // Clear the form on success
       setForm({ email: '', store_id: '', role_id: '', employee_id: '' });
     } catch (err) {
       console.error('Error in handleSubmit:', err);
-      setError(err.message || 'Something went wrong.');
+      setError(err.message || 'Error generating invitation link');
     } finally {
       setLoading(false);
     }
@@ -108,7 +151,7 @@ const AddEmployee = () => {
         {inviteLink && (
           <div className="mb-4 text-center text-blue-600 break-all">
             Invitation Link:{' '}
-            <a href={inviteLink} className="underline" target="_blank" rel="noopener noreferrer">
+            <a href={inviteLink} className="underline">
               {inviteLink}
             </a>
           </div>
@@ -132,26 +175,34 @@ const AddEmployee = () => {
             <label className="block text-gray-700 font-medium mb-2">
               Store ID <span className="text-gray-400">(optional)</span>
             </label>
-            <input
-              type="text"
+            <select
               name="store_id"
               value={form.store_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
+            >
+              <option value="">Select a store</option>
+              {stores.map((store) => (
+                <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Role ID <span className="text-gray-400">(optional)</span>
             </label>
-            <input
-              type="text"
+            <select
               name="role_id"
               value={form.role_id}
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
+            >
+              <option value="">Select a role</option>
+              {roles.map((role) => (
+                <option key={role.role_id} value={role.role_id}>{role.role_desc}</option>
+              ))}
+            </select>
           </div>
 
           <div>

@@ -1,35 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-
-// Generate time slots (24-hour format, 30 min steps)
-const generate24hTimes = () => {
-    const times = [];
-    for (let hour = 0; hour < 24; hour++) {
-        for (let minute = 0; minute < 60; minute += 30) {
-            const h = hour.toString().padStart(2, '0');
-            const m = minute.toString().padStart(2, '0');
-            times.push(`${h}:${m}`);
-        }
-    }
-    return times;
-};
-
-const timeOptions = generate24hTimes();
+import CalendarWidget from '../components/CalendarWidget';
+import WeeklyCalendar from '../components/WeeklyCalendar';
+import { utcToLocal, localToUTC } from '../utils/timezoneUtils';
 
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
-    const offsetToMonday = ((8 - dayOfWeek) % 7) || 7;
+    const dayOfWeek = today.getDay();
     const baseDate = new Date(today);
-    baseDate.setDate(today.getDate() + offsetToSunday + offset * 7);
+    baseDate.setDate(today.getDate() - dayOfWeek + offset * 7);
+    baseDate.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < 7; i++) {
         const date = new Date(baseDate);
         date.setDate(baseDate.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
-        const label = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         dates.push({ dateString, label });
     }
 
@@ -37,89 +25,92 @@ const getWeekDates = (offset = 0) => {
 };
 
 const SchedulePlanner = () => {
-    const { user, isAuthenticated } = useAuth();
+    const { user } = useAuth();
     const [employees, setEmployees] = useState([]);
     const [storeId, setStoreId] = useState(null);
     const [scheduleData, setScheduleData] = useState({});
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
     const [weekOffset, setWeekOffset] = useState(0);
+    const [selectedEmployee, setSelectedEmployee] = useState('');
+    const [editingCell, setEditingCell] = useState(null);
+    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default fallback
     const weekDates = getWeekDates(weekOffset);
 
     useEffect(() => {
-        if (!isAuthenticated || user.role_id !== 3) return;
-
         const fetchManagerStore = async () => {
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from('employee')
-                .select('store_id')
+                .select('store_id, store:store_id(timezone)')
                 .eq('email', user.email)
                 .single();
 
-            if (data?.store_id) setStoreId(data.store_id);
+            if (!error && data?.store_id) {
+                setStoreId(data.store_id);
+                if (data.store?.timezone) {
+                    setStoreTimezone(data.store.timezone);
+                }
+            } else {
+                setStoreId(null);
+            }
         };
-
-        fetchManagerStore();
-    }, [user, isAuthenticated]);
+        if (user) fetchManagerStore();
+    }, [user]);
 
     useEffect(() => {
-        if (!isAuthenticated || user.role_id !== 3 || !storeId) return;
+        if (!storeId) return;
 
         const fetchEmployeesAndSchedules = async () => {
-            const { data: employeeData } = await supabase
+            const { data: employeeData, error: empErr } = await supabase
                 .from('employee')
                 .select('employee_id, first_name, last_name')
                 .eq('store_id', storeId);
-            if (employeeData) setEmployees(employeeData);
+
+            if (empErr) {
+                setEmployees([]);
+                return;
+            }
+
+            setEmployees(employeeData || []);
 
             const startDate = weekDates[0].dateString;
             const endDate = weekDates[6].dateString;
 
-            const { data: scheduleEntries } = await supabase
+            const { data: scheduleEntries, error: schedErr } = await supabase
                 .from('store_schedule')
                 .select('employee_id, start_time, end_time')
                 .eq('store_id', storeId)
                 .gte('start_time', `${startDate}T00:00`)
                 .lte('end_time', `${endDate}T23:59`);
 
-            if (scheduleEntries) {
-                const updatedSchedule = {};
-
-                scheduleEntries.forEach(entry => {
-                    const empId = entry.employee_id;
-                    const dateKey = entry.start_time.split('T')[0];
-                    const startTime = entry.start_time.split('T')[1].slice(0, 5);
-                    const endTime = entry.end_time.split('T')[1].slice(0, 5);
-
-                    if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
-                    updatedSchedule[empId][dateKey] = {
-                        checked: true,
-                        start: startTime,
-                        end: endTime,
-                        existing: true,
-                        editable: false
-                    };
-                });
-
-                setScheduleData(updatedSchedule);
+            if (schedErr) {
+                setScheduleData({});
+                return;
             }
+
+            const updatedSchedule = {};
+            (scheduleEntries || []).forEach(entry => {
+                const empId = entry.employee_id;
+                // Convert UTC to local time for display
+                const localStart = utcToLocal(entry.start_time, storeTimezone, 'HH:mm');
+                const localEnd = utcToLocal(entry.end_time, storeTimezone, 'HH:mm');
+                const dateKey = utcToLocal(entry.start_time, storeTimezone, 'yyyy-MM-dd');
+                if (!updatedSchedule[empId]) updatedSchedule[empId] = {};
+                updatedSchedule[empId][dateKey] = {
+                    checked: true,
+                    start: localStart,
+                    end: localEnd,
+                    existing: true,
+                    editable: false,
+                    originalStartTimeUTC: entry.start_time // Store original UTC start_time for update
+                };
+            });
+
+            setScheduleData(updatedSchedule);
         };
 
         fetchEmployeesAndSchedules();
-    }, [storeId, weekOffset, isAuthenticated, user]);
-
-    const handleCheckboxChange = (empId, date) => {
-        setScheduleData(prev => ({
-            ...prev,
-            [empId]: {
-                ...prev[empId],
-                [date]: {
-                    ...prev[empId]?.[date],
-                    checked: !prev[empId]?.[date]?.checked
-                }
-            }
-        }));
-    };
+    }, [storeId, weekOffset, user]);
 
     const handleTimeChange = (empId, date, field, value) => {
         setScheduleData(prev => ({
@@ -132,6 +123,42 @@ const SchedulePlanner = () => {
                 }
             }
         }));
+    };
+
+    const handleCellClick = (empId, dateString) => {
+        const shift = scheduleData[empId]?.[dateString];
+        if (!shift?.checked) {
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        checked: true,
+                        start: '',
+                        end: '',
+                        existing: false,
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        } else if (shift.existing && !shift.editable) {
+            setScheduleData(prev => ({
+                ...prev,
+                [empId]: {
+                    ...prev[empId],
+                    [dateString]: {
+                        ...prev[empId][dateString],
+                        editable: true
+                    }
+                }
+            }));
+            setEditingCell(`${empId}-${dateString}`);
+        }
+    };
+
+    const handleInputBlur = () => {
+        setEditingCell(null);
     };
 
     const handleSubmit = async () => {
@@ -150,16 +177,19 @@ const SchedulePlanner = () => {
                         setSaving(false);
                         return;
                     }
-
+                    // Convert local time to UTC for storage
+                    const utcStart = localToUTC(`${dateString}T${shift.start}`, storeTimezone);
+                    const utcEnd = localToUTC(`${dateString}T${shift.end}`, storeTimezone);
+                    // Only include DB columns in entry
                     const entry = {
                         store_id: storeId,
                         employee_id: parseInt(empId),
-                        start_time: `${dateString}T${shift.start}`,
-                        end_time: `${dateString}T${shift.end}`
+                        start_time: utcStart,
+                        end_time: utcEnd
                     };
-
+                    // For updates, keep originalStartTimeUTC for filtering
                     if (shift.existing) {
-                        entriesToUpdate.push(entry);
+                        entriesToUpdate.push({ ...entry, originalStartTimeUTC: shift.originalStartTimeUTC });
                     } else {
                         entriesToInsert.push(entry);
                     }
@@ -167,29 +197,29 @@ const SchedulePlanner = () => {
             }
         }
 
-        if (entriesToUpdate.length > 0) {
-            for (const entry of entriesToUpdate) {
-                const { error } = await supabase
-                    .from('store_schedule')
-                    .update({ start_time: entry.start_time, end_time: entry.end_time })
-                    .eq('store_id', entry.store_id)
-                    .eq('employee_id', entry.employee_id)
-                    .eq('start_time', entry.start_time);
-
-                if (error) {
-                    console.error(error);
-                    setMessage('❌ Failed to update schedule.');
-                    setSaving(false);
-                    return;
-                }
+        for (const entry of entriesToUpdate) {
+            const { originalStartTimeUTC, ...updateData } = entry;
+            if (!originalStartTimeUTC) {
+                setMessage('❌ Cannot update: missing original start time.');
+                setSaving(false);
+                return;
+            }
+            const { error } = await supabase
+                .from('store_schedule')
+                .update(updateData)
+                .eq('store_id', entry.store_id)
+                .eq('employee_id', entry.employee_id)
+                .eq('start_time', originalStartTimeUTC);
+            if (error) {
+                setMessage('❌ Failed to update schedule.');
+                setSaving(false);
+                return;
             }
         }
 
         if (entriesToInsert.length > 0) {
             const { error } = await supabase.from('store_schedule').insert(entriesToInsert);
-
             if (error) {
-                console.error(error);
                 setMessage('❌ Failed to save schedule.');
                 setSaving(false);
                 return;
@@ -201,8 +231,7 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-    // ✅ Block access if not authenticated or not a manager
-    if (!isAuthenticated || user.role_id !== 3) {
+    if (!user || user.role_id !== 3) {
         return (
             <div className="p-6 text-red-500 text-center">
                 Access Denied: Managers Only
@@ -211,113 +240,118 @@ const SchedulePlanner = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-bold">Schedule Planner</h2>
-                <div className="space-x-2">
-                    <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-3 py-1 border rounded">← Prev Week</button>
-                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-3 py-1 border rounded">Next Week →</button>
-                </div>
-            </div>
+        <div className="lg:ml-[16.67%] min-h-screen bg-white" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
+            <div className="layout-container flex h-full grow flex-col">
+                <div className="gap-1 pr-6 flex flex-1 justify-center py-5">
+                    <div className="layout-content-container flex flex-col w-80">
+                        <h2 className=" text-2xl font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Schedule</h2>
+                        <div className="flex flex-wrap items-center justify-center gap-6 p-4">
+                            <div className="flex min-w-72 max-w-[336px] flex-1 flex-col gap-0.5">
+                                <WeeklyCalendar
+                                />
+                            </div>
+                        </div>
 
-            {message && <p className="mb-4 text-sm text-center text-red-600">{message}</p>}
-
-            {employees.map(emp => (
-                <div key={emp.employee_id} className="mb-8 border border-gray-200 rounded-lg shadow-sm p-4">
-                    <h3 className="text-xl font-semibold mb-3">{emp.first_name} {emp.last_name}</h3>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm text-left">
-                            <thead>
-                                <tr>
-                                    {weekDates.map(({ dateString, label }) => (
-                                        <th key={dateString} className="px-3 py-2 font-semibold text-gray-700">
-                                            {label}
-                                        </th>
+                        <h2 className="text-[#121416] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Filters</h2>
+                        <div className="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3">
+                            <label className="flex flex-col min-w-40 flex-1">
+                                <select
+                                    className="form-input flex w-full rounded-xl text-[#121416] border border-[#dde1e3] bg-white h-14 px-4 text-base"
+                                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                                    value={selectedEmployee}
+                                >
+                                    <option value="">All Employees</option>
+                                    {employees.map(emp => (
+                                        <option key={emp.employee_id} value={emp.employee_id}>
+                                            {emp.first_name} {emp.last_name}
+                                        </option>
                                     ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    {weekDates.map(({ dateString }) => {
-                                        const shift = scheduleData[emp.employee_id]?.[dateString];
-                                        return (
-                                            <td key={dateString} className="px-3 py-2 border-t align-top">
-                                                <label className="flex items-center space-x-2 mb-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={shift?.checked || false}
-                                                        onChange={() => handleCheckboxChange(emp.employee_id, dateString)}
-                                                    />
-                                                    <span className="text-xs">Shift</span>
-                                                </label>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
 
-                                                {shift?.checked && (
-                                                    <div className="space-y-1">
-                                                        {shift.existing && !shift.editable ? (
-                                                            <div className="text-xs">
-                                                                <p>{shift.start} - {shift.end}</p>
-                                                                <button
-                                                                    className="text-blue-500 underline text-xs mt-1"
-                                                                    onClick={() => {
-                                                                        setScheduleData(prev => ({
-                                                                            ...prev,
-                                                                            [emp.employee_id]: {
-                                                                                ...prev[emp.employee_id],
-                                                                                [dateString]: {
-                                                                                    ...prev[emp.employee_id][dateString],
-                                                                                    editable: true
-                                                                                }
-                                                                            }
-                                                                        }));
-                                                                    }}
-                                                                >
-                                                                    Edit
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <select
-                                                                    value={shift.start || ''}
-                                                                    onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
-                                                                    className="w-full border rounded p-1 text-xs"
-                                                                >
-                                                                    <option value="">--</option>
-                                                                    {timeOptions.map(time => (
-                                                                        <option key={time} value={time}>{time}</option>
-                                                                    ))}
-                                                                </select>
+                    <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
+                        <div className="flex flex-wrap justify-end gap-3 p-4">
+                            <div className="flex space-x-3">
+                                <button onClick={() => setWeekOffset(weekOffset - 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">← Prev Week</button>
+                                <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
+                            </div>
+                        </div>
+                        {message && <p className="mb-6 text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg mx-4">{message}</p>}
 
-                                                                <select
-                                                                    value={shift.end || ''}
-                                                                    onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'end', e.target.value)}
-                                                                    className="w-full border rounded p-1 text-xs"
-                                                                >
-                                                                    <option value="">--</option>
-                                                                    {timeOptions.map(time => (
-                                                                        <option key={time} value={time}>{time}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div className="px-4 py-3">
+                            <div className="overflow-x-auto border border-[#dde1e3] rounded-xl">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-white">
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-[#121416]">Employee</th>
+                                            {weekDates.map(({ label }) => (
+                                                <th key={label} className="px-4 py-3 text-left text-sm font-medium text-[#121416]">{label}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {employees
+                                            .filter(emp => !selectedEmployee || emp.employee_id === parseInt(selectedEmployee))
+                                            .map(emp => (
+                                                <tr key={emp.employee_id} className="border-t border-[#dde1e3] hover:bg-gray-50 transition h-12">
+                                                    <td className="px-4 py-3 text-sm text-[#121416] font-medium h-12">
+                                                        {emp.first_name} {emp.last_name}
+                                                    </td>
+                                                    {weekDates.map(({ dateString }) => {
+                                                        const shift = scheduleData[emp.employee_id]?.[dateString];
+                                                        const isEditing = editingCell === `${emp.employee_id}-${dateString}`;
+                                                        return (
+                                                            <td key={dateString} className="px-4 py-3 text-sm text-[#6a7681] h-12 cursor-pointer hover:bg-gray-100 transition" onClick={() => handleCellClick(emp.employee_id, dateString)}>
+                                                                {shift?.checked ? (
+                                                                    shift.editable || isEditing ? (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <input
+                                                                                type="text"
+                                                                                value={shift.start || ''}
+                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
+                                                                                onBlur={handleInputBlur}
+                                                                                className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                                placeholder="Start (e.g. 09:00)"
+                                                                                autoFocus={isEditing}
+                                                                            />
+                                                                            <input
+                                                                                type="text"
+                                                                                value={shift.end || ''}
+                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'end', e.target.value)}
+                                                                                onBlur={handleInputBlur}
+                                                                                className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                                placeholder="End (e.g. 17:00)"
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-[#121416] font-medium">{shift.start} - {shift.end}</span>
+                                                                    )
+                                                                ) : (
+                                                                    <span className="text-[#9ca3af] opacity-60">Off</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end py-4 ">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={saving}
+                                className="flex min-w-[84px] max-w-[200px] items-center justify-center rounded-xl h-10 px-4 bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition disabled:opacity-50"   >
+                                <span className="truncate">{saving ? 'Saving...' : 'Save Schedule'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            ))}
-
-            <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-                {saving ? 'Saving...' : 'Save Schedule'}
-            </button>
+            </div>
         </div>
     );
 };
