@@ -1,21 +1,26 @@
+// src/components/Chat/GroupChatRoom.jsx
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../supabaseClient';
+import {
+  loadMessages as loadEncryptedMessages,
+  sendMessage as sendEncryptedMessage,
+} from '../../utils/chatService';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
 
 export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }) {
-  const navigate     = useNavigate();
-  const queryClient  = useQueryClient();
+  const navigate    = useNavigate();
+  const queryClient = useQueryClient();
 
-  // ── Messages ───────────────────────────────────────────────────────────────
+  // Messages
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg]     = useState('');
   const [loading, setLoading]   = useState(true);
 
-  // ── Participants & admin state ─────────────────────────────────────────────
+  // Participants & admin
   const [participants, setParticipants]             = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
   const [showMembers, setShowMembers]               = useState(false);
@@ -23,11 +28,11 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
   const [showAddForm, setShowAddForm]               = useState(false);
   const [memberSearch, setMemberSearch]             = useState('');
 
-  // ── Group name editing ─────────────────────────────────────────────────────
+  // Group name editing
   const [groupName, setGroupName]     = useState(roomName);
   const [editingName, setEditingName] = useState(false);
 
-  // ── Admin flag & Options dropdown ──────────────────────────────────────────
+  // Admin & options dropdown
   const [isGroupAdmin, setIsGroupAdmin] = useState(false);
   const [showOptions, setShowOptions]   = useState(false);
   const optionsRef = useRef();
@@ -41,7 +46,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
-  // ── Determine if current user is admin ─────────────────────────────────────
+  // Determine if current user is admin
   useEffect(() => {
     if (!rid) return;
     (async () => {
@@ -55,103 +60,90 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     })();
   }, [rid, currentEmployee.employee_id]);
 
-  // ── Load & subscribe messages, then mark as read & clear badge ────────────
-  const loadMessages = async () => {
-    // fetch all messages with employee info
-    const { data } = await supabase
-      .from('messages')
-      .select(`
-        id,
-        message,
-        created_at,
-        sender_id,
-        employee!inner(
-          first_name,
-          last_name,
-          profile_photo_path
-        )
-      `)
-      .eq('chat_room_id', rid)
-      .order('created_at', { ascending: true });
-
-    if (data) {
-      const msgs = data.map(m => {
-        const path = m.employee.profile_photo_path;
-        const avatar = path
-          ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
-          : DEFAULT_AVATAR_URL;
-        return {
-          id: m.id,
-          text: m.message,
-          ts: m.created_at,
-          senderId: m.sender_id,
-          senderName: `${m.employee.first_name} ${m.employee.last_name}`.trim(),
-          senderAvatar: avatar,
-        };
-      });
-      setMessages(msgs);
-    }
-    setLoading(false);
-
-    // mark this room read up to now
-    await supabase
-      .from('chat_room_participants')
-      .update({ last_read: new Date().toISOString() })
-      .eq('room_id', rid)
-      .eq('employee_id', currentEmployee.employee_id);
-
-    // re-fetch room list so badge clears
-    queryClient.invalidateQueries(['rooms', currentEmployee.employee_id]);
-  };
-
+  // Load & decrypt messages, subscribe real-time
   useEffect(() => {
     if (!rid) return;
-    // initial load & mark-as-read
-    loadMessages();
+    const load = async () => {
+      setLoading(true);
+      // 1️⃣ decrypt messages
+      const decrypted = await loadEncryptedMessages(rid);
 
-    // subscribe to new messages
+      // 2️⃣ bulk-fetch sender info
+      const ids = [...new Set(decrypted.map(m => m.senderId))];
+      const { data: emps } = await supabase
+        .from('employee')
+        .select('employee_id, first_name, last_name, profile_photo_path')
+        .in('employee_id', ids);
+
+      const map = {};
+      emps.forEach(e => {
+        const avatar = e.profile_photo_path
+          ? supabase.storage.from('profile-photo').getPublicUrl(e.profile_photo_path).data.publicUrl
+          : DEFAULT_AVATAR_URL;
+        map[e.employee_id] = {
+          name: `${e.first_name} ${e.last_name}`.trim(),
+          avatar,
+        };
+      });
+
+      // 3️⃣ build UI-ready message list
+      const ui = decrypted.map(m => {
+        const info = map[m.senderId] || { name: 'Unknown', avatar: DEFAULT_AVATAR_URL };
+        return {
+          id:          m.id,
+          text:        m.text,
+          ts:          m.sentAt,
+          senderId:    m.senderId,
+          senderName:  info.name,
+          senderAvatar: info.avatar,
+        };
+      });
+
+      setMessages(ui);
+      setLoading(false);
+
+      // mark as read
+      await supabase
+        .from('chat_room_participants')
+        .update({ last_read: new Date().toISOString() })
+        .eq('room_id', rid)
+        .eq('employee_id', currentEmployee.employee_id);
+
+      queryClient.invalidateQueries(['rooms', currentEmployee.employee_id]);
+    };
+
+    load();
     const channel = supabase
       .channel(`group-${rid}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `chat_room_id=eq.${rid}`,
-        },
-        () => loadMessages()
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
+        load
       )
       .subscribe();
 
     return () => supabase.removeChannel(channel);
   }, [rid, currentEmployee.employee_id, queryClient]);
 
-  // ── Auto-scroll when messages change ───────────────────────────────────────
+  // Auto-scroll when messages change
   useEffect(() => {
     const c = document.getElementById('group-chat-container');
     if (c) c.scrollTop = c.scrollHeight;
   }, [messages]);
 
-  // ── Send a message ─────────────────────────────────────────────────────────
-  const sendMessage = async () => {
+  // Send encrypted message
+  const handleSend = async () => {
     if (!newMsg.trim() || !rid) return;
-    await supabase.from('messages').insert({
-      chat_room_id: rid,
-      sender_id: currentEmployee.employee_id,
-      message: newMsg.trim(),
-    });
+    await sendEncryptedMessage(rid, newMsg.trim(), currentEmployee.employee_id);
     setNewMsg('');
   };
 
-  // ── Group messages by date ─────────────────────────────────────────────────
+  // Group messages by date
   const groupedMessages = useMemo(() => {
     return Object.entries(
       messages.reduce((acc, msg) => {
         const key = new Date(msg.ts).toLocaleDateString(undefined, {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
+          month: 'long', day: 'numeric', year: 'numeric',
         });
         (acc[key] = acc[key] || []).push(msg);
         return acc;
@@ -159,7 +151,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     );
   }, [messages]);
 
-  // ── Load participants & available employees for “View Members” ────────────
+  // Load participants & available employees for “View Members”
   useEffect(() => {
     if (!showMembers || !rid) return;
     (async () => {
@@ -213,7 +205,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     })();
   }, [showMembers, rid]);
 
-  // ── Persistence actions ────────────────────────────────────────────────────
+  // Persist changes
   const saveGroupName = async () => {
     await supabase.from('chat_rooms').update({ name: groupName.trim() }).eq('id', rid);
     setEditingName(false);
@@ -389,7 +381,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                         src={msg.senderAvatar}
                         alt={msg.senderName}
                         className="h-8 w-8 rounded-full"
-                        style={{ marginTop: '2px' }}
+                        style={{ marginTop: 2 }}
                       />
                       <div
                         className={`${
@@ -429,12 +421,12 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
           <input
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder="Type a message..."
             className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
-            onClick={sendMessage}
+            onClick={handleSend}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
           >
             Send

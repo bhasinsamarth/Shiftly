@@ -6,6 +6,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 
+// add room‐creation helper
+import { createChatRoom } from '../utils/chatService.js';
+
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
 const NewGroupModal   = lazy(() => import('../components/Chat/NewGroupModal.jsx'));
@@ -231,6 +234,7 @@ export default function ChatPage() {
     roomsRefetch();
   };
 
+  // 4️⃣ CREATE GROUP: use createChatRoom
   const createGroupChat = async () => {
     if (!newGroupName.trim()) {
       setGroupError('Group name required');
@@ -241,11 +245,14 @@ export default function ChatPage() {
       return;
     }
     setGroupError('');
-    const { data: newRoom } = await supabase
-      .from('chat_rooms')
-      .insert([{ type: 'group', name: newGroupName.trim() }])
-      .select('id')
-      .single();
+
+    // use helper to insert room + key
+    const newRoom = await createChatRoom(
+      [employee.employee_id, ...selGroup],
+      { type: 'group', name: newGroupName.trim() }
+    );
+
+    // link participants
     const parts = [
       { room_id: newRoom.id, employee_id: employee.employee_id, is_admin: true },
       ...selGroup.map(id => ({ room_id: newRoom.id, employee_id: id, is_admin: false })),
@@ -253,6 +260,7 @@ export default function ChatPage() {
     await supabase
       .from('chat_room_participants')
       .upsert(parts, { onConflict: ['room_id','employee_id'] });
+
     roomsRefetch();
     setShowNewGroupModal(false);
     setNewGroupName('');
@@ -260,11 +268,13 @@ export default function ChatPage() {
     openChat(newRoom.id);
   };
 
+  // 5️⃣ CREATE PRIVATE: also use createChatRoom
   const createPrivateChat = async () => {
     if (!selPrivate) return;
     const me   = employee.employee_id;
     const them = selPrivate;
 
+    // check for existing private room
     const { data: mine } = await supabase
       .from('chat_room_participants')
       .select('room_id, deleted_at')
@@ -301,12 +311,13 @@ export default function ChatPage() {
       return;
     }
 
-    const { data: newRoom } = await supabase
-      .from('chat_rooms')
-      .insert([{ type: 'private' }])
-      .select('id')
-      .single();
+    // create new private room + key
+    const newRoom = await createChatRoom(
+      [me, them],
+      { type: 'private' }
+    );
 
+    // insert participants
     await Promise.all(
       [me, them].map(id =>
         supabase
@@ -362,7 +373,7 @@ export default function ChatPage() {
         </button>
       </div>
 
-      {/* Group & Store List */}
+      {/* Group & Store List */}  
       {mode === 'group' && (
         <div>
           <div className="flex justify-between items-center mb-4">
@@ -474,9 +485,7 @@ export default function ChatPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 w-80">
             <h2 className="text-lg font-semibold mb-4">Delete this chat?</h2>
-            <p className="mb-6">
-              This hides all messages up to now. Continue?
-            </p>
+            <p className="mb-6">This hides all messages up to now. Continue?</p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDeleteId(null)}

@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { loadMessages, sendMessage } from '../../utils/chatService';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
@@ -10,14 +11,18 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
   const navigate = useNavigate();
   const empId    = currentEmployee.employee_id;
 
-  const [deletedAt, setDeletedAt]   = useState(null);
-  const [messages, setMessages]     = useState([]);
-  const [newMsg, setNewMsg]         = useState('');
-  const [loading, setLoading]       = useState(true);
+  // Soft-delete cutoff
+  const [deletedAt, setDeletedAt] = useState(null);
+  // Decrypted messages
+  const [messages, setMessages]   = useState([]);
+  // Input state
+  const [newMsg, setNewMsg]       = useState('');
+  const [loading, setLoading]     = useState(true);
 
-  const [myName, setMyName]               = useState('');
-  const [myAvatar, setMyAvatar]           = useState(DEFAULT_AVATAR_URL);
-  const [partnerName, setPartnerName]     = useState('');
+  // Profile & partner info
+  const [myName, setMyName]           = useState('');
+  const [myAvatar, setMyAvatar]       = useState(DEFAULT_AVATAR_URL);
+  const [partnerName, setPartnerName] = useState('');
   const [partnerAvatar, setPartnerAvatar] = useState(DEFAULT_AVATAR_URL);
 
   // 1️⃣ Load my profile
@@ -76,34 +81,41 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       });
   }, [rid, empId]);
 
-  // 4️⃣ Load messages after deletedAt
+  // 4️⃣ Load & decrypt messages (with soft-delete filtering + real-time)
   useEffect(() => {
     if (!rid) return;
-    setLoading(true);
-    const since = deletedAt || new Date(0).toISOString();
-    supabase
-      .from('messages')
-      .select('id,message,created_at,sender_id')
-      .eq('chat_room_id', rid)
-      .gt('created_at', since)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        setMessages(data || []);
-        setLoading(false);
-      });
+    const reload = async () => {
+      setLoading(true);
+      // load all decrypted
+      let all = await loadMessages(rid);
+      // filter out before deletedAt
+      if (deletedAt) {
+        all = all.filter(m => new Date(m.sentAt) > new Date(deletedAt));
+      }
+      setMessages(all);
+      setLoading(false);
+    };
+    reload();
+    const channel = supabase
+      .channel(`messages-${rid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_room_id=eq.${rid}`
+        },
+        reload
+      )
+      .subscribe();
+    return () => supabase.removeChannel(channel);
   }, [rid, deletedAt]);
 
-  // 5️⃣ Send a message
-  const sendMessage = async () => {
+  // 5️⃣ Send a message (encrypt & insert)
+  const handleSend = async () => {
     if (!newMsg.trim()) return;
-    const { data: ins } = await supabase
-      .from('messages')
-      .insert({ chat_room_id: rid, sender_id: empId, message: newMsg.trim() })
-      .select('id,message,created_at,sender_id')
-      .single();
-    if (ins && new Date(ins.created_at) > new Date(deletedAt || 0)) {
-      setMessages(prev => [...prev, ins]);
-    }
+    await sendMessage(rid, newMsg.trim(), empId);
     setNewMsg('');
   };
 
@@ -111,10 +123,10 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
   const grouped = useMemo(() => {
     const byDay = {};
     messages.forEach(m => {
-      const day = new Date(m.created_at).toLocaleDateString(undefined, {
+      const day = new Date(m.sentAt).toLocaleDateString(undefined, {
         month: 'long', day: 'numeric', year: 'numeric'
       });
-      (byDay[day] = byDay[day] || []).push(m);
+      ;(byDay[day] ||= []).push(m);
     });
     return Object.entries(byDay);
   }, [messages]);
@@ -141,30 +153,40 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       </div>
 
       {/* Messages */}
-      <div id="private-chat-container" className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        id="private-chat-container"
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
         {grouped.map(([date, msgs]) => (
           <div key={date}>
             <div className="text-center text-xs text-gray-500 my-2">{date}</div>
             {msgs.map(msg => {
-              const isMine = msg.sender_id === empId;
-              const avatar = isMine ? myAvatar : partnerAvatar;
-              const name   = isMine ? myName   : partnerName;
+              const isMine = msg.senderId === empId;
               return (
-                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`flex items-start ${isMine ? 'flex-row-reverse' : ''}`}>
+                <div
+                  key={msg.id}
+                  className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`flex items-start ${
+                      isMine ? 'flex-row-reverse' : ''
+                    }`}
+                  >
                     <img
-                      src={avatar}
-                      alt={name}
+                      src={isMine ? myAvatar : partnerAvatar}
+                      alt={isMine ? myName : partnerName}
                       className="h-8 w-8 rounded-full"
                       style={{ marginTop: 2 }}
                     />
-                    <div className={`${isMine ? 'mr-2 text-right' : 'ml-2 text-left'}`} style={{ maxWidth: '75%' }}>
-                      <div className="text-xs font-semibold text-gray-700">{name}</div>
-                      <div className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
+                    <div
+                      className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
                         isMine ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
-                      }`}>{msg.message}</div>
+                      }`}
+                      style={{ maxWidth: '75%' }}
+                    >
+                      {msg.text}
                       <div className="text-[10px] mt-1 opacity-60 text-right">
-                        {new Date(msg.created_at).toLocaleTimeString([], {
+                        {new Date(msg.sentAt).toLocaleTimeString([], {
                           hour: '2-digit', minute: '2-digit'
                         })}
                       </div>
@@ -182,17 +204,17 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
         <input
           value={newMsg}
           onChange={e => setNewMsg(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Type a message…"
           className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
-          onClick={sendMessage}
+          onClick={handleSend}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
         >
           Send
         </button>
       </div>
     </div>
-);
+  );
 }
