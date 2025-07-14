@@ -26,12 +26,12 @@ import ClockDashboard from "./pages/ClockDashboard";
 import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
 
 import TimeOffRequestPage from "./pages/TimeOffRequestPage";
+import Timecards from "./pages/TimeCard";
 
 // Context providers
 import { AuthProvider } from "./context/AuthContext";
 import { LocationProvider } from "./context/LocationContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
 
 // React Query
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -41,10 +41,9 @@ const ChatPage = lazy(() => import("./pages/ChatPage"));
 
 // Create a single React Query client
 const queryClient = new QueryClient();
-import Timecards from "./pages/TimeCard";
 
 function AppWithRoutes() {
-
+  
   return (
     <App>
       <Routes>
@@ -66,8 +65,10 @@ function AppWithRoutes() {
         <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
         <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
         <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
-        <Route path="timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
+        <Route path="/timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
         <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><Suspense fallback={<div>Loading chat...</div>}><ChatPage /></Suspense></ProtectedRoute>} />
+        <Route path="/chat/room/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
 
 
         {/* Catch-all route for 404 */}
@@ -88,14 +89,5 @@ function AppWithRoutes() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     {/* Provide the React Query client */}
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <LocationProvider>
-          <AppWithRoutes />
-          </LocationProvider>
-      </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </React.StrictMode>
+    <QueryClientProvider client={queryClient}><BrowserRouter><AuthProvider><LocationProvider><AppWithRoutes /></LocationProvider></AuthProvider></BrowserRouter></QueryClientProvider></React.StrictMode>
 );

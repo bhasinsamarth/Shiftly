@@ -1,4 +1,7 @@
 // src/lib/chatQueueService.js
+import { supabase } from '../supabaseClient.js'
+
+// Create a separate client only for queue operations with specific schema
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
