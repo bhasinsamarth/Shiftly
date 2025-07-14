@@ -43,7 +43,7 @@ const Timecards = () => {
 
         const fetchData = async () => {
             const start = date.startOf('day');
-            const end = date.endOf('day');
+            // const end = date.endOf('day');
 
             const { data: employeesData } = await supabase
                 .from('employee')
@@ -67,14 +67,14 @@ const Timecards = () => {
                     return entryDate.isSame(start, 'day');
                 });
 
-                const shifts = {};
+                const timestamp = {};
                 logsForDay.forEach(entry => {
-                    // Convert UTC timestamp to local time string for display
+                    // Convert UTC timestamp to local time 
                     const localTime = utcToLocal(entry.timestamp, storeTimezone, 'HH:mm');
-                    shifts[entry.type] = localTime;
+                    timestamp[entry.type] = localTime;
                 });
 
-                formatted[employee_id] = shifts;
+                formatted[employee_id] = timestamp;
             });
 
             setTimecardData(formatted);
@@ -97,7 +97,7 @@ const Timecards = () => {
                     // Convert local time back to UTC for storage
                     const localDateTime = dayjs(date.format('YYYY-MM-DD') + 'T' + entry[type]);
                     // Use storeTimezone to get UTC ISO string
-                    const utcDateTime = dayjs.tz ? dayjs.tz(localDateTime, storeTimezone).utc().toISOString() : localDateTime.toISOString();
+                    const utcDateTime = dayjs.tz(localDateTime, storeTimezone).utc().toISOString();
                     updatedLogs.push({
                         type,
                         timestamp: utcDateTime,
@@ -197,7 +197,7 @@ const Timecards = () => {
                         <div className="flex flex-wrap justify-between items-center px-4 pt-5">
                             <div>
                                 <span className=" font-semibold text-gray-700">
-                                    {date.format('dddd, MMMM D, YYYY')}
+                                    {date.format('ddd, MMMM D, YYYY')}
                                 </span>
                             </div>
                             <div className="flex space-x-3">

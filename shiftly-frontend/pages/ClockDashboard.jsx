@@ -227,7 +227,7 @@ const ClockDashboard = () => {
                                 userId={userProfile.employee_id}
                                 employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
                                 onClockEvent={handleClockEvent}
-                                allowedRadius={6000}
+                                allowedRadius={6800}
                             />
                         </div>
 
