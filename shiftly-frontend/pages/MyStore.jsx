@@ -106,7 +106,7 @@ const MyStore = () => {
 
                 {openTeam && (
                     <div className="border-t pt-4">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-3">Current Tea</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-3">Current Team</h3>
                         <ul className="space-y-2">
                             {team.map((member, index) => (
                                 <li
