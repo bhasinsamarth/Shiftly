@@ -1,9 +1,10 @@
-import React from "react";
+// src/main.jsx
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 
-// Import layout and pages
+// Core pages & components
 import App from "./App";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
@@ -19,20 +20,30 @@ import ProfilePage from "./pages/ProfilePage";
 import FetchSchedule from "./pages/FetchSchedule";
 import SchedulePlanner from "./pages/SchedulePlanner";
 import ChangeAvailabity from "./pages/ChangeAvailabity";
+import ChatRoomPage from "./pages/ChatRoomPage";
 import ManagerStorePage from "./pages/MyStore";
 import ClockDashboard from "./pages/ClockDashboard";
 import BulkStoreGeocoding from "./pages/BulkStoreGeocoding";
 
 import TimeOffRequestPage from "./pages/TimeOffRequestPage";
+import Timecards from "./pages/TimeCard";
 
 // Context providers
 import { AuthProvider } from "./context/AuthContext";
 import { LocationProvider } from "./context/LocationContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Timecards from "./pages/TimeCard";
+
+// React Query
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+// Lazy-loaded ChatPage
+const ChatPage = lazy(() => import("./pages/ChatPage"));
+
+// Create a single React Query client
+const queryClient = new QueryClient();
 
 function AppWithRoutes() {
-
+  
   return (
     <App>
       <Routes>
@@ -54,8 +65,10 @@ function AppWithRoutes() {
         <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
         <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
         <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
-        <Route path="timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
+        <Route path="/timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
         <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><Suspense fallback={<div>Loading chat...</div>}><ChatPage /></Suspense></ProtectedRoute>} />
+        <Route path="/chat/room/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
 
 
         {/* Catch-all route for 404 */}
@@ -73,15 +86,8 @@ function AppWithRoutes() {
   );
 }
 
-// Render the application
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <LocationProvider>
-          <AppWithRoutes />
-        </LocationProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </React.StrictMode>
+    {/* Provide the React Query client */}
+    <QueryClientProvider client={queryClient}><BrowserRouter><AuthProvider><LocationProvider><AppWithRoutes /></LocationProvider></AuthProvider></BrowserRouter></QueryClientProvider></React.StrictMode>
 );

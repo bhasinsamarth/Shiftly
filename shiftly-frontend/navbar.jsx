@@ -8,6 +8,7 @@ import BreadcrumbsSidebar from './components/BreadcrumbsSidebar';
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingTimeOffCount, setPendingTimeOffCount] = useState(0);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -16,6 +17,8 @@ const Navbar = () => {
   const [reportAgainst, setReportAgainst] = useState('');
   const [reportName, setReportName] = useState('');
   const [reportMsg, setReportMsg] = useState('');
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [profileImage, setProfileImage] = useState('');
 
   const activeLinkClass =
     'bg-gray-200 text-gray-900 font-semibold rounded';
@@ -30,6 +33,42 @@ const Navbar = () => {
     fetchPendingRequests();
   }, []);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .insert([
+          {
+            subject: reportSubject,
+            details: reportDetails,
+            against: reportAgainst,
+            reporter_name: reportName,
+            user_id: user?.id
+          }
+        ]);
+
+      if (error) throw error;
+      
+      setReportMsg('Report submitted successfully!');
+      setTimeout(() => {
+        setShowReportModal(false);
+        setReportSubject('');
+        setReportDetails('');
+        setReportAgainst('');
+        setReportName('');
+        setReportMsg('');
+      }, 2000);
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      setReportMsg('Error submitting report. Please try again.');
+    }
+  };
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
   const toggleProfileDropdown = () => setProfileDropdownOpen(!profileDropdownOpen);
@@ -74,6 +113,7 @@ const Navbar = () => {
                   </Link>
                   <Link to="/clock" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/clock') ? activeLinkClass : inactiveLinkClass}`}>🕐 Clock In/Out</Link>
                   <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
+                  <Link to="/chat" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>💬 Chat</Link>
                 </div>
 
 
@@ -96,6 +136,7 @@ const Navbar = () => {
                   </Link>
                   {commonLinks}
 <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}>⌛ Timecard</Link>
+                  <Link to="/chat" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>💬 Chat</Link>
                 </div>
               )}
 
@@ -107,43 +148,13 @@ const Navbar = () => {
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}>#️⃣ Dashboard</Link>
                   {commonLinks}
                    <Link to="/time-off-request" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/time-off-request') ? activeLinkClass : inactiveLinkClass}`}>🕐 Time off</Link>
+                   <Link to="/chat" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>💬 Chat</Link>
                 </div>
 
               )}
             </div>
           )}
         </div>
-
-        {showReportModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitReport}>
-                <h2 className="text-lg font-semibold mb-4">Report Issue</h2>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
-                  <input type="text" value={reportSubject} onChange={e => setReportSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Details</label>
-                  <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Against (optional)</label>
-                  <input type="text" value={reportAgainst} onChange={e => setReportAgainst(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                  <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition">Submit</button>
-                  <button type="button" onClick={() => setShowReportModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-                {reportMsg && <div className="mt-4 text-green-600">{reportMsg}</div>}
-              </form>
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );
