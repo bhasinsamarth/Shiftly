@@ -1,26 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import {
-  CalendarDays,
-  Clock,
-  Timer,
-  Building2,
-  Users,
-  UserPlus,
-  MapPin,
-  ClipboardList,
-  Store,
-  Bell,
-  UserCheck,
-  AlertCircle,
-  MessageCircle,
-  LayoutDashboard
-  
-} from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 import { fetchPendingTimeOffCount } from "./utils/requestHandler";
 import BreadcrumbsSidebar from './components/BreadcrumbsSidebar';
+import {
+  CalendarDays, Clock, Timer, Building2, Users, UserPlus,
+  MapPin, ClipboardList, Store, Bell, UserCheck, AlertCircle,
+  MessageCircle, LayoutDashboard
+  
+} from 'lucide-react';
+
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -81,7 +71,7 @@ const Navbar = () => {
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}><LayoutDashboard className="w-5 h-5 mr-2" />Dashboard</Link>
                   <Link to="/employees" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/employees') ? activeLinkClass : inactiveLinkClass}`}><Users className="w-5 h-5 mr-2" />Employees</Link>
                   <Link to="/add-employee" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/add-employee') ? activeLinkClass : inactiveLinkClass}`}><UserPlus className="w-5 h-5 mr-2" />Hiring</Link>
-                  <Link to="/bulk-geocoding" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/bulk-geocoding') ? activeLinkClass : inactiveLinkClass}`}><MapPin className="w-5 h-5 mr-2" />Setup Store Locations</Link>
+                  <Link to="/bulk-geocoding" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/bulk-geocoding') ? activeLinkClass : inactiveLinkClass}`}><MapPin className="w-5 h-5 mr-2" />Stores</Link>
                   <Link to="/clock" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/clock') ? activeLinkClass : inactiveLinkClass}`}><Clock className="w-5 h-5 mr-2" />Clock In/Out</Link>
                   <Link to="/Timecards" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Timecards') ? activeLinkClass : inactiveLinkClass}`}><Timer className="w-5 h-5 mr-2" />Timecard</Link>
                    <Link to="/chat" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}><MessageCircle className="w-5 h-5 mr-2" />Chat</Link>

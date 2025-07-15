@@ -48,25 +48,42 @@ function AppWithRoutes() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
+        
+        {/* Dashboard - accessible to all authenticated users with role-based UI */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/schedules" element={<ProtectedRoute><SchedulePlanner /></ProtectedRoute>} />
-        <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
-        <Route path="/add-employee" element={<ProtectedRoute><AddEmployee /></ProtectedRoute>} />
-        <Route path="/edit-employee/:id" element={<ProtectedRoute><EditEmployee /></ProtectedRoute>} />
-        <Route path="/employee-requests" element={<ProtectedRoute><EmployeeRequests /></ProtectedRoute>} />
+        
+        {/* Admin/Owner only routes */}
+        <Route path="/employees" element={<ProtectedRoute allowedRoles={[1, 2]}><Employees /></ProtectedRoute>} />
+        <Route path="/add-employee" element={<ProtectedRoute allowedRoles={[1, 2]}><AddEmployee /></ProtectedRoute>} />
+        <Route path="/edit-employee/:id" element={<ProtectedRoute allowedRoles={[1, 2]}><EditEmployee /></ProtectedRoute>} />
+        <Route path="/bulk-geocoding" element={<ProtectedRoute allowedRoles={[1, 2]}><BulkStoreGeocoding /></ProtectedRoute>} />
+        
+        {/* Manager only routes */}
+        <Route path="/schedules" element={<ProtectedRoute allowedRoles={[3]}><SchedulePlanner /></ProtectedRoute>} />
+        <Route path="/employee-requests" element={<ProtectedRoute allowedRoles={[3]}><EmployeeRequests /></ProtectedRoute>} />
+        <Route path="/my-store" element={<ProtectedRoute allowedRoles={[3]}><ManagerStorePage /></ProtectedRoute>} />
+        
+        {/* Associate only routes */}
+        <Route path="/time-off-request" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><TimeOffRequestPage /></ProtectedRoute>} />
+        <Route path="/requests" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><div className="p-4 text-center">Notifications page - Coming soon!</div></ProtectedRoute>} />
+        
+        {/* Routes accessible to managers and admin/owners */}
+        <Route path="/timecards" element={<ProtectedRoute allowedRoles={[1, 2, 3]}><Timecards /></ProtectedRoute>} />
+        
+        {/* Routes accessible to all employee roles (managers and associates) */}
+        <Route path="/fetch-schedule" element={<ProtectedRoute allowedRoles={[3, 4, 5, 6]}><FetchSchedule /></ProtectedRoute>} />
+        <Route path="/clock" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><ClockDashboard /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><Suspense fallback={<div>Loading chat...</div>}><ChatPage /></Suspense></ProtectedRoute>} />
+        <Route path="/chat/room/:roomId" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><ChatRoomPage /></ProtectedRoute>} />
+        
+        {/* General authenticated routes */}
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
+        
+        {/* Public routes */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/fetch-schedule" element={<ProtectedRoute><FetchSchedule /></ProtectedRoute>} />
-        <Route path="/change-availability" element={<ProtectedRoute><ChangeAvailabity /></ProtectedRoute>} />
-        <Route path="/my-store" element={<ProtectedRoute><ManagerStorePage /></ProtectedRoute>} />
-        <Route path="/clock" element={<ProtectedRoute><ClockDashboard /></ProtectedRoute>} />
-        <Route path="/bulk-geocoding" element={<ProtectedRoute><BulkStoreGeocoding /></ProtectedRoute>} />
-        <Route path="/timecards" element={<ProtectedRoute><Timecards /></ProtectedRoute>} />
-        <Route path="/time-off-request" element={<ProtectedRoute><TimeOffRequestPage /></ProtectedRoute>} />
-        <Route path="/chat" element={<ProtectedRoute><Suspense fallback={<div>Loading chat...</div>}><ChatPage /></Suspense></ProtectedRoute>} />
-        <Route path="/chat/room/:roomId" element={<ProtectedRoute><ChatRoomPage /></ProtectedRoute>} />
 
 
         {/* Catch-all route for 404 */}

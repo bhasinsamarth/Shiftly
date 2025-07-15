@@ -2,65 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { submitEmployeeRequest, fetchPendingTimeOffCount } from '../utils/requestHandler';
-import TimeOffRequestForm from '../components/TimeOffRequestForm';
-import FetchSchedule from './FetchSchedule';
 
-// Helper component for dashboard cards (admin/manager view)
-const DashboardCard = ({ title, value, icon, bgColor, path }) => (
-  <div className={`${bgColor} rounded-lg p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow min-h-[200px]`}>
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-gray-500 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
-      </div>
-      <div className="text-3xl">{icon}</div>
-    </div>
-  </div>
-);
 
-// Helper component for quick action links (admin/manager view)
-const QuickAction = ({ icon, title, path }) => (
-  <a
-    href={path}
-    className="flex flex-col items-center justify-center p-4 rounded-lg hover:bg-gray-50 transition-colors text-center"
-  >
-    <span className="text-2xl mb-2">{icon}</span>
-    <span className="text-sm font-medium text-gray-700">{title}</span>
-  </a>
-);
 
 const Dashboard = () => {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
 
-  // Get username from context or fallback to localStorage
-  let username = user?.username || 'User';
-  try {
-    if (!user) {
-      const storedUser = JSON.parse(localStorage.getItem('staffeasy_user'));
-      if (storedUser) {
-        username = storedUser.username || storedUser.email || 'User';
-      }
-    }
-  } catch (e) {
-    console.error('Error parsing stored user', e);
-  }
 
-  // Get preferred name or first name for greeting
-  let greetingName = user?.preferred_name || user?.first_name || username;
 
   const accessDenied = location.state?.accessDenied;
   const accessMessage = location.state?.message;
 
   // --- ADMIN, OWNER DASHBOARD LOGIC ---
   const [employeesCount, setEmployeesCount] = useState(0);
-  const [teamsCount, setTeamsCount] = useState(0);
-  const [pendingTimeOff, setPendingTimeOff] = useState(0);
-  const [totalPayroll, setTotalPayroll] = useState(0);
-  const [activity, setActivity] = useState([]);
-  const [loadingActivity, setLoadingActivity] = useState(true);
-  const [errorActivity, setErrorActivity] = useState('');
 
   useEffect(() => {
     if (user && (user.role_id === 1 || user.role_id === 2)) {
@@ -74,33 +29,6 @@ const Dashboard = () => {
         } else {
           console.error('Error fetching employee count:', countError);
         }
-
-        // Total payroll
-        const { data: empSalaries, error: salaryError } = await supabase
-          .from('employee')
-          .select('pay_rate');
-        if (!salaryError && empSalaries) {
-          const total = empSalaries.reduce((acc, cur) => acc + Number(cur.salary || 0), 0);
-          setTotalPayroll(total);
-        } else {
-          console.error('Error fetching salaries:', salaryError);
-        }
-        //ADMIN
-        // Teams count: Always fetch number of rows from the store table
-        const { data: storeRows, error: storeError } = await supabase
-          .from('store')
-          .select('store_id');
-        if (!storeError && storeRows) {
-          setTeamsCount(storeRows.length);
-        } else {
-          console.error('Error fetching store rows:', storeError);
-        }
-
-        // Pending time-off requests from time_off_requests table
-        const count = await fetchPendingTimeOffCount();
-        setPendingTimeOff(count);
-
-        setLoadingActivity(false);
       }
       fetchMetricsAndActivity();
     }
@@ -108,24 +36,9 @@ const Dashboard = () => {
   
 
   // --- EMPLOYEE DASHBOARD LOGIC ---
-
   const [myEmployee, setMyEmployee] = useState(null);
   const [loadingMyEmp, setLoadingMyEmp] = useState(true);
   const [errorMyEmp, setErrorMyEmp] = useState('');
-  const [alertMsg, setAlertMsg] = useState(null);
-
-  // New state for time-off request modal
-  const [showTimeOffModal, setShowTimeOffModal] = useState(false);
-  // New state for user teams grouping: an object where keys are team names and values are arrays of members
-  const [userTeamGroups, setUserTeamGroups] = useState({});
-  // New state for open/closed dropdown for user teams
-  const [openUserTeams, setOpenUserTeams] = useState({});
-
-  // --- SCHEDULES SECTION ---
-  const [schedules, setSchedules] = useState([]);
-  const [loadingSchedules, setLoadingSchedules] = useState(true);
-  const [errorSchedules, setErrorSchedules] = useState('');
-  // --- STORE SCHEDULE PREVIEW FOR DASHBOARD ---
   const [storeShifts, setStoreShifts] = useState([]);
   const [loadingStoreShifts, setLoadingStoreShifts] = useState(true);
   const [errorStoreShifts, setErrorStoreShifts] = useState('');
@@ -194,69 +107,11 @@ const Dashboard = () => {
     }
   }, [user, myEmployee]);
 
-  // --- TIME CARDS SECTION ---
-  // (Commented out all timecard queries and related logic
-  /*
-    const [timeCards, setTimeCards] = useState([]);
-    const [loadingTimeCards, setLoadingTimeCards] = useState(true);
-    const [errorTimeCards, setErrorTimeCards] = useState('');
-  
-    useEffect(() => {
-      async function fetchTimeCards() {
-        const { data, error } = await supabase
-          .from('timecards')
-          .select('*')
-          .eq('employee_id', myEmployee.employee_id)
-          .order('clock_in', { ascending: false });
-        if (error) setErrorTimeCards('Could not fetch time cards.');
-        else setTimeCards(data || []);
-        setLoadingTimeCards(false);
-      }
-      if (myEmployee) fetchTimeCards();
-    }, [myEmployee]);
-  */
 
-  // --- CLOCK IN/OUT SECTION ---
-  const [isClockedIn, setIsClockedIn] = useState(false);
-  const [clockMsg, setClockMsg] = useState('');
 
-  // --- AVAILABILITY REQUEST SECTION ---
-  const [showAvailModal, setShowAvailModal] = useState(false);
-  const [availDays, setAvailDays] = useState([]);
-  const [availTimes, setAvailTimes] = useState('');
-  const [availMsg, setAvailMsg] = useState('');
-
-  // --- ANONYMOUS COMPLAINT SECTION ---
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [complaintAgainst, setComplaintAgainst] = useState('');
-  const [complaintSubject, setComplaintSubject] = useState('');
-  const [complaintDetails, setComplaintDetails] = useState('');
-  const [complaintName, setComplaintName] = useState('');
-  const [complaintMsg, setComplaintMsg] = useState('');
 
   useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function fetchMyEmployee() {
-        const { data, error } = await supabase
-          .from('employee') // FIX: use 'employee' (singular)
-          .select('*')
-          .eq('email', user.email)
-          .single();
-        if (error) {
-          setErrorMyEmp('Could not fetch your employee data.');
-        } else {
-          setMyEmployee(data);
-        }
-        setLoadingMyEmp(false);
-      }
-      fetchMyEmployee();
-    }
-  }, [user]);
-
-  // --- MANAGER (role_id 3) DASHBOARD LOGIC ---
-  // THIS IS TO FETCH EMPLOYEE DATA
-  useEffect(() => {
-    if (user && user.role_id === 3) {
+    if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchMyEmployee() {
         const { data, error } = await supabase
           .from('employee')
@@ -274,220 +129,12 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // After myEmployee is fetched, load all teams that the employee is a part of
-  useEffect(() => {
-    
-    if (myEmployee) {
-      async function fetchUserTeams() {
-        try {
-          // Fetch the store_id(s) associated with the employee
-          const { data: employeeStores, error: employeeError } = await supabase
-              .from("employee")
-              .select("store_id")
-              .eq("id", myEmployee.id);
 
-          if (employeeError || !employeeStores) {
-              setAlertMsg({ type: 'error', text: 'Failed to load your stores.' });
-              return;
-          }
 
-          // Extract unique store_ids
-          const storeIds = employeeStores.map(store => store.store_id);
 
-          // Fetch store details for the associated store_ids
-          const { data: stores, error: storeError } = await supabase
-              .from("store")
-              .select("*")
-              .in("store_id", storeIds);
 
-          if (storeError || !stores) {
-              setAlertMsg({ type: 'error', text: 'Failed to load store details.' });
-              return;
-          }
 
-          // Group stores by store_name
-          const groups = stores.reduce((acc, store) => {
-              acc[store.store_name] = acc[store.store_name] || [];
-              acc[store.store_name].push(store);
-              return acc;
-          }, {});
 
-          setUserTeamGroups(groups);
-
-          // Initialize open/closed state for each store as closed (false)
-          const openStates = Object.keys(groups).reduce((acc, storeName) => {
-              acc[storeName] = false;
-              return acc;
-          }, {});
-
-          setOpenUserTeams(openStates);
-        } catch (err) {
-          console.error("Unexpected error fetching user teams:", err);
-          setAlertMsg({ type: 'error', text: 'An unexpected error occurred.' });
-        }
-      }
-      fetchUserTeams();
-    }
-  }, [myEmployee]);
-
-  // Helper to get role description from role_id
-  /*
-  const getRoleDesc = (role_id) => {
-    switch (role_id) {
-      case 1: return 'Owner';
-      case 2: return 'Manager';
-      case 3: return 'Full-time Associate';
-      case 4: return 'Part-time Associate';
-      case 5: return 'Interns';
-      default: return 'Unknown';
-    }
-  };
-  */
-
-  // Toggle dropdown for a specific team group
-  /*
-  const toggleUserTeamGroup = (teamName) => {
-    setOpenUserTeams((prev) => ({
-      ...prev,
-      [teamName]: !prev[teamName],
-    }));
-  };
-  */
-
-  // Open the time-off request modal for a specific team (from the user's teams section)
-  // This modal appears in the profile section only (as requested, Request Time Off remains in profile)
-  const handleOpenTimeOffModal = () => {
-    setShowTimeOffModal(true);
-  };
-
-  // Withdraw a time-off request for a normal user (global withdrawal)
-  /*
-  const handleWithdrawTimeOff = async () => {
-    if (!myEmployee) return;
-    const { error } = await supabase
-      .from('time_off_requests')
-      .update({ timeoff_requested: false })
-      .eq('employee_id', myEmployee.id);
-    if (error) {
-      setAlertMsg({ type: 'error', text: 'Failed to withdraw time off request.' });
-    } else {
-      setAlertMsg({ type: 'success', text: 'Time off request withdrawn successfully.' });
-      setMyEmployee({ ...myEmployee, timeoff_request: false });
-    }
-  };
-  */
-
-  // --- EFFECTS FOR NORMAL USER DASHBOARD LOGIC ---
-  useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function fetchSchedules() {
-        // Fetch upcoming and past schedules for the employee
-        const { data, error } = await supabase
-          .from('schedules')
-          .select('*')
-          .eq('employee_id', user.id)
-          .order('shift_start', { ascending: false });
-        if (error) setErrorSchedules('Could not fetch schedules.');
-        else setSchedules(data || []);
-        setLoadingSchedules(false);
-      }
-      fetchSchedules();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function fetchTimeCards() {
-        // Fetch time cards for current and previous pay periods
-        const { data, error } = await supabase
-          .from('timecards')
-          .select('*')
-          .eq('employee_id', user.id)
-          .order('date', { ascending: false });
-        if (error) setErrorTimeCards('Could not fetch time cards.');
-        else setTimeCards(data || []);
-        setLoadingTimeCards(false);
-      }
-      fetchTimeCards();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
-      async function checkClockStatus() {
-        // Check if the user is currently clocked in
-        const { data, error } = await supabase
-          .from('timecards')
-          .select('*')
-          .eq('employee_id', user.id)
-          .order('date', { ascending: false })
-          .limit(1);
-        if (!error && data && data[0]) {
-          setIsClockedIn(!!data[0].clock_in && !data[0].clock_out);
-        }
-      }
-      checkClockStatus();
-    }
-  }, [user]);
-
-  // --- HANDLERS FOR CLOCK IN/OUT SECTION ---
-  const handleClockIn = async () => {
-    if (isClockedIn) {
-      setClockMsg('Already clocked in.');
-      return;
-    }
-    // Optionally, check for late/early logic here
-    const now = new Date();
-    // ...fetch scheduled shift and compare times for late/early...
-    await supabase.from('timecards').insert([
-      { employee_id: user.id, clock_in: now.toISOString(), date: now.toISOString().split('T')[0] }
-    ]);
-    setIsClockedIn(true);
-    setClockMsg('Clocked in successfully.');
-  };
-
-  const handleClockOut = async () => {
-    if (!isClockedIn) {
-      setClockMsg('Not clocked in.');
-      return;
-    }
-    const now = new Date();
-    // Find today's timecard
-    const { data } = await supabase
-      .from('timecards')
-      .select('*')
-      .eq('employee_id', user.id)
-      .eq('date', now.toISOString().split('T')[0])
-      .order('clock_in', { ascending: false })
-      .limit(1);
-    if (data && data[0]) {
-      await supabase
-        .from('timecards')
-        .update({ clock_out: now.toISOString() })
-        .eq('id', data[0].id);
-      setIsClockedIn(false);
-      setClockMsg('Clocked out successfully.');
-    }
-  };
-
-  // --- ANONYMOUS COMPLAINT HANDLER ---
-  const handleSubmitComplaint = async (e) => {
-    e.preventDefault();
-    // Store complaint anonymously
-    const { error } = await supabase.from('complaints').insert([
-      {
-        against: complaintAgainst,
-        subject: complaintSubject,
-        details: complaintDetails,
-        name: complaintName || null,
-        employee_id: user.id,
-        anonymous: !complaintName
-      }
-    ]);
-    if (error) setComplaintMsg('Failed to submit complaint.');
-    else setComplaintMsg('Complaint submitted.');
-    setShowComplaintModal(false);
-  };
 
   // --- RENDERING ---
   if (user && (user.role_id === 1 || user.role_id === 2)) {
@@ -636,38 +283,7 @@ const Dashboard = () => {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-10">
-
-          {/* Complaint Modal */}
-          {showComplaintModal && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-              <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-                <form onSubmit={handleSubmitComplaint}>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
-                    <input type="text" value={complaintAgainst} onChange={e => setComplaintAgainst(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Subject</label>
-                    <input type="text" value={complaintSubject} onChange={e => setComplaintSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                  </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Details</label>
-                    <textarea value={complaintDetails} onChange={e => setComplaintDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                  </div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                    <input type="text" value={complaintName} onChange={e => setComplaintName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                  </div>
-                  <div className="flex justify-end space-x-4">
-                    <button type="submit" className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">Submit</button>
-                    <button type="button" onClick={() => setShowComplaintModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
-        {/* End Complaint Modal */}
       </div>
     );
   } else if (user && (user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
@@ -764,35 +380,6 @@ const Dashboard = () => {
             })()}
           </Link>
         </div>
-        {/* Complaint Modal */}
-        {showComplaintModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitComplaint}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Against (Name or Role)</label>
-                  <input type="text" value={complaintAgainst} onChange={e => setComplaintAgainst(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
-                  <input type="text" value={complaintSubject} onChange={e => setComplaintSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Details</label>
-                  <textarea value={complaintDetails} onChange={e => setComplaintDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                  <input type="text" value={complaintName} onChange={e => setComplaintName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">Submit</button>
-                  <button type="button" onClick={() => setShowComplaintModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     );
   }

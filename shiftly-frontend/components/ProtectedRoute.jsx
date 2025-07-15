@@ -4,11 +4,12 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 /**
- * A wrapper component that redirects to the login page if the user is not authenticated.
+ * A wrapper component that redirects to the login page if the user is not authenticated
+ * and to the dashboard with an access denied message if the user doesn't have the required role.
  * Falls back to localStorage-based auth, shows a loading state, 
  * and preserves the original location in state for post-login redirection.
  */
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, allowedRoles = null }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
@@ -47,6 +48,32 @@ const ProtectedRoute = ({ children }) => {
         replace
       />
     );
+  }
+
+  // Role-based access control
+  if (allowedRoles) {
+    const currentUser = user || storedUser;
+    const userRole = currentUser?.role_id;
+
+    console.log('Role check:', {
+      userRole,
+      allowedRoles,
+      path: location.pathname,
+    });
+
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      console.log('Access denied, redirecting to dashboard with message');
+      return (
+        <Navigate
+          to="/dashboard"
+          state={{
+            accessDenied: true,
+            message: `You do not have permission to access ${location.pathname}. Please contact your administrator if you believe this is an error.`
+          }}
+          replace
+        />
+      );
+    }
   }
 
   // Otherwise render the protected child
