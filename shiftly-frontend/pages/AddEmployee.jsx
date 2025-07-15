@@ -1,11 +1,13 @@
 // src/components/AddEmployee.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
+import DropdownMenu from '../components/DropdownMenu';
+import RoleProtectedRoute from '../components/RoleProtectedRoute';
 
 // endpoint of your mail-sending backend
-const MAILER_API = import.meta.env.VITE_MAILER_API || 'http://localhost:3001/send-invite';
+const MAILER_API = import.meta.env.VITE_MAILER_API;
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -14,39 +16,15 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
-  const [stores, setStores] = useState([]);
-  const [roles, setRoles] = useState([]);
+  // We no longer need to store the dropdown options in the component state
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchStores = async () => {
-      try {
-        const { data, error } = await supabase.from('store').select('store_id, store_name');
-        if (error) throw error;
-        setStores(data);
-      } catch (err) {
-        console.error('Error fetching stores:', err);
-      }
-    };
-    fetchStores();
-  }, []);
-
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const { data, error } = await supabase.from('role').select('role_id, role_name').neq('role_id', 1);
-        if (error) throw error;
-        setRoles(data);
-      } catch (err) {
-        console.error('Error fetching roles:', err);
-      }
-    };
-    fetchRoles();
-  }, []);
+  // We no longer need these fetch effects since the DropdownSelect component
+  // will handle fetching the data directly from the database
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -134,16 +112,10 @@ const AddEmployee = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
+    
       <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8">
         <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-800">Send Invitation</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-          >
-            Back
-          </button>
+          <h1 className="text-3xl font-bold text-gray-800">Hire Employee</h1>
         </div>
 
         {error && <p className="mb-4 text-center text-red-500">{error}</p>}
@@ -172,37 +144,36 @@ const AddEmployee = () => {
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Store ID <span className="text-gray-400">(optional)</span>
-            </label>
-            <select
+            <DropdownMenu
+              label="Store"
               name="store_id"
               value={form.store_id}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            >
-              <option value="">Select a store</option>
-              {stores.map((store) => (
-                <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
-              ))}
-            </select>
+              tableName="store"
+              valueField="store_id"
+              displayField="store_name"
+              placeholder="Select a store"
+              className="focus:ring focus:border-blue-500"
+              required={true}
+            />
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Role ID <span className="text-gray-400">(optional)</span>
-            </label>
-            <select
+            <DropdownMenu
+              label="Role"
               name="role_id"
               value={form.role_id}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            >
-              <option value="">Select a role</option>
-              {roles.map((role) => (
-                <option key={role.role_id} value={role.role_id}>{role.role_desc}</option>
-              ))}
-            </select>
+              tableName="role"
+              valueField="role_id"
+              displayField="role_desc"
+              filterField="role_id"
+              filterValue={1}
+              filterOperator="neq"
+              placeholder="Select a role"
+              className="focus:ring focus:border-blue-500"
+              required={true}
+            />
           </div>
 
           <div>
@@ -228,8 +199,16 @@ const AddEmployee = () => {
           </button>
         </form>
       </div>
-    </div>
+    
   );
 };
 
-export default AddEmployee;
+// Wrap the AddEmployee component with RoleProtectedRoute
+// Role IDs 1 (owner) and 2 (admin) are allowed to access this page
+const ProtectedAddEmployee = () => (
+  <RoleProtectedRoute allowedRoleIds={[1, 2]}>
+    <AddEmployee />
+  </RoleProtectedRoute>
+);
+
+export default ProtectedAddEmployee;

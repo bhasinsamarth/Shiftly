@@ -100,19 +100,6 @@ const Dashboard = () => {
         const count = await fetchPendingTimeOffCount();
         setPendingTimeOff(count);
 
-        //       // Recent activity from "activity" table (excluding time-off request updates)
-        // const { data: actData, error: actError } = await supabase
-        //   .from('activity')
-        //   .select('*')
-        //   .order('timestamp', { ascending: false })
-        //   .limit(5);
-        // if (actError) {
-        //   console.error('Error fetching activity:', actError);
-        //   setErrorActivity('Failed to load recent activity');
-        // } else {
-        //   const filteredActivity = actData.filter(act => act.type !== 'Time-off Request');
-        //   setActivity(filteredActivity);
-        // }
         setLoadingActivity(false);
       }
       fetchMetricsAndActivity();
@@ -553,57 +540,6 @@ const Dashboard = () => {
               </Link>
             </div>
           </div>
-
-          {/* RECENT HIRES */}
-          {/* placeholder, Still  have to write the logic for recent hires */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Hires</h2>
-            <ul className="bg-white rounded-lg shadow divide-y divide-gray-100">
-              {[{ name: 'Emily Zhang', role: 'Physiotherapist' }, { name: 'Jordan Blake', role: 'Front Desk' }].map((emp, idx) => (
-                <li key={idx} className="px-4 py-3 flex justify-between text-sm">
-                  <span>{emp.name}</span>
-                  <span className="text-gray-500">{emp.role}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* ACTIVITY FEED */}
-          <section className="mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
-            {loadingActivity ? (
-              <p className="text-gray-600">Loading recent activity...</p>
-            ) : errorActivity ? (
-              <p className="text-red-500">{errorActivity}</p>
-            ) : activity.length > 0 ? (
-              <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {['Type', 'Action', 'Details', 'When', 'By'].map((col) => (
-                        <th key={col} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {activity.map(act => (
-                      <tr key={act.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-sm text-gray-900">{act.type}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{act.action}</td>
-                        <td className="px-4 py-4 text-sm text-gray-900">{act.subject}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{new Date(act.timestamp).toLocaleString()}</td>
-                        <td className="px-4 py-4 text-sm text-gray-500">{act.user_name || act.user_email || 'N/A'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
-            )}
-          </section>
         </section>
       </div>
 
@@ -698,47 +634,6 @@ const Dashboard = () => {
               }
             })()}
           </Link>
-        </div>
-        {/* recent activity */}
-        <div className="mt-10">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
-          <div className="bg-white rounded-xl shadow-md p-6">
-            {loadingActivity ? (
-              <p className="text-gray-600">Loading recent activity...</p>
-            ) : errorActivity ? (
-              <p className="text-red-500">{errorActivity}</p>
-            ) : activity.length > 0 ? (
-              <ul className="divide-y divide-gray-100">
-                {activity.map((act, idx) => (
-                  <li key={act.id || idx} className="flex items-start py-4 gap-4">
-                    <div className="flex-shrink-0 mt-1">
-                      {/* Icon based on activity type */}
-                      {act.type === 'Time-off Request' ? (
-                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </span>
-                      ) : act.type === 'Schedule' ? (
-                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        </span>
-                      ) : (
-                        <span className="inline-block bg-gray-100 rounded-full p-2 text-gray-500">
-                          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6" /></svg>
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 text-sm mb-1">{act.action || act.type}</div>
-                      <div className="text-gray-500 text-xs mb-1">{act.subject}</div>
-                      <div className="text-gray-400 text-xs">{act.timestamp ? new Date(act.timestamp).toLocaleString() : ''}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">No recent activity found.</p>
-            )}
-          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-10">
 

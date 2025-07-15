@@ -61,6 +61,12 @@ const SetupAccountPage = () => {
         setError('Invalid or expired invitation link.');
         return;
       }
+      // Check if token has already been used
+      if (data.is_used) {
+        setError('This invitation has already been used. Please request a new invitation.');
+        return;
+      }
+      
       // Check expiry
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setInviteExpired(true);
@@ -215,6 +221,20 @@ const SetupAccountPage = () => {
       setLoading(false);
       return;
     }
+    // Mark the invitation token as used
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    
+    const { error: updateTokenError } = await supabase
+      .from('setup_tokens')
+      .update({ is_used: true })
+      .eq('token', token);
+      
+    if (updateTokenError) {
+      console.error('Failed to mark token as used:', updateTokenError);
+      // Continue anyway as the account has been created successfully
+    }
+    
     setSuccess('Account setup complete!');
     setShowEmailPopup(true);
     setLoading(false);

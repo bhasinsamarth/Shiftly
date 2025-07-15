@@ -80,7 +80,6 @@ const Navbar = () => {
                 <div>
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}><LayoutDashboard className="w-5 h-5 mr-2" />Dashboard</Link>
                   <Link to="/employees" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/employees') ? activeLinkClass : inactiveLinkClass}`}><Users className="w-5 h-5 mr-2" />Employees</Link>
-                  <Link to="/teams" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/teams') ? activeLinkClass : inactiveLinkClass}`}><Building2 className="w-5 h-5 mr-2" />Teams</Link>
                   <Link to="/add-employee" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/add-employee') ? activeLinkClass : inactiveLinkClass}`}><UserPlus className="w-5 h-5 mr-2" />Hiring</Link>
                   <Link to="/bulk-geocoding" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/bulk-geocoding') ? activeLinkClass : inactiveLinkClass}`}><MapPin className="w-5 h-5 mr-2" />Setup Store Locations</Link>
                   <Link to="/clock" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/clock') ? activeLinkClass : inactiveLinkClass}`}><Clock className="w-5 h-5 mr-2" />Clock In/Out</Link>
