@@ -22,12 +22,6 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
   }
   const isLocallyAuthenticated = !!storedUser;
 
-  console.log('ProtectedRoute check:', {
-    isAuthenticated,
-    isLocallyAuthenticated,
-    user,
-    path: location.pathname,
-  });
 
   // While your auth provider is resolving (e.g. checking a token), show a loader
   if (isLoading) {
@@ -55,13 +49,13 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
     const currentUser = user || storedUser;
     const userRole = currentUser?.role_id;
 
-    console.log('Role check:', {
-      userRole,
-      allowedRoles,
-      path: location.pathname,
-    });
 
     if (!userRole || !allowedRoles.includes(userRole)) {
+      console.log('Access denied - Role check failed:', {
+        userRole,
+        allowedRoles,
+        path: location.pathname,
+      });
       console.log('Access denied, redirecting to dashboard with message');
       return (
         <Navigate

@@ -14,6 +14,20 @@ const Dashboard = () => {
   const accessDenied = location.state?.accessDenied;
   const accessMessage = location.state?.message;
 
+  // State to control the visibility of the access denied message
+  const [showAccessDenied, setShowAccessDenied] = useState(!!accessDenied);
+
+  // Auto-hide access denied message after 5 seconds
+  useEffect(() => {
+    if (accessDenied) {
+      const timer = setTimeout(() => {
+        setShowAccessDenied(false);
+      }, 5000); // 5 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [accessDenied]);
+
   // --- ADMIN, OWNER DASHBOARD LOGIC ---
   const [employeesCount, setEmployeesCount] = useState(0);
 
@@ -141,11 +155,11 @@ const Dashboard = () => {
     // ADMIN AND OWNER dashboard
     return (
       <div className="max-w-full mx-auto p-2 sm:p-4 lg:p-6">
-        {accessDenied && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+        {showAccessDenied && accessMessage && (
+          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4 transition-opacity duration-500">
             <div className="flex">
               <div className="ml-3">
-                <p className="text-sm text-red-700">{accessMessage || 'You do not have permission to access the requested page.'}</p>
+                <p className="text-sm text-red-700">{accessMessage}</p>
               </div>
             </div>
           </div>

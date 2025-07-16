@@ -1,5 +1,5 @@
 // hooks/useRoleAccess.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 
@@ -9,6 +9,9 @@ export const useRoleAccess = (allowedRoleIds = []) => {
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [employeeData, setEmployeeData] = useState(null);
+
+  // Memoize the allowedRoleIds array to prevent unnecessary re-renders
+  const memoizedAllowedRoleIds = useMemo(() => allowedRoleIds, [JSON.stringify(allowedRoleIds)]);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -35,7 +38,7 @@ export const useRoleAccess = (allowedRoleIds = []) => {
           setEmployeeData(employee);
           // Check if user's role_id is in the allowed roles
           const roleId = employee.role_id;
-          setHasAccess(allowedRoleIds.includes(roleId));
+          setHasAccess(memoizedAllowedRoleIds.includes(roleId));
         } else {
           setHasAccess(false);
         }
@@ -48,7 +51,7 @@ export const useRoleAccess = (allowedRoleIds = []) => {
     };
 
     checkAccess();
-  }, [user, allowedRoleIds]);
+  }, [user, memoizedAllowedRoleIds]);
 
   return { hasAccess, isLoading, employeeData };
 };

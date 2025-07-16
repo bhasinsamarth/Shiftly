@@ -147,7 +147,7 @@ const DropdownMenu = ({
   return (
     <div className="w-full" ref={dropdownRef}>
       {label && (
-        <label className="block text-gray-700 font-medium mb-2">
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
@@ -156,7 +156,7 @@ const DropdownMenu = ({
         <button
           ref={buttonRef}
           type="button"
-          className={`inline-flex w-full justify-between items-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none ${className}`}
+          className={`inline-flex justify-between items-center rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none ${className}`}
           onClick={() => setIsOpen(!isOpen)}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
