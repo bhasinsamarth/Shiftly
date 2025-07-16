@@ -5,18 +5,11 @@ import { supabase } from '../supabaseClient';
 import { getCoordinatesFromAddress } from '../utils/locationService';
 import { COMMON_TIMEZONES, formatDateTime, getCurrentLocalTime, getTimezoneOffset } from '../utils/timezoneUtils';
 import TimezoneDropdown from '../components/TimezoneDropdown';
+import { EllipsisVertical } from 'lucide-react';
 
 const BulkStoreGeocoding = () => {
     const { user, isAuthenticated } = useAuth();
     const navigate = useNavigate();
-
-    // Only allow admin (role_id === 1) or owner (role_id === 2)
-    useEffect(() => {
-        if (!isAuthenticated) return; // Let global route guard handle unauthenticated
-        if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
-            navigate('/dashboard', { replace: true });
-        }
-    }, [user, isAuthenticated, navigate]);
 
     const [stores, setStores] = useState([]);
     const [processing, setProcessing] = useState(false);
@@ -731,11 +724,7 @@ function KebabMenuUI({ store, onEdit, onGeocode }) {
                 onClick={() => setOpen((v) => !v)}
                 aria-label="Actions"
             >
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" className="text-gray-600">
-                    <circle cx="10" cy="4" r="1.5" />
-                    <circle cx="10" cy="10" r="1.5" />
-                    <circle cx="10" cy="16" r="1.5" />
-                </svg>
+                <EllipsisVertical className="w-5 h-5 text-gray-600" />
             </button>
             {open && (
                 <div className="absolute right-0 mt-2 min-w-[8rem] rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50 flex flex-col divide-y divide-gray-100">

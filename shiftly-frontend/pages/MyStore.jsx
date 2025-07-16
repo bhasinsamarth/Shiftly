@@ -13,7 +13,7 @@ const MyStore = () => {
 
     useEffect(() => {
         const fetchStore = async () => {
-            if (!user || user.role_id !== 3) return setLoading(false);
+            if (!user) return setLoading(false);
 
             const { data: empData, error: empError } = await supabase
                 .from("employee")
@@ -73,10 +73,6 @@ const MyStore = () => {
         };
         return new Date(dateTimeStr).toLocaleString("en-US", options);
     };
-
-    if (!isAuthenticated || user.role_id !== 3) {
-        return <div className="p-6 text-center text-red-500">Access Denied</div>;
-    }
 
     if (loading) {
         return <div className="p-6 text-center">Loading your store info...</div>;

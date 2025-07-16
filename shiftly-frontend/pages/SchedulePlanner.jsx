@@ -231,14 +231,6 @@ const SchedulePlanner = () => {
         setSaving(false);
     };
 
-    if (!user || user.role_id !== 3) {
-        return (
-            <div className="p-6 text-red-500 text-center">
-                Access Denied: Managers Only
-            </div>
-        );
-    }
-
     return (
         <div className="lg:ml-[16.67%] min-h-screen bg-white" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
             <div className="layout-container flex h-full grow flex-col">

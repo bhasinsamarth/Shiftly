@@ -13,7 +13,7 @@ const EmployeeRequests = () => {
   const [modalData, setModalData] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated || user.role_id !== 3) {
+    if (!isAuthenticated || !user) {
       setLoading(false);
       return;
     }
@@ -114,14 +114,6 @@ const EmployeeRequests = () => {
   const closeModal = () => {
     setModalData(null);
   };
-
-  if (!isAuthenticated || user.role_id !== 3) {
-    return (
-      <div className="p-6 text-red-500 text-center">
-        Access Denied: Managers Only
-      </div>
-    );
-  }
 
   if (loading) {
     return <div className="p-6">Loading employee requests...</div>;
