@@ -139,53 +139,46 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
   if (loading) return <div className="p-4 text-center">Loading chat…</div>;
 
   return (
-    <div className="flex flex-col h-96 w-[80vw] max-w-3xl mx-auto border rounded-lg shadow-md overflow-hidden bg-white">
+    <div className="flex flex-col h-full w-full bg-white">
       {/* Header */}
-      <div className="p-4 border-b bg-gray-50 flex items-center space-x-4">
-        <button
-          onClick={() => navigate('/chat?mode=private')}
-          className="text-blue-600 hover:underline"
-        >
-          ← Back
-        </button>
-        <img src={partnerAvatar} alt={partnerName} className="h-8 w-8 rounded-full" />
+      <div className="h-16 px-6 flex items-center border-b bg-white gap-4">
+        <img src={partnerAvatar} alt={partnerName} className="h-10 w-10 rounded-full object-cover" />
         <span className="font-semibold text-lg">{partnerName}</span>
       </div>
 
       {/* Messages */}
       <div
         id="private-chat-container"
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50"
       >
         {grouped.map(([date, msgs]) => (
           <div key={date}>
-            <div className="text-center text-xs text-gray-500 my-2">{date}</div>
+            <div className="text-center text-xs text-gray-400 my-2 font-medium">{date}</div>
             {msgs.map(msg => {
               const isMine = msg.senderId === empId;
               return (
                 <div
                   key={msg.id}
-                  className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-4`}
                 >
                   <div
-                    className={`flex items-start ${
-                      isMine ? 'flex-row-reverse' : ''
-                    }`}
+                    className={`flex items-end gap-3 ${isMine ? 'flex-row-reverse' : ''}`}
                   >
                     <img
                       src={isMine ? myAvatar : partnerAvatar}
                       alt={isMine ? myName : partnerName}
-                      className="h-8 w-8 rounded-full"
-                      style={{ marginTop: 2 }}
+                      className="h-8 w-8 rounded-full object-cover"
+                      style={{ marginBottom: 2 }}
                     />
-                    <div
-                      className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
-                        isMine ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
-                      }`}
-                      style={{ maxWidth: '75%' }}
-                    >
-                      {msg.text}
-                      <div className="text-[10px] mt-1 opacity-60 text-right">
+                    <div className={`max-w-lg ${isMine ? 'text-right' : 'text-left'}`}>
+                      <div
+                        className={`inline-block px-3 py-2 rounded-lg text-sm ${
+                          isMine ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border'
+                        }`}
+                      >
+                        {msg.text}
+                      </div>
+                      <div className="text-xs mt-1 text-gray-500">
                         {new Date(msg.sentAt).toLocaleTimeString([], {
                           hour: '2-digit', minute: '2-digit'
                         })}
@@ -200,17 +193,17 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t bg-white flex gap-2">
+      <div className="px-6 py-4 border-t bg-white flex items-center gap-3">
         <input
           value={newMsg}
           onChange={e => setNewMsg(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
-          placeholder="Type a message…"
-          className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Write a message"
+          className="flex-1 rounded-full border px-4 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           onClick={handleSend}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 transition"
         >
           Send
         </button>

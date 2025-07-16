@@ -1,5 +1,8 @@
 // src/pages/ChatPage.jsx
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import GroupChatRoom from '../components/Chat/GroupChatRoom.jsx';
+import PrivateChatRoom from '../components/Chat/PrivateChatRoom.jsx';
+import StoreChat from '../components/Chat/StoreChat.jsx';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -210,19 +213,23 @@ export default function ChatPage() {
     [allEmployees, searchQ]
   );
 
+
+  // Selected chat state
+  const [selectedChat, setSelectedChat] = useState(null); // { id, type }
+
   const switchMode = m => {
     setMode(m);
-    navigate(`/chat?mode=${m}`, { replace: true });
+    setSelectedChat(null);
   };
 
-  const openChat = async rid => {
+  const openChat = async (rid, type = 'group') => {
     await supabase
       .from('chat_room_participants')
       .update({ last_read: new Date().toISOString() })
       .eq('room_id', rid)
       .eq('employee_id', employee.employee_id);
     qc.invalidateQueries(['rooms', employee.employee_id]);
-    navigate(`/chat/room/${rid}?mode=${mode}`, { replace: true });
+    setSelectedChat({ id: rid, type });
   };
 
   const deleteChat = async rid => {
@@ -339,123 +346,192 @@ export default function ChatPage() {
     return <div className="p-6 text-center">Loading…</div>;
   }
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Chats</h1>
-
-      {/* Tabs with unread badges */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => switchMode('group')}
-          className={`relative px-4 py-2 rounded ${
-            mode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-200'
-          }`}
-        >
-          Group Chats
-          {totalGroupUnread > 0 && (
-            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-              {totalGroupUnread}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => switchMode('private')}
-          className={`relative px-4 py-2 rounded ${
-            mode === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-200'
-          }`}
-        >
-          Private Chats
-          {totalPrivateUnread > 0 && (
-            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-              {totalPrivateUnread}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* Group & Store List */}  
-      {mode === 'group' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Your Groups</h2>
-            <button
-              onClick={() => setShowNewGroupModal(true)}
-              className="bg-green-600 text-white px-3 py-1 rounded"
-            >
-              + New Group
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {groupChats.map(room => (
-              <li
-                key={room.id}
-                onClick={() => openChat(room.id)}
-                className="relative cursor-pointer p-3 border rounded hover:bg-gray-50 flex items-center justify-between"
-              >
-                <span>
-                  {room.type === 'store' ? storeName : room.name}
-                </span>
-                {room.unread_count > 0 && (
-                  <span className="bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-                    {room.unread_count}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+    return (
+    <div className="flex h-[80vh] max-h-[700px] bg-gray-100">
+      {/* Sidebar */}
+      <aside className="w-80 min-w-[18rem] border-r bg-white flex flex-col">
+        {/* Search */}
+        <div className="p-4 border-b">
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            className="w-full px-4 py-2 rounded-lg border bg-white focus:outline-none focus:ring"
+          />
         </div>
-      )}
-
-      {/* Private List */}
-      {mode === 'private' && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Your Chats</h2>
-            <button
-              onClick={() => setShowNewPrivateModal(true)}
-              className="bg-green-600 text-white px-3 py-1 rounded"
-            >
-              + New Chat
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {privateChats.map(c => (
-              <li
-                key={c.roomId}
-                className="relative flex items-center justify-between p-3 border rounded hover:bg-gray-50"
-              >
+        {/* Tabs */}
+        <div className="flex gap-2 px-4 pt-4 pb-2 border-b">
+          <button
+            onClick={() => setMode('all')}
+            className={`px-3 py-1 rounded font-medium ${mode === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setMode('group')}
+            className={`px-3 py-1 rounded font-medium ${mode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            Groups
+          </button>
+          <button
+            onClick={() => setMode('private')}
+            className={`px-3 py-1 rounded font-medium ${mode === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            Personal
+          </button>
+        </div>
+        {/* New Chat Buttons */}
+        <div className="px-4 pt-4 pb-2 flex gap-2">
+          <button
+            onClick={() => setShowNewGroupModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700 transition"
+          >
+            + New Group
+          </button>
+          <button
+            onClick={() => setShowNewPrivateModal(true)}
+            className="bg-gray-600 text-white px-4 py-2 rounded font-semibold hover:bg-gray-700 transition"
+          >
+            + New Private
+          </button>
+        </div>
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto">
+          {/* All Chats */}
+          {mode === 'all' && (
+            <>
+              <div className="text-xs text-gray-400 px-6 pt-4 pb-1">Groups</div>
+              {groupChats.map(room => (
                 <div
-                  onClick={() => openChat(c.roomId)}
-                  className="flex items-center cursor-pointer"
+                  key={room.id}
+                  onClick={() => openChat(room.id, room.type)}
+                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === room.id ? 'bg-blue-100' : ''}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
+                    <span>👥</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 truncate">{room.type === 'store' ? storeName : room.name}</div>
+                    <div className="text-xs text-gray-500">Group chat</div>
+                  </div>
+                  {room.unread_count > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                      {room.unread_count}
+                    </span>
+                  )}
+                </div>
+              ))}
+              <div className="text-xs text-gray-400 px-6 pt-6 pb-1">Personal</div>
+              {privateChats.map(c => (
+                <div
+                  key={c.roomId}
+                  onClick={() => openChat(c.roomId, 'private')}
+                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === c.roomId ? 'bg-blue-100' : ''}`}
                 >
                   <img
                     src={c.avatar}
                     alt={c.name}
-                    className="w-8 h-8 rounded-full mr-3"
+                    className="w-10 h-10 rounded-full object-cover"
                   />
-                  <span>{c.name}</span>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 truncate">{c.name}</div>
+                    <div className="text-xs text-gray-500">Private chat</div>
+                  </div>
+                  {c.unread_count > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                      {c.unread_count}
+                    </span>
+                  )}
                 </div>
-                {c.unread_count > 0 && (
-                  <span className="absolute top-2 right-10 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-                    {c.unread_count}
-                  </span>
-                )}
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    setConfirmDeleteId(c.roomId);
-                  }}
-                  className="p-1 hover:text-red-600"
+              ))}
+            </>
+          )}
+          {/* Groups Only */}
+          {mode === 'group' && (
+            <>
+              {groupChats.map(room => (
+                <div
+                  key={room.id}
+                  onClick={() => openChat(room.id, room.type)}
+                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === room.id ? 'bg-blue-100' : ''}`}
                 >
-                  <Trash2 className="w-5 h-5 text-gray-500" />
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
+                    <span>👥</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 truncate">{room.type === 'store' ? storeName : room.name}</div>
+                    <div className="text-xs text-gray-500">Group chat</div>
+                  </div>
+                  {room.unread_count > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                      {room.unread_count}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+          {/* Personal Only */}
+          {mode === 'private' && (
+            <>
+              {privateChats.map(c => (
+                <div
+                  key={c.roomId}
+                  onClick={() => openChat(c.roomId, 'private')}
+                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === c.roomId ? 'bg-blue-100' : ''}`}
+                >
+                  <img
+                    src={c.avatar}
+                    alt={c.name}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900 truncate">{c.name}</div>
+                    <div className="text-xs text-gray-500">Private chat</div>
+                  </div>
+                  {c.unread_count > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                      {c.unread_count}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
         </div>
-      )}
-
-      {/* New Private Modal */}
+      </aside>
+      {/* Main Chat Area */}
+      <main className="flex-1 flex flex-col bg-white">
+        {selectedChat ? (
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400">Loading chat…</div>}>
+            {selectedChat.type === 'group' && (
+              <GroupChatRoom
+                roomId={selectedChat.id}
+                currentEmployee={employee}
+                roomName={groupChats.find(r => r.id === selectedChat.id)?.name || ''}
+              />
+            )}
+            {selectedChat.type === 'private' && (
+              <PrivateChatRoom
+                roomId={selectedChat.id}
+                currentEmployee={employee}
+              />
+            )}
+            {selectedChat.type === 'store' && (
+              <StoreChat
+                roomId={selectedChat.id}
+                currentEmployee={employee}
+              />
+            )}
+          </Suspense>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+            <span className="text-2xl font-semibold">Select a chat to start messaging</span>
+          </div>
+        )}
+      </main>
+      {/* Modals and overlays remain unchanged */}
       {showNewPrivateModal && (
         <Suspense fallback={<div>Loading…</div>}>
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -479,8 +555,6 @@ export default function ChatPage() {
           </div>
         </Suspense>
       )}
-
-      {/* Delete Confirmation */}
       {confirmDeleteId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 w-80">
@@ -506,8 +580,6 @@ export default function ChatPage() {
           </div>
         </div>
       )}
-
-      {/* New Group Modal */}
       {showNewGroupModal && (
         <Suspense fallback={<div>Loading…</div>}>
           <NewGroupModal

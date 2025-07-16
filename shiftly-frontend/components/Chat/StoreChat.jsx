@@ -183,25 +183,22 @@ export default function StoreChat({ roomId: rid, currentEmployee }) {
   return (
     <>
       {/* Chat Box */}
-      <div className="flex flex-col h-96 w-[80vw] max-w-3xl mx-auto border rounded-lg shadow-md overflow-hidden">
+      <div className="flex flex-col h-full w-full bg-white">
         {/* Header */}
-        <div className="p-4 border-b bg-gray-50 font-semibold text-lg flex justify-between items-center">
+        <div className="h-16 px-6 flex items-center border-b bg-white justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/chat')} className="text-blue-600 hover:underline">
-              ← Back
-            </button>
-            <span>{storeName}</span>
+            <span className="font-semibold text-lg">{storeName}</span>
           </div>
           <div className="relative" ref={optionsRef}>
-            <button onClick={() => setShowOptions(o => !o)} className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300">
+            <button onClick={() => setShowOptions(o => !o)} className="px-3 py-2 bg-gray-100 rounded-lg font-medium text-gray-700 hover:bg-gray-200">
               Options ▾
             </button>
             {showOptions && (
-              <ul className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-lg z-10">
+              <ul className="absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg z-10 overflow-hidden">
                 <li>
                   <button
                     onClick={() => { setShowMembers(true); setShowOptions(false); }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100"
                   >
                     View Members
                   </button>
@@ -212,27 +209,27 @@ export default function StoreChat({ roomId: rid, currentEmployee }) {
         </div>
 
         {/* Messages */}
-        <div id="store-chat-container" className="flex-1 overflow-y-auto p-4">
+        <div id="store-chat-container" className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50">
           {groupedMessages.map(([date, msgs]) => (
-            <div key={date} className="space-y-4">
-              <div className="text-center my-2 text-gray-500 text-xs font-medium">{date}</div>
+            <div key={date} className="space-y-6">
+              <div className="text-center my-2 text-gray-400 text-xs font-medium">{date}</div>
               {msgs.map(msg => {
                 const mine = msg.senderId === currentEmployee.employee_id;
                 return (
-                  <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`flex items-start space-x-2 ${mine ? 'flex-row-reverse' : ''}`}>
+                  <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'} mb-4`}>
+                    <div className={`flex items-end gap-3 ${mine ? 'flex-row-reverse' : ''}`}>
                       <img
                         src={msg.senderAvatar}
                         alt={msg.senderName}
-                        className="h-8 w-8 rounded-full"
-                        style={{ marginTop: 2 }}
+                        className="h-8 w-8 rounded-full object-cover"
+                        style={{ marginBottom: 2 }}
                       />
-                      <div className={`${mine ? 'mr-2 text-right' : 'ml-2 text-left'}`} style={{ maxWidth: '75%' }}>
-                        <div className="text-xs font-semibold text-gray-700">{msg.senderName}</div>
-                        <div className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${mine ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                      <div className={`max-w-lg ${mine ? 'text-right' : 'text-left'}`}>
+                        <div className="text-xs font-medium text-gray-600 mb-1">{msg.senderName}</div>
+                        <div className={`inline-block px-3 py-2 rounded-lg text-sm ${mine ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border'}`}>
                           {msg.text}
                         </div>
-                        <div className="text-[10px] mt-1 opacity-60 text-right">
+                        <div className="text-xs mt-1 text-gray-500">
                           {new Date(msg.ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}
                         </div>
                       </div>
@@ -245,15 +242,15 @@ export default function StoreChat({ roomId: rid, currentEmployee }) {
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t bg-white flex gap-2">
+        <div className="px-6 py-4 border-t bg-white flex items-center gap-3">
           <input
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
-            className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Write a message"
+            className="flex-1 rounded-full border px-4 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button onClick={handleSend} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          <button onClick={handleSend} className="bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 transition">
             Send
           </button>
         </div>

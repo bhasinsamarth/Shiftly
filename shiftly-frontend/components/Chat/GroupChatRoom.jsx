@@ -151,65 +151,11 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     );
   }, [messages]);
 
-  // Load participants & available employees for “View Members”
-  useEffect(() => {
-    if (!showMembers || !rid) return;
-    (async () => {
-      const { data: parts } = await supabase
-        .from('chat_room_participants')
-        .select(`
-          employee_id,
-          is_admin,
-          employee!inner(
-            first_name,
-            last_name,
-            profile_photo_path
-          )
-        `)
-        .eq('room_id', rid);
-
-      const list = parts.map(p => {
-        const emp = p.employee;
-        const path = emp.profile_photo_path;
-        const avatar = path
-          ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
-          : DEFAULT_AVATAR_URL;
-        return {
-          id: p.employee_id,
-          name: `${emp.first_name} ${emp.last_name}`.trim(),
-          avatar,
-          isAdmin: p.is_admin,
-        };
-      });
-      setParticipants(list);
-
-      const taken = list.map(p => p.id).join(',');
-      const { data: avail } = await supabase
-        .from('employee')
-        .select('employee_id, first_name, last_name, profile_photo_path')
-        .not('employee_id', 'in', `(${taken})`);
-
-      setAvailableEmployees(
-        avail.map(e => {
-          const path = e.profile_photo_path;
-          return {
-            employee_id: e.employee_id,
-            first_name: e.first_name,
-            last_name: e.last_name,
-            avatar: path
-              ? supabase.storage.from('profile-photo').getPublicUrl(path).data.publicUrl
-              : DEFAULT_AVATAR_URL,
-          };
-        })
-      );
-    })();
-  }, [showMembers, rid]);
-
   // Persist changes
-  const saveGroupName = async () => {
-    await supabase.from('chat_rooms').update({ name: groupName.trim() }).eq('id', rid);
-    setEditingName(false);
-  };
+    const saveGroupName = async () => {
+      await supabase.from('chat_rooms').update({ name: groupName.trim() }).eq('id', rid);
+      setEditingName(false);
+    };
 
   const addMember = async () => {
     if (!selectedNewMembers.length) return;
@@ -265,32 +211,24 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
   return (
     <>
       {/* Chat Box */}
-      <div className="flex flex-col h-96 w-[80vw] max-w-3xl mx-auto border rounded-lg shadow-md overflow-hidden">
+      <div className="flex flex-col h-full w-full bg-white">
         {/* Header */}
-        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/chat?mode=group')}
-              className="text-blue-600 hover:underline"
-            >
-              ← Back
-            </button>
+        <div className="h-16 px-6 flex items-center border-b bg-white justify-between">
+          <div className="flex items-center gap-4">
             {editingName && isGroupAdmin ? (
               <>
                 <input
                   value={groupName}
                   onChange={e => setGroupName(e.target.value)}
-                  className="border px-2"
+                  className="border rounded px-2 py-1 text-base"
                 />
-                <button onClick={saveGroupName} className="text-blue-600">
-                  Save
-                </button>
+                <button onClick={saveGroupName} className="text-blue-600 font-medium ml-2">Save</button>
                 <button
                   onClick={() => {
                     setGroupName(roomName);
                     setEditingName(false);
                   }}
-                  className="text-gray-600"
+                  className="text-gray-600 ml-2"
                 >
                   Cancel
                 </button>
@@ -299,17 +237,16 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
               <span className="font-semibold text-lg">{groupName}</span>
             )}
           </div>
-
           {/* Options dropdown */}
           <div className="relative" ref={optionsRef}>
             <button
               onClick={() => setShowOptions(v => !v)}
-              className="px-2 py-1 bg-gray-200 rounded hover:bg-gray-300"
+              className="px-3 py-2 bg-gray-100 rounded-lg font-medium text-gray-700 hover:bg-gray-200"
             >
               Options ▾
             </button>
             {showOptions && (
-              <ul className="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
+              <ul className="absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg z-10 overflow-hidden">
                 {isGroupAdmin && !editingName && (
                   <li>
                     <button
@@ -317,7 +254,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                         setEditingName(true);
                         setShowOptions(false);
                       }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                      className="w-full text-left px-4 py-3 hover:bg-gray-100"
                     >
                       Edit Name
                     </button>
@@ -330,7 +267,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                       setShowAddForm(false);
                       setShowOptions(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100"
                   >
                     View Members
                   </button>
@@ -338,7 +275,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                 <li>
                   <button
                     onClick={leaveGroup}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+                    className="w-full text-left px-4 py-3 hover:bg-gray-100 text-red-600"
                   >
                     Leave Group
                   </button>
@@ -347,7 +284,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                   <li>
                     <button
                       onClick={deleteGroup}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+                      className="w-full text-left px-4 py-3 hover:bg-gray-100 text-red-600"
                     >
                       Delete Group
                     </button>
@@ -359,10 +296,10 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
         </div>
 
         {/* Messages */}
-        <div id="group-chat-container" className="flex-1 overflow-y-auto p-4">
+        <div id="group-chat-container" className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50">
           {groupedMessages.map(([date, msgs]) => (
             <div key={date} className="space-y-4">
-              <div className="text-center my-2 text-gray-500 text-xs font-medium">
+              <div className="text-center my-2 text-gray-400 text-xs font-medium">
                 {date}
               </div>
               {msgs.map(msg => {
@@ -373,35 +310,28 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                     className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
-                      className={`flex items-start space-x-2 ${
-                        isOwn ? 'flex-row-reverse' : ''
-                      }`}
+                      className={`flex items-end gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
                     >
                       <img
                         src={msg.senderAvatar}
                         alt={msg.senderName}
-                        className="h-8 w-8 rounded-full"
-                        style={{ marginTop: 2 }}
+                        className="h-8 w-8 rounded-full object-cover"
+                        style={{ marginBottom: 2 }}
                       />
-                      <div
-                        className={`${
-                          isOwn ? 'mr-2 text-right' : 'ml-2 text-left'
-                        }`}
-                        style={{ maxWidth: '75%' }}
-                      >
-                        <div className="text-xs font-semibold text-gray-700">
+                      <div className={`max-w-lg ${isOwn ? 'text-right' : 'text-left'}`}>
+                        <div className="text-xs font-medium text-gray-600 mb-1">
                           {msg.senderName}
                         </div>
                         <div
-                          className={`mt-1 inline-block px-4 py-2 rounded-lg shadow text-sm ${
+                          className={`inline-block px-3 py-2 rounded-lg text-sm ${
                             isOwn
                               ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-white text-gray-800 border'
                           }`}
                         >
                           {msg.text}
                         </div>
-                        <div className="text-[10px] mt-1 opacity-60 text-right">
+                        <div className="text-xs mt-1 text-gray-500">
                           {new Date(msg.ts).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -417,17 +347,17 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t bg-white flex gap-2">
+        <div className="px-6 py-4 border-t bg-white flex items-center gap-3">
           <input
             value={newMsg}
             onChange={e => setNewMsg(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
-            className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Write a message"
+            className="flex-1 rounded-full border px-4 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleSend}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            className="bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 transition"
           >
             Send
           </button>
