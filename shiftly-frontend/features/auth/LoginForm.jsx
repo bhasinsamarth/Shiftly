@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import InputField from "../../components/InputField";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "../../supabaseClient"; 
 import { useAuth } from "../../context/AuthContext";
 
@@ -81,13 +82,13 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md">
-      <h2 className="text-2xl font-bold mb-4 text-center text-gray-700">
+    <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-md">
+      <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-center text-gray-700">
         Login to Shiftly
       </h2>
 
       {error && (
-        <div className="mb-4 p-2 bg-red-50 text-red-500 border border-red-200 rounded text-sm">
+        <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 text-red-500 border border-red-200 rounded text-xs sm:text-sm">
           {error}
         </div>
       )}
@@ -102,8 +103,8 @@ export default function LoginForm() {
         required
       />
 
-      <div className="mb-4 relative">
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3 sm:mb-4 relative">
+        <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
           Password
         </label>
         <input
@@ -113,28 +114,28 @@ export default function LoginForm() {
           value={form.password}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent pr-16"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent pr-16"
         />
         <button
           type="button"
           tabIndex={-1}
           onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none text-sm px-2 py-1"
+          className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none p-1"
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
-          {showPassword ? "Hide" : "Show"}
+          {showPassword ? <EyeOff size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" /> : <Eye size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" />}
         </button>
       </div>
 
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-3 sm:mb-4">
         <input
           id="keepLoggedIn"
           type="checkbox"
           checked={keepLoggedIn}
           onChange={handleKeepLoggedInChange}
-          className="mr-2"
+          className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4"
         />
-        <label htmlFor="keepLoggedIn" className="text-sm text-gray-700">
+        <label htmlFor="keepLoggedIn" className="text-xs sm:text-sm text-gray-700">
           Keep me logged in for 60 days
         </label>
       </div>
@@ -142,7 +143,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className={`w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${
+        className={`w-full mt-3 sm:mt-4 bg-blue-600 text-white py-2.5 sm:py-2 px-4 rounded text-sm hover:bg-blue-700 transition ${
           isLoading ? "opacity-70 cursor-not-allowed" : ""
         }`}
       >

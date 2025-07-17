@@ -102,7 +102,11 @@ const ClockDashboard = () => {
                 .order('start_time', { ascending: false })
                 .limit(10);
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error fetching recent clock events:', error);
+                setRecentClockEvents([]);
+                return;
+            }
             
             // Transform time_log data into clock events format
             const clockEvents = [];
@@ -147,6 +151,7 @@ const ClockDashboard = () => {
             setRecentClockEvents(clockEvents);
         } catch (error) {
             console.error('Error fetching clock events:', error);
+            setRecentClockEvents([]);
         }
     };
 
@@ -238,30 +243,29 @@ const ClockDashboard = () => {
                             {/* Filter Controls */}
                             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                                 <div className="flex items-center gap-2">
-                                    <label htmlFor="from-date" className="font-medium text-gray-700">From</label>
+                                    <label htmlFor="from-date" className="font-medium text-gray-700 w-12">From</label>
                                     <input
                                         id="from-date"
                                         type="date"
-                                        className="border rounded px-2 py-1 text-base"
+                                        className="border border-gray-300 rounded-md px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         value={fromDate}
                                         max={tillDate}
                                         onChange={e => setFromDate(e.target.value)}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <label htmlFor="till-date" className="font-medium text-gray-700">Till</label>
+                                    <label htmlFor="till-date" className="font-medium text-gray-700 w-12">Till</label>
                                     <input
                                         id="till-date"
                                         type="date"
-                                        className="border rounded px-2 py-1 text-base"
+                                        className="border border-gray-300 rounded-md px-3 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         value={tillDate}
                                         min={fromDate}
                                         onChange={e => setTillDate(e.target.value)}
                                     />
                                 </div>
                                 <button
-                                    className="w-full md:w-auto min-w-[140px] py-3 px-4 rounded-lg font-medium transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white shadow"
-                                    style={{height: '48px'}} 
+                                    className="w-full md:w-auto min-w-[140px] py-3 px-4 rounded-lg font-medium transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                                     onClick={() => { setShowTimecard(true); setFilterKey(k => k+1); }}
                                 >
                                     View Timecard
@@ -310,59 +314,80 @@ const WeeklyActivityTable = ({ userId, fromDate, tillDate }) => {
 
             for (const date of days) {
                 const dateStr = date.toISOString().split('T')[0];
-                // Fetch schedule data for this date
-                const { data, error } = await supabase
-                    .from('store_schedule')
-                    .select('time_log')
-                    .eq('employee_id', userId)
-                    .gte('start_time', `${dateStr}T00:00:00`)
-                    .lte('start_time', `${dateStr}T23:59:59`)
-                    .single();
+                // Fetch schedule data for this date with error handling
+                try {
+                    const { data, error } = await supabase
+                        .from('store_schedule')
+                        .select('time_log')
+                        .eq('employee_id', userId)
+                        .gte('start_time', `${dateStr}T00:00:00`)
+                        .lte('start_time', `${dateStr}T23:59:59`)
+                        .maybeSingle(); // Use maybeSingle instead of single to handle no results gracefully
 
-                const dayData = {
-                    date: new Date(date),
-                    clockedIn: null,
-                    breakIn: null,
-                    breakOut: null,
-                    clockedOut: null,
-                    hoursWorked: 0,
-                    tillDateHours: 0
-                };
+                    const dayData = {
+                        date: new Date(date),
+                        clockedIn: null,
+                        breakIn: null,
+                        breakOut: null,
+                        clockedOut: null,
+                        hoursWorked: 0,
+                        tillDateHours: 0
+                    };
 
-                if (data && data.time_log) {
-                    const timeLogs = Array.isArray(data.time_log) ? data.time_log : [];
-                    // Find the times for each event
-                    const clockIn = timeLogs.find(log => log.type === 'clock_in');
-                    const clockOut = timeLogs.find(log => log.type === 'clock_out');
-                    const breakStart = timeLogs.find(log => log.type === 'break_start');
-                    const breakEnd = timeLogs.find(log => log.type === 'break_end');
+                    if (error) {
+                        console.error(`Error fetching data for ${dateStr}:`, error);
+                        // Continue with empty dayData
+                    } else if (data && data.time_log) {
+                        const timeLogs = Array.isArray(data.time_log) ? data.time_log : [];
+                        // Find the times for each event
+                        const clockIn = timeLogs.find(log => log.type === 'clock_in');
+                        const clockOut = timeLogs.find(log => log.type === 'clock_out');
+                        const breakStart = timeLogs.find(log => log.type === 'break_start');
+                        const breakEnd = timeLogs.find(log => log.type === 'break_end');
 
-                    dayData.clockedIn = clockIn ? new Date(clockIn.timestamp) : null;
-                    dayData.clockedOut = clockOut ? new Date(clockOut.timestamp) : null;
-                    dayData.breakIn = breakStart ? new Date(breakStart.timestamp) : null;
-                    dayData.breakOut = breakEnd ? new Date(breakEnd.timestamp) : null;
+                        dayData.clockedIn = clockIn ? new Date(clockIn.timestamp) : null;
+                        dayData.clockedOut = clockOut ? new Date(clockOut.timestamp) : null;
+                        dayData.breakIn = breakStart ? new Date(breakStart.timestamp) : null;
+                        dayData.breakOut = breakEnd ? new Date(breakEnd.timestamp) : null;
 
-                    // Calculate hours worked
-                    if (clockIn && clockOut) {
-                        const workMilliseconds = new Date(clockOut.timestamp) - new Date(clockIn.timestamp);
-                        let breakMilliseconds = 0;
-                        if (breakStart && breakEnd) {
-                            breakMilliseconds = new Date(breakEnd.timestamp) - new Date(breakStart.timestamp);
+                        // Calculate hours worked
+                        if (clockIn && clockOut) {
+                            const workMilliseconds = new Date(clockOut.timestamp) - new Date(clockIn.timestamp);
+                            let breakMilliseconds = 0;
+                            if (breakStart && breakEnd) {
+                                breakMilliseconds = new Date(breakEnd.timestamp) - new Date(breakStart.timestamp);
+                            }
+                            const totalWorkMilliseconds = workMilliseconds - breakMilliseconds;
+                            dayData.hoursWorked = Math.max(0, totalWorkMilliseconds / (1000 * 60 * 60)); // Convert to hours
                         }
-                        const totalWorkMilliseconds = workMilliseconds - breakMilliseconds;
-                        dayData.hoursWorked = Math.max(0, totalWorkMilliseconds / (1000 * 60 * 60)); // Convert to hours
                     }
-                }
 
-                totalCumulativeHours += dayData.hoursWorked;
-                dayData.tillDateHours = totalCumulativeHours;
-                weeklyScheduleData.push(dayData);
+                    totalCumulativeHours += dayData.hoursWorked;
+                    dayData.tillDateHours = totalCumulativeHours;
+                    weeklyScheduleData.push(dayData);
+                } catch (dayError) {
+                    console.error(`Error processing data for ${dateStr}:`, dayError);
+                    // Add empty day data to maintain table structure
+                    const dayData = {
+                        date: new Date(date),
+                        clockedIn: null,
+                        breakIn: null,
+                        breakOut: null,
+                        clockedOut: null,
+                        hoursWorked: 0,
+                        tillDateHours: totalCumulativeHours
+                    };
+                    weeklyScheduleData.push(dayData);
+                }
             }
 
             setWeeklyData(weeklyScheduleData);
             setCumulativeHours(totalCumulativeHours);
         } catch (error) {
             console.error('Error fetching weekly data:', error);
+            // Set empty data to prevent infinite loading
+            setWeeklyData([]);
+            setCumulativeHours(0);
         } finally {
             setLoading(false);
         }

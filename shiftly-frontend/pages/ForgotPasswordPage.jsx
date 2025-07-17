@@ -93,32 +93,32 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-center text-gray-700">Forgot Password</h2>
-        <p className="text-sm text-gray-600 text-center mb-6">Enter your Employee ID or Email below.</p>
+    <div className="min-h-[calc(100vh-12rem)] flex flex-col items-center justify-center py-6 sm:py-8 md:py-12 px-3 sm:px-6 lg:px-8">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4 text-center text-gray-700">Forgot Password</h2>
+        <p className="text-xs sm:text-sm text-gray-600 text-center mb-4 sm:mb-6">Enter your Employee ID or Email below.</p>
 
         {error && (
-          <div className="mb-4 p-2 bg-red-50 text-red-500 border border-red-200 rounded text-sm">
+          <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-red-50 text-red-500 border border-red-200 rounded text-xs sm:text-sm">
             {error}
           </div>
         )}
 
         {success ? (
-          <div className="p-4 bg-green-50 text-green-700 rounded-md text-sm text-center">
+          <div className="p-3 sm:p-4 bg-green-50 text-green-700 rounded-md text-xs sm:text-sm text-center">
             {success}
             <button
               type="button"
               onClick={handleResend}
               disabled={isLoading}
-              className={`block w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+              className={`block w-full mt-3 sm:mt-4 bg-blue-600 text-white py-2.5 sm:py-2 px-4 rounded hover:bg-blue-700 transition ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
             >
               {isLoading ? "Resending..." : "Resend Link"}
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-md">
-            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1">
+          <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-md">
+            <label htmlFor="identifier" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
               Employee ID or Email
             </label>
             <input
@@ -128,13 +128,13 @@ export default function ForgotPassword() {
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="e.g. 1000001 or user@example.com"
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
 
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition ${
+              className={`w-full mt-4 bg-blue-600 text-white text-sm py-2.5 sm:py-2 px-4 rounded hover:bg-blue-700 transition ${
                 isLoading ? "opacity-70 cursor-not-allowed" : ""
               }`}
             >

@@ -75,7 +75,6 @@ function AppWithRoutes() {
         
         {/* Associate only routes */}
         <Route path="/time-off-request" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><RouteLoader><TimeOffRequestPage /></RouteLoader></ProtectedRoute>} />
-        <Route path="/requests" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><div className="p-4 text-center">Notifications page - Coming soon!</div></ProtectedRoute>} />
         
         {/* Routes accessible to managers and admin/owners */}
         <Route path="/timecards" element={<ProtectedRoute allowedRoles={[1, 2, 3]}><RouteLoader><Timecards /></RouteLoader></ProtectedRoute>} />

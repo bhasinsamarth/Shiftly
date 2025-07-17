@@ -104,7 +104,6 @@ const Navbar = () => {
                   {commonLinks}
                   <Link to="/Dashboard" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/Dashboard') ? activeLinkClass : inactiveLinkClass}`}><LayoutDashboard className="w-5 h-5 mr-2" />Dashboard</Link>
                   <Link to="/time-off-request" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/time-off-request') ? activeLinkClass : inactiveLinkClass}`}><AlertCircle className="w-5 h-5 mr-2" />Time off</Link>
-                  <Link to="/requests" className={`p-7 flex items-center w-full h-7 leading-7 ${isActive('/requests') ? activeLinkClass : inactiveLinkClass}`}><Bell className="w-5 h-5 mr-2" />Notifications</Link>
                   <Link to="/chat" className={`w-full relative p-7 flex items-center h-7 leading-7 ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}><MessageCircle className="w-5 h-5 mr-2" />Chat</Link>
                 </div>
               )}
