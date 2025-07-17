@@ -8,7 +8,9 @@ module.exports = {
   theme: {
     extend: {},
   },
+
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './shiftly-frontend/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+
 
   plugins: [],
 };

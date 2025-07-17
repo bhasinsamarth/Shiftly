@@ -4,6 +4,7 @@ import Navbar from "./navbar";
 
 export default function App({ children }) {
   return (
+
     <div className="min-h-screen">
       <Navbar />
 
@@ -12,6 +13,7 @@ export default function App({ children }) {
         <div className="">
           {children}
         </div>
+
       </div>
     </div>
   );
