@@ -4,12 +4,14 @@ import Navbar from "./navbar";
 
 export default function App({ children }) {
   return (
-    <div className="mt-10 pt-4">
+    <div className="min-h-screen">
       <Navbar />
 
-      <div className="lg:w-5/6 md:w-4/5 sm:3/4 w-full lg:ml-auto">
-
-        {children}
+      {/* Main content area with proper responsive spacing */}
+      <div className="pt-16 lg:ml-64 transition-all duration-300">
+        <div className="">
+          {children}
+        </div>
       </div>
     </div>
   );
