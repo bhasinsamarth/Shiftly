@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
+
+import { Eye, EyeOff } from 'lucide-react';
 
 const steps = [
   { label: 'Password', fields: ['email', 'password', 'confirmPassword'] },
@@ -61,6 +62,12 @@ const SetupAccountPage = () => {
         setError('Invalid or expired invitation link.');
         return;
       }
+      // Check if token has already been used
+      if (data.is_used) {
+        setError('This invitation has already been used. Please request a new invitation.');
+        return;
+      }
+      
       // Check expiry
       if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setInviteExpired(true);
@@ -215,6 +222,20 @@ const SetupAccountPage = () => {
       setLoading(false);
       return;
     }
+    // Mark the invitation token as used
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    
+    const { error: updateTokenError } = await supabase
+      .from('setup_tokens')
+      .update({ is_used: true })
+      .eq('token', token);
+      
+    if (updateTokenError) {
+      console.error('Failed to mark token as used:', updateTokenError);
+      // Continue anyway as the account has been created successfully
+    }
+    
     setSuccess('Account setup complete!');
     setShowEmailPopup(true);
     setLoading(false);
@@ -222,10 +243,10 @@ const SetupAccountPage = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
-        <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-8 text-center">
-          <h1 className="text-2xl font-bold mb-4 text-red-600">Error</h1>
-          <p className="mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4 sm:py-8 px-3 sm:px-6">
+        <div className="w-full max-w-xs sm:max-w-md bg-white shadow-lg rounded-lg p-4 sm:p-8 text-center">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4 text-red-600">Error</h1>
+          <p className="mb-2 sm:mb-4 text-sm">{error}</p>
         </div>
       </div>
     );
@@ -233,12 +254,12 @@ const SetupAccountPage = () => {
 
   if (showEmailPopup) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-          <h2 className="text-2xl font-bold mb-4 text-blue-700">Almost there!</h2>
-          <p className="mb-4 text-gray-700">Check your email to confirm your account.</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 px-4 sm:px-0">
+        <div className="bg-white rounded-lg shadow-lg p-5 sm:p-8 max-w-xs sm:max-w-md w-full text-center">
+          <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-blue-700">Almost there!</h2>
+          <p className="mb-3 sm:mb-4 text-sm sm:text-base text-gray-700">Check your email to confirm your account.</p>
           <button
-            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            className="mt-3 sm:mt-4 px-4 sm:px-6 py-2.5 sm:py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             onClick={() => navigate('/login')}
           >
             Go to Login
@@ -249,99 +270,101 @@ const SetupAccountPage = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-8">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800">Set Up Your Account</h1>
-        <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-4 sm:py-6 md:py-8 px-3 sm:px-6">
+      <div className="w-full max-w-xs sm:max-w-sm md:max-w-md bg-white shadow-lg rounded-lg p-4 sm:p-6 md:p-8">
+        <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">Set Up Your Account</h1>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           {steps.map((s, idx) => (
             <React.Fragment key={s.label}>
               <div className={`flex flex-col items-center ${idx === step ? 'text-blue-700 font-bold' : 'text-gray-400'}`}>
-                <div className={`rounded-full w-7 h-7 flex items-center justify-center border-2 ${idx === step ? 'border-blue-700 bg-blue-100' : 'border-gray-300 bg-white'}`}>{idx + 1}</div>
-                <span className="text-xs mt-1">{s.label}</span>
+                <div className={`rounded-full w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center border-2 text-xs sm:text-sm ${idx === step ? 'border-blue-700 bg-blue-100' : 'border-gray-300 bg-white'}`}>{idx + 1}</div>
+                <span className="text-[10px] sm:text-xs mt-1 hidden xs:block">{s.label}</span>
               </div>
-              {idx < steps.length - 1 && <div className="flex-1 h-0.5 bg-gray-200 mx-2" />}
+              {idx < steps.length - 1 && <div className="flex-1 h-0.5 bg-gray-200 mx-1 sm:mx-2" />}
             </React.Fragment>
           ))}
         </div>
-        {success && <p className="mb-4 text-green-600">{success}</p>}
-        <form onSubmit={step === steps.length - 1 ? handleSubmit : handleNext} className="space-y-6">
+        {success && <p className="mb-3 sm:mb-4 text-green-600 text-sm">{success}</p>}
+        <form onSubmit={step === steps.length - 1 ? handleSubmit : handleNext} className="space-y-4 sm:space-y-6">
           {step === 0 && (
             <>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Email <span className="text-red-500">*</span></label>
-                <input type="email" name="email" value={form.email} readOnly className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Email <span className="text-red-500">*</span></label>
+                <input type="email" name="email" value={form.email} readOnly className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Password <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(min 8 chars, lowercase, uppercase, digits & symbols recommended)</span></label>
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Password <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(min 8 chars, lowercase, uppercase, digits & symbols recommended)</span></label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={form.password}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2 border ${passwordError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring focus:border-blue-500`}
+                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border ${passwordError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring focus:border-blue-500`}
                     required
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none p-1"
                     onClick={() => setShowPassword((prev) => !prev)}
                     tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? <EyeOff size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" /> : <Eye size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" />}
                   </button>
                 </div>
-                {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
+                {passwordError && <p className="text-red-500 text-[10px] sm:text-xs mt-1">{passwordError}</p>}
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Confirm Password <span className="text-red-500">*</span></label>
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     value={form.confirmPassword}
                     onChange={handleChange}
-                    className={`w-full px-4 py-2 border ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring focus:border-blue-500`}
+                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring focus:border-blue-500`}
                     required
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none p-1"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
                     tabIndex={-1}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
-                    {showConfirmPassword ? "Hide" : "Show"}
+                    {showConfirmPassword ? <EyeOff size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" /> : <Eye size={18} className="sm:w-[18px] sm:h-[18px] w-4 h-4" />}
                   </button>
                 </div>
-                {confirmPasswordError && <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>}
+                {confirmPasswordError && <p className="text-red-500 text-[10px] sm:text-xs mt-1">{confirmPasswordError}</p>}
               </div>
             </>
           )}
           {step === 1 && (
             <>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">First Name <span className="text-red-500">*</span></label>
-                <input type="text" name="first_name" value={form.first_name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">First Name <span className="text-red-500">*</span></label>
+                <input type="text" name="first_name" value={form.first_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Middle Name</label>
-                <input type="text" name="middle_name" value={form.middle_name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Middle Name</label>
+                <input type="text" name="middle_name" value={form.middle_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Last Name</label>
-                <input type="text" name="last_name" value={form.last_name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Last Name</label>
+                <input type="text" name="last_name" value={form.last_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Preferred Name</label>
-                <input type="text" name="preferred_name" value={form.preferred_name} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Preferred Name</label>
+                <input type="text" name="preferred_name" value={form.preferred_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Date of Birth <span className="text-red-500">*</span></label>
-                <input type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Date of Birth <span className="text-red-500">*</span></label>
+                <input type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Gender <span className="text-red-500">*</span></label>
-                <select name="gender" value={form.gender} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required>
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Gender <span className="text-red-500">*</span></label>
+                <select name="gender" value={form.gender} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required>
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -353,51 +376,51 @@ const SetupAccountPage = () => {
           {step === 2 && (
             <>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Address Line 1 <span className="text-red-500">*</span></label>
-                <input type="text" name="address_line_1" value={form.address_line_1} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Address Line 1 <span className="text-red-500">*</span></label>
+                <input type="text" name="address_line_1" value={form.address_line_1} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Address Line 2</label>
-                <input type="text" name="address_line_2" value={form.address_line_2} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Address Line 2</label>
+                <input type="text" name="address_line_2" value={form.address_line_2} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Postal Code <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(e.g. A1A 1A1)</span></label>
-                <input type="text" name="postal_code" value={form.postal_code} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Postal Code <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(e.g. A1A 1A1)</span></label>
+                <input type="text" name="postal_code" value={form.postal_code} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">City <span className="text-red-500">*</span></label>
-                <input type="text" name="city" value={form.city} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">City <span className="text-red-500">*</span></label>
+                <input type="text" name="city" value={form.city} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Province <span className="text-red-500">*</span></label>
-                <input type="text" name="province" value={form.province} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Province <span className="text-red-500">*</span></label>
+                <input type="text" name="province" value={form.province} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Country <span className="text-red-500">*</span></label>
-                <input type="text" name="country" value={form.country} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Country <span className="text-red-500">*</span></label>
+                <input type="text" name="country" value={form.country} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Phone <span className="text-red-500">*</span> <span className="text-gray-400 text-xs">(10 digits, e.g. 4035551234)</span></label>
-                <input type="text" name="phone" value={form.phone} onChange={handleChange} className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Phone <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(10 digits, e.g. 4035551234)</span></label>
+                <input type="text" name="phone" value={form.phone} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
             </>
           )}
-          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-          <div className="flex justify-between mt-6">
+          {error && <p className="text-red-500 text-xs sm:text-sm text-center">{error}</p>}
+          <div className="flex justify-between mt-4 sm:mt-6">
             {step > 0 && (
-              <button onClick={handleBack} className="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors">Back</button>
+              <button onClick={handleBack} className="px-4 sm:px-6 py-2.5 sm:py-2 text-xs sm:text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors">Back</button>
             )}
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 ml-2 bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 ml-2 bg-blue-600 text-white text-xs sm:text-sm py-2.5 sm:py-3 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {loading ? 'Setting Up...' : step === steps.length - 1 ? 'Set Up Account' : 'Next'}
             </button>
           </div>
         </form>
         {inviteExpired && (
-          <div className="mt-4 text-red-500 text-sm">
+          <div className="mt-3 sm:mt-4 text-red-500 text-xs sm:text-sm">
             This invitation link has expired. Please contact your administrator for a new invitation.
           </div>
         )}

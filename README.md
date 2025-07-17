@@ -25,7 +25,7 @@ Shiftly is an employee management system designed to simplify operations within 
 ### Prerequisites
 
 - Node.js (v14.x or higher)
-- npm or yarn package manager
+- npm package manager
 
 ### Installation
 

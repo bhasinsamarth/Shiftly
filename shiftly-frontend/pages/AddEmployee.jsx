@@ -1,11 +1,13 @@
 // src/components/AddEmployee.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
+import DropdownMenu from '../components/DropdownMenu';
+import RoleProtectedRoute from '../components/RoleProtectedRoute';
 
 // endpoint of your mail-sending backend
-const MAILER_API = import.meta.env.VITE_MAILER_API || 'http://localhost:3001/send-invite';
+const MAILER_API = import.meta.env.VITE_MAILER_API;
 
 const AddEmployee = () => {
   const [form, setForm] = useState({
@@ -14,11 +16,15 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
+  // We no longer need to store the dropdown options in the component state
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
+
+  // We no longer need these fetch effects since the DropdownSelect component
+  // will handle fetching the data directly from the database
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -31,6 +37,17 @@ const AddEmployee = () => {
       setError('Please enter an email');
       return;
     }
+
+    if (!form.store_id) {
+      setError('Please select a store');
+      return;
+    }
+
+    if (!form.role_id) {
+      setError('Please enter a role ID');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -95,94 +112,131 @@ const AddEmployee = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 py-8">
-      <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-8">
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-800">Send Invitation</h1>
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-          >
-            Back
-          </button>
+    <div className="min-h-screen bg-white">
+      <div className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Add employee</h1>
         </div>
 
-        {error && <p className="mb-4 text-center text-red-500">{error}</p>}
-        {success && <p className="mb-4 text-center text-green-600">{success}</p>}
+        {/* Status Messages */}
+        {error && (
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md max-w-md sm:max-w-md lg:max-w-lg">
+            <p className="text-xs sm:text-sm text-red-600">{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-md max-w-md sm:max-w-md lg:max-w-lg">
+            <p className="text-xs sm:text-sm text-green-600">{success}</p>
+          </div>
+        )}
         {inviteLink && (
-          <div className="mb-4 text-center text-blue-600 break-all">
-            Invitation Link:{' '}
-            <a href={inviteLink} className="underline">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-md max-w-md sm:max-w-md lg:max-w-lg">
+            <p className="text-xs sm:text-sm text-blue-600 mb-2">Invitation Link Generated:</p>
+            <a 
+              href={inviteLink} 
+              className="text-xs sm:text-sm text-blue-700 underline break-all hover:text-blue-800"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {inviteLink}
             </a>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
+        {/* Form - More compact width */}
+        <div className="max-w-sm">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {/* Email Address */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                Email address
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="john.employee@email.com"
+                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Store ID <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="text"
-              name="store_id"
-              value={form.store_id}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
+            {/* Store ID */}
+            <div>
+              <DropdownMenu
+                label="Store ID"
+                name="store_id"
+                value={form.store_id}
+                onChange={handleChange}
+                tableName="store"
+                valueField="store_id"
+                displayField="store_name"
+                placeholder="Enter store ID"
+                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                required={true}
+              />
+            </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Role ID <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="text"
-              name="role_id"
-              value={form.role_id}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
+            {/* Role */}
+            <div>
+              <DropdownMenu
+                label="Role"
+                name="role_id"
+                value={form.role_id}
+                onChange={handleChange}
+                tableName="role"
+                valueField="role_id"
+                displayField="role_desc"
+                filterField="role_id"
+                filterValue={1}
+                filterOperator="neq"
+                placeholder="Select role"
+                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                required={true}
+              />
+            </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Employee ID <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="number"
-              name="employee_id"
-              value={form.employee_id}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              min="1"
-            />
-          </div>
+            {/* Employee ID */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+                Employee ID
+              </label>
+              <input
+                type="number"
+                name="employee_id"
+                value={form.employee_id}
+                onChange={handleChange}
+                placeholder="Enter employee ID"
+                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                min="1"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {loading ? 'Generating...' : 'Generate Invite Link'}
-          </button>
-        </form>
+            {/* Submit Button */}
+            <div className="pt-3 sm:pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-auto bg-blue-600 text-white py-2.5 px-6 rounded-md text-xs sm:text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+              >
+                {loading ? 'Adding employee...' : 'Add employee'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
-export default AddEmployee;
+// Wrap the AddEmployee component with RoleProtectedRoute
+// Role IDs 1 (owner) and 2 (admin) are allowed to access this page
+const ProtectedAddEmployee = () => (
+  <RoleProtectedRoute allowedRoleIds={[1, 2]}>
+    <AddEmployee />
+  </RoleProtectedRoute>
+);
+
+export default ProtectedAddEmployee;

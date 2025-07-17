@@ -1,27 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import WeeklyCalendar from "../components/WeeklyCalendar";
+import { utcToLocal } from "../utils/timezoneUtils";
 
-const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function getWeekRange(date) {
-  // Returns [startOfWeek, endOfWeek] for the week containing 'date' (Sunday-Saturday)
-  const d = new Date(date);
-  const start = new Date(d);
-  start.setDate(d.getDate() - d.getDay());
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return [start, end];
-}
-
-// Helper to determine shift type and color
-function getShiftTypeAndColor(start, end) {
+function getShiftTypeAndColor(start, end, timezone = 'America/Toronto') {
   if (!start || !end) return { label: "Unknown", color: "bg-gray-400" };
   const startHour = new Date(start).getHours();
   const endHour = new Date(end).getHours();
-  // Example logic (customize as needed):
+
   if (startHour >= 22 || endHour <= 6) {
     return { label: "Night Shift", color: "bg-purple-600 text-white" };
   } else if (startHour >= 15 && startHour < 22) {
@@ -34,81 +21,65 @@ function getShiftTypeAndColor(start, end) {
 
 const FetchSchedule = () => {
   const [shifts, setShifts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [employeeId, setEmployeeId] = useState(null);
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [availability, setAvailability] = useState([]);
   const [tab, setTab] = useState("schedule");
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = current week, 1 = next week, -1 = previous week
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setHours(0,0,0,0);
-    return d;
-  });
+  const [selectedWeek, setSelectedWeek] = useState([]);
+  const [weekStartDate, setWeekStartDate] = useState(null);
+  const [weekEndDate, setWeekEndDate] = useState(null);
+  const [storeTimezone, setStoreTimezone] = useState("UTC");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchShifts = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          setError("Could not fetch user info.");
-          setLoading(false);
-          return;
-        }
-        const { data: employee, error: empError } = await supabase
-          .from("employee")
-          .select("employee_id")
-          .eq("email", user.email)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get employee data including store association
+      const { data: employee } = await supabase
+        .from("employee")
+        .select("employee_id, store_id")
+        .eq("email", user.email)
+        .single();
+
+      if (!employee) return;
+
+      setEmployeeId(employee.employee_id);
+
+      // Fetch store timezone
+      if (employee.store_id) {
+        const { data: store } = await supabase
+          .from("store")
+          .select("timezone")
+          .eq("store_id", employee.store_id)
           .single();
-        if (empError || !employee) {
-          setError("Could not fetch employee record.");
-          setLoading(false);
-          return;
-        }
-        setEmployeeId(employee.employee_id);
-        const { data: shiftData, error: shiftError } = await supabase
-          .from("store_schedule")
-          .select("*")
-          .eq("employee_id", employee.employee_id)
-          .order("start_time", { ascending: true });
-        if (shiftError) {
-          setError("Could not fetch schedule.");
-        } else {
-          setShifts(shiftData || []);
-        }
-      } catch (err) {
-        setError("An unexpected error occurred.");
+        if (store?.timezone) setStoreTimezone(store.timezone);
       }
-      setLoading(false);
+
+      const { data: shiftData } = await supabase
+        .from("store_schedule")
+        .select("*")
+        .eq("employee_id", employee.employee_id)
+        .order("start_time", { ascending: true });
+
+      setShifts(shiftData || []);
     };
+
     fetchShifts();
   }, []);
 
   useEffect(() => {
-    const fetchAvailability = async (empId) => {
-      // Fetch all availabilities for this employee for the next week
-      const today = new Date();
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay() + 1); // next week
-      startOfWeek.setHours(0,0,0,0);
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23,59,59,999);
-      const { data, error } = await supabase
+    if (!employeeId) return;
+
+    const fetchAvailability = async () => {
+      const { data } = await supabase
         .from("employee_availability")
         .select("start_time, end_time")
-        .eq("employee_id", empId)
-        .gte("start_time", startOfWeek.toISOString())
-        .lte("start_time", endOfWeek.toISOString());
-      if (!error && data) {
-        // Map to days of week
+        .eq("employee_id", employeeId);
+
+      if (data) {
         const byDay = Array(7).fill(null);
         data.forEach(row => {
           const d = new Date(row.start_time);
@@ -117,194 +88,186 @@ const FetchSchedule = () => {
         setAvailability(byDay);
       }
     };
-    if (employeeId) fetchAvailability(employeeId);
+
+    fetchAvailability();
   }, [employeeId]);
 
-  // Group shifts by week (Sunday-Saturday)
-  function getWeekKey(date) {
-    const d = new Date(date);
-    d.setDate(d.getDate() - d.getDay());
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  }
-  const allWeeks = {};
-  shifts.forEach(shift => {
-    const weekKey = getWeekKey(shift.start_time);
-    if (!allWeeks[weekKey]) allWeeks[weekKey] = [];
-    allWeeks[weekKey].push(shift);
-  });
-  // Get sorted week keys
-  const sortedWeekKeys = Object.keys(allWeeks).sort();
-  // Find the week key for the current week + offset
-  const baseDate = new Date();
-  baseDate.setDate(baseDate.getDate() - baseDate.getDay() + weekOffset * 7);
-  baseDate.setHours(0,0,0,0);
-  const currentWeekKey = baseDate.toISOString().slice(0, 10);
-  const weekShifts = allWeeks[currentWeekKey] || [];
-  const weekStartDate = new Date(currentWeekKey);
-  const weekEndDate = new Date(weekStartDate);
-  weekEndDate.setDate(weekStartDate.getDate() + 6);
+  useEffect(() => {
+    const today = new Date();
+    handleWeekSelect(today);
+  }, []);
 
-  // Find today's shift
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const todayShift = shifts.find(s => s.start_time && new Date(s.start_time).toISOString().slice(0, 10) === todayStr);
+  const handleWeekSelect = (clickedDate) => {
+    if (!clickedDate) return;
 
-  // Calendar logic
-  const year = calendarMonth.getFullYear();
-  const month = calendarMonth.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const days = [];
-  for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
-  for (let d = 1; d <= lastDay.getDate(); d++) days.push(d);
-  while (days.length % 7 !== 0) days.push(null);
+    const sunday = new Date(clickedDate);
+    sunday.setDate(clickedDate.getDate() - clickedDate.getDay());
+    sunday.setHours(0, 0, 0, 0);
 
-  const handleAvailabilitySubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccessMsg("");
-    if (!startTime || !endTime) {
-      setError("Please fill both start and end times.");
-      return;
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(sunday);
+      day.setDate(sunday.getDate() + i);
+      week.push(day);
     }
-    try {
-      const availabilityRequest = {
-        employee_id: employeeId,
-        start_time: startTime,
-        end_time: endTime,
-        status: "pending"
-      };
-      const { error: insertError } = await supabase
-        .from("employee_availability_requests")
-        .insert([availabilityRequest]);
-      if (insertError) {
-        setError("Failed to submit availability request.");
-      } else {
-        setSuccessMsg("Availability request submitted for approval.");
-        setStartTime("");
-        setEndTime("");
-      }
-    } catch (err) {
-      setError("An error occurred while submitting.");
-    }
+
+    setSelectedWeek(week);
+    setWeekStartDate(week[0]);
+    setWeekEndDate(week[6]);
   };
+
+  const weekShiftData = shifts.filter(shift => {
+    if (!weekStartDate || !weekEndDate) return false;
+
+    // Convert UTC shift time to store's local timezone for date comparison
+    const shiftLocalDate = utcToLocal(shift.start_time, storeTimezone, 'yyyy-MM-dd');
+    const shiftDate = new Date(shiftLocalDate + 'T00:00:00');
+
+    // Create date-only versions for comparison
+    const weekStart = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
+    const weekEnd = new Date(weekEndDate.getFullYear(), weekEndDate.getMonth(), weekEndDate.getDate());
+
+    return shiftDate >= weekStart && shiftDate <= weekEnd;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 pt-8 items-start">
-        {/* Calendar Sidebar */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 w-full md:w-1/3 max-w-xs mb-6 md:mb-0 flex flex-col min-h-[320px] h-[500px]">
-          <div className="flex items-center justify-between mb-2">
-            <button
-              className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
-              onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
-            >
-              &lt;
-            </button>
-            <span className="font-semibold text-lg">{calendarMonth.toLocaleString('default', { month: 'long' })} {year}</span>
-            <button
-              className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
-              onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
-            >
-              &gt;
-            </button>
-          </div>
-          <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {daysOfWeek.map(d => <div key={d} className="text-xs font-medium text-gray-500">{d}</div>)}
-          </div>
-          <div className="grid grid-cols-7 gap-1 flex-1">
-            {days.map((d, i) => (
-              <div key={i} className={`h-8 w-8 flex items-center justify-center rounded-full text-sm ${d === (new Date()).getDate() && month === (new Date()).getMonth() && year === (new Date()).getFullYear() ? 'bg-blue-600 text-white font-bold' : d ? 'text-gray-700' : ''}`}>{d || ''}</div>
-            ))}
-          </div>
+      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:pt-8 items-start">
+        <div className="w-full lg:w-auto flex justify-center lg:justify-start">
+          <WeeklyCalendar onWeekSelect={handleWeekSelect} />
         </div>
-        {/* Main Content */}
+
         <div className="flex-1 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div className="flex items-center gap-8">
-            
-              <nav className="flex gap-6 text-lg font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6 gap-4">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <nav className="flex gap-4 lg:gap-6 text-base lg:text-lg font-medium">
                 <span
-                  className={tab === "schedule" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"}
+                  className={tab === "schedule"
+                    ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
+                    : "text-gray-500 cursor-pointer hover:text-blue-700"}
                   onClick={() => setTab("schedule")}
-                >My Schedule</span>
-                <span
-                  className={tab === "availability" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"}
-                  onClick={() => setTab("availability")}
-                >My Availability</span>
-              </nav>
-            </div>
-            <div className="flex gap-2 mt-4 sm:mt-0">
-              <button
-                onClick={() => navigate('/change-availability')}
-                className="bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-800 transition"
-              >
-                Change Availability
-              </button>
-            </div>
-          </div>
-          {tab === "schedule" ? (
-            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg font-semibold">
-                  {weekStartDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - {weekEndDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                >
+                  My Schedule
                 </span>
-                <button
-                  className="ml-4 px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm font-medium"
-                  onClick={() => setWeekOffset(weekOffset - 1)}
-                  disabled={weekOffset === 0}
+                <span
+                  className={tab === "availability"
+                    ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
+                    : "text-gray-500 cursor-pointer hover:text-blue-700"}
+                  onClick={() => setTab("availability")}
                 >
-                  Previous Week
-                </button>
+                  My Availability
+                </span>
+              </nav>
+              
+              {/* Mobile: Show ellipse icon with dropdown */}
+              <div className="sm:hidden relative">
                 <button
-                  className="ml-2 px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 text-sm font-medium"
-                  onClick={() => setWeekOffset(weekOffset + 1)}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors p-2 rounded"
                 >
-                  Next Week
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1"/>
+                    <circle cx="12" cy="5" r="1"/>
+                    <circle cx="12" cy="19" r="1"/>
+                  </svg>
                 </button>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {weekShifts.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">No shifts scheduled for this week.</div>
-                ) : (
-                  weekShifts.map((shift, idx) => {
-                    const dayLabel = shift.start_time ? new Date(shift.start_time).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '--';
-                    // Format time range as a single line (e.g., 08:00 PM - 10:30 PM)
-                    const start = shift.start_time ? new Date(shift.start_time) : null;
-                    const end = shift.end_time ? new Date(shift.end_time) : null;
-                    const timeLabel = `${start ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'} - ${end ? end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : '--'}`;
-                    const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time);
-                    return (
-                      <div key={shift.id || idx} className="flex items-center py-3 pl-8 pr-6 gap-6">
-                        <span className="w-40 text-gray-700">{dayLabel}</span>
-                        <span className="inline-block w-40 text-gray-700">{timeLabel}</span>
-                        <span className="text-xs text-gray-500 ml-2">{shift.department || shift.location || ''}</span>
-                        <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold shadow ${color}`}>{label}</span>
-                      </div>
-                    );
-                  })
+                
+                {isDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                    <button
+                      onClick={() => {
+                        navigate("/change-availability");
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Change Availability
+                    </button>
+                  </div>
+                )}
+                
+                {/* Click outside to close dropdown */}
+                {isDropdownOpen && (
+                  <div 
+                    className="fixed inset-0 z-0" 
+                    onClick={() => setIsDropdownOpen(false)}
+                  />
                 )}
               </div>
             </div>
+            
+            {/* Desktop: Show full button */}
+            <button
+              onClick={() => navigate("/change-availability")}
+              className="hidden sm:flex bg-blue-700 text-white px-4 lg:px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-800 transition text-sm lg:text-base"
+            >
+              Change Availability
+            </button>
+          </div>
+
+          {tab === "schedule" ? (
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+              <div className="text-base lg:text-lg font-semibold mb-4">
+                {weekStartDate && weekEndDate
+                  ? `${utcToLocal(weekStartDate.toISOString(), storeTimezone, "MMM dd")} - ${utcToLocal(weekEndDate.toISOString(), storeTimezone, "MMM dd")}`
+                  : "Select a week"}
+              </div>
+
+              {weekShiftData.length === 0 ? (
+                <div className="text-center text-gray-500 py-6 lg:py-8 text-sm lg:text-base">
+                  No shifts scheduled for this week.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {weekShiftData.map((shift, idx) => {
+                    const timeLabel = `${utcToLocal(shift.start_time, storeTimezone, "hh:mm a")} - ${utcToLocal(shift.end_time, storeTimezone, "hh:mm a")}`;
+                    const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time);
+                    return (
+                      <div key={shift.id || idx} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 lg:gap-6 py-3 px-4 lg:px-6 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-800 text-sm lg:text-base min-w-0 sm:w-32 lg:w-40">
+                          {utcToLocal(shift.start_time, storeTimezone, "ccc, MMM dd")}
+                        </span>
+                        <span className="text-gray-700 text-sm lg:text-base min-w-0 sm:w-32 lg:w-40">
+                          {timeLabel}
+                        </span>
+                        <span className="text-xs lg:text-sm text-gray-500 flex-1 min-w-0">
+                          {shift.department || shift.location || ""}
+                        </span>
+                        <span className={`self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold shadow ${color} whitespace-nowrap`}>
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
-              <h2 className="text-xl font-bold mb-4">My Availability</h2>
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+              <h2 className="text-lg lg:text-xl font-bold mb-4">My Availability</h2>
               <div className="overflow-x-auto">
-                <table className="min-w-full border text-center">
+                <table className="min-w-full border text-center text-sm lg:text-base">
                   <thead>
-                    <tr>
-                      <th className="p-2 border">Day</th>
-                      <th className="p-2 border">Start Time</th>
-                      <th className="p-2 border">End Time</th>
+                    <tr className="bg-gray-50">
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">Day</th>
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">Start Time</th>
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">End Time</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].map((day, idx) => (
-                      <tr key={day}>
-                        <td className="p-2 border font-medium">{day}</td>
-                        <td className="p-2 border">{availability[idx]?.start_time ? new Date(availability[idx].start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</td>
-                        <td className="p-2 border">{availability[idx]?.end_time ? new Date(availability[idx].end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-"}</td>
+                    {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => (
+                      <tr key={day} className="hover:bg-gray-50">
+                        <td className="p-2 lg:p-3 border font-medium text-gray-800">{day}</td>
+                        <td className="p-2 lg:p-3 border text-gray-700">
+                          {availability[idx]?.start_time
+                            ? utcToLocal(availability[idx].start_time, storeTimezone, "hh:mm a")
+                            : "-"}
+                        </td>
+                        <td className="p-2 lg:p-3 border text-gray-700">
+                          {availability[idx]?.end_time
+                            ? utcToLocal(availability[idx].end_time, storeTimezone, "hh:mm a")
+                            : "-"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

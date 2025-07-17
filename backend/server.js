@@ -3,12 +3,19 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Mailjet from 'node-mailjet';
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
 const mailjet = Mailjet.apiConnect(
   process.env.MAILJET_API_KEY,
   process.env.MAILJET_API_SECRET
+);
+
+// Initialize Supabase client for server-side operations
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 const app = express();
@@ -43,13 +50,16 @@ app.post('/send-invite', async (req, res) => {
     res.json({ status: 'sent' });
   } catch (err) {
      // 1) Log the full error to your console
+     // 1) Log the full error to your console
     console.error('Mailjet error:', {
       statusCode: err.statusCode,
       message: err.message,
       // Mailjet puts the API response in err.response.body
+      // Mailjet puts the API response in err.response.body
       responseBody: err.response && err.response.body,
     });
 
+    // 2) Return that info to the front-end for easier debugging
     // 2) Return that info to the front-end for easier debugging
     res.status(500).json({
       error: err.message,

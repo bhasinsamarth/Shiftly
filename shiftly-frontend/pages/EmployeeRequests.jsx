@@ -13,7 +13,7 @@ const EmployeeRequests = () => {
   const [modalData, setModalData] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated || user.role_id !== 3) {
+    if (!isAuthenticated || !user) {
       setLoading(false);
       return;
     }
@@ -115,14 +115,6 @@ const EmployeeRequests = () => {
     setModalData(null);
   };
 
-  if (!isAuthenticated || user.role_id !== 3) {
-    return (
-      <div className="p-6 text-red-500 text-center">
-        Access Denied: Managers Only
-      </div>
-    );
-  }
-
   if (loading) {
     return <div className="p-6">Loading employee requests...</div>;
   }
@@ -132,32 +124,29 @@ const EmployeeRequests = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-full mx-auto p-6">
       {notification.message && (
         <div
-          className={`mb-4 p-3 rounded ${
-            notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
+          className={`mb-4 p-3 rounded ${notification.type === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            }`}
         >
           {notification.message}
         </div>
       )}
 
-      <h1 className="text-3xl font-bold mb-8 text-blue-700 text-center">Employee Requests</h1>
+      <h1 className="text-2xl font-bold mb-8 pt-4">Employee Requests</h1>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex gap-6 mb-6  ">
         <button
-          className={`px-4 py-2 rounded-lg font-semibold ${
-            activeTab === "time-off" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
-          }`}
+          className={`font-semibold text-md ${activeTab === "time-off" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"
+            }`}
           onClick={() => setActiveTab("time-off")}
         >
           Time Off Requests
         </button>
         <button
-          className={`px-4 py-2 rounded-lg font-semibold ml-4 ${
-            activeTab === "availability" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
-          }`}
+          className={`font-semibold text-md ${activeTab === "availability" ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer" : "text-gray-500 cursor-pointer hover:text-blue-700"
+            }`}
           onClick={() => setActiveTab("availability")}
         >
           Availability Requests
@@ -196,7 +185,7 @@ const EmployeeRequests = () => {
                   </button>
                   <button
                     onClick={() => handleApprove(req.request_id, req.employee_id)}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-semibold"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold"
                   >
                     Approve
                   </button>
