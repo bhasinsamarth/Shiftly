@@ -276,63 +276,67 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
     );
 
     return (
-        <div className="min-h-screen p-6">
+        <div className="min-h-screen p-3 sm:p-4 lg:p-6">
             <div className="max-w-full mx-auto relative">
                 {/* Header */}
-                <div className="mb-8 flex items-center justify-between">
+                <div className="mb-6 sm:mb-8 flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Stores</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Stores</h1>
                     </div>
                 </div>
 
                 {/* Statistics */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Total Stores</h3>
-                        <p className="text-3xl font-bold text-blue-600">{stores.length}</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">Total Stores</h3>
+                        <p className="text-xl sm:text-3xl font-bold text-blue-600">{stores.length}</p>
                     </div>
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">With Coordinates</h3>
-                        <p className="text-3xl font-bold text-green-600">
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">With Coordinates</h3>
+                        <p className="text-xl sm:text-3xl font-bold text-green-600">
                             {stores.length - storesWithoutCoordinates.length}
                         </p>
                     </div>
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Missing Coordinates</h3>
-                        <p className="text-3xl font-bold text-red-600">
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">Missing Coordinates</h3>
+                        <p className="text-xl sm:text-3xl font-bold text-red-600">
                             {storesWithoutCoordinates.length}
                         </p>
                     </div>
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">No Address</h3>
-                        <p className="text-3xl font-bold text-yellow-600">
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 text-center">
+                        <h3 className="text-sm sm:text-lg font-semibold text-gray-800 mb-1 sm:mb-2">No Address</h3>
+                        <p className="text-xl sm:text-3xl font-bold text-yellow-600">
                             {storesWithoutAddress.length}
                         </p>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Actions</h2>
-                    <div className="flex flex-wrap gap-4 pb-4">
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Actions</h2>
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 pb-4">
                         <button
                             onClick={() => setShowGeocodeModal(true)}
                             disabled={processing || storesWithoutCoordinates.length === 0}
-                            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
                         >
                             {processing ? (
                                 <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Geocoding... ({progress.current}/{progress.total})
+                                    <span className="hidden sm:inline">Geocoding... ({progress.current}/{progress.total})</span>
+                                    <span className="sm:hidden">Geocoding...</span>
                                 </>
                             ) : (
-                                `Geocode All Missing (${storesWithoutCoordinates.length} stores)`
+                                <span className="text-center">
+                                    <span className="hidden sm:inline">Geocode All Missing ({storesWithoutCoordinates.length} stores)</span>
+                                    <span className="sm:hidden">Geocode All ({storesWithoutCoordinates.length})</span>
+                                </span>
                             )}
                         </button>
                         <button
                             onClick={fetchStores}
                             disabled={processing}
-                            className="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
+                            className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 text-sm sm:text-base"
                         >
                             Refresh List
                         </button>
@@ -340,20 +344,20 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
 
                     {/* Modal for geocoding confirmation */}
                     {showGeocodeModal && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+                            <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full mx-4">
                                 <h3 className="text-lg font-semibold mb-4">Bulk Geocode All Stores?</h3>
-                                <p className="mb-6 text-gray-700">This will geocode all stores without coordinates. Are you sure you want to continue?</p>
-                                <div className="flex justify-end gap-4">
+                                <p className="mb-6 text-gray-700 text-sm sm:text-base">This will geocode all stores without coordinates. Are you sure you want to continue?</p>
+                                <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
                                     <button
-                                        className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                        className="w-full sm:w-auto px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm sm:text-base"
                                         onClick={() => setShowGeocodeModal(false)}
                                         disabled={processing}
                                     >
                                         Cancel
                                     </button>
                                     <button
-                                        className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                        className="w-full sm:w-auto px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base"
                                         onClick={geocodeAllStores}
                                         disabled={processing}
                                     >
@@ -365,9 +369,9 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                     )}
 
                     {/* Important Notes */}
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-                        <h3 className="font-medium text-yellow-800 mb-2">⚠️ Important Notes</h3>
-                        <ul className="text-sm text-yellow-700 space-y-1">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                        <h3 className="font-medium text-yellow-800 mb-2 text-sm sm:text-base">⚠️ Important Notes</h3>
+                        <ul className="text-xs sm:text-sm text-yellow-700 space-y-1">
                             <li>• Geocoding may take some time for too many stores</li>
                             <li>• Ensure store addresses are complete and accurate for best results</li>
                         </ul>
@@ -375,12 +379,11 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                 </div>
 
                 {/* Store List */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold text-gray-800">All Stores</h2>
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800">All Stores</h2>
                         <button
-                            className="px-6 py-3 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 shadow font-semibold border border-gray-200"
-                            style={{ minWidth: 120 }}
+                            className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-gray-100 text-gray-900 rounded-lg hover:bg-gray-200 shadow font-semibold border border-gray-200 text-sm sm:text-base"
                             onClick={() => {
                                 setSelectedStore(null);
                                 setEditedStore({
@@ -401,128 +404,172 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                         </button>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full table-auto">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Store name</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 w-56 max-w-xs">Address</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Timezone</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Coordinates</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stores.map((store) => {
-                                    const coords = getStoreCoordinates(store);
-                                    const fullAddress = buildStoreAddress(store);
-                                    const rowBg = store.status === 'Inactive' ? 'bg-gray-50' : 'bg-white';
-
-                                    return (
-                                        <tr key={store.store_id} className={`${rowBg} border-b last:border-b-0`}>
-                                            <td className="px-4 py-3 text-sm text-gray-900 font-medium align-middle whitespace-nowrap">
-                                                {store.store_name}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap max-w-xs truncate">
-                                                {fullAddress || <span className="text-gray-400">No address</span>}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap">
-                                                {store.timezone ? (
-                                                    <>
-                                                        {store.timezone} <span className="text-xs text-gray-500">({getTimezoneOffset(store.timezone)})</span>
-                                                    </>
-                                                ) : <span className="text-gray-400">Not set</span>}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-700 align-middle whitespace-nowrap">
-                                                {coords ? (
-                                                    <span>{coords.latitude.toFixed(4)}° N, {coords.longitude.toFixed(4)}° W</span>
-                                                ) : (
-                                                    <span className="text-gray-400">Not set</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm align-middle whitespace-nowrap">
-                                                {(() => {
-                                                    const status = store.status ? store.status.toLowerCase() : '';
-                                                    let colorClass = 'bg-gray-100 text-gray-900';
-                                                    if (status === 'inactive') colorClass = 'bg-gray-100 text-gray-500';
-                                                    else if (status === 'suspended') colorClass = 'bg-yellow-100 text-yellow-800';
-                                                    else if (status === 'active') colorClass = 'bg-green-100 text-green-800';
-                                                    const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
-                                                    return (
-                                                        <span className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
-                                                            {displayStatus || 'Unknown'}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm align-middle whitespace-nowrap relative">
-                                                <KebabMenuUI store={store} onEdit={handleOpenEdit} onGeocode={geocodeSingleStore} />
-                                            </td>
+                    <div className="overflow-x-auto -mx-4 sm:mx-0">
+                        <div className="inline-block min-w-full align-middle">
+                            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                                <table className="min-w-full table-auto">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700">Store name</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700 hidden md:table-cell">Address</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700 hidden sm:table-cell">Timezone</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700 hidden sm:table-cell">Coordinates</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700">Status</th>
+                                            <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-medium text-gray-700">Action</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {stores.map((store) => {
+                                            const coords = getStoreCoordinates(store);
+                                            const fullAddress = buildStoreAddress(store);
+                                            const rowBg = store.status === 'Inactive' ? 'bg-gray-50' : 'bg-white';
+
+                                            return (
+                                                <tr key={store.store_id} className={`${rowBg}`}>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 font-medium align-middle">
+                                                        <div className="min-w-0">
+                                                            <div className="truncate font-semibold">{store.store_name}</div>
+                                                            {/* Show address on mobile when address column is hidden */}
+                                                            <div className="md:hidden text-xs text-gray-500 truncate mt-1">
+                                                                {fullAddress || 'No address'}
+                                                            </div>
+                                                            {/* Show timezone and coordinates info on mobile when those columns are hidden */}
+                                                            <div className="sm:hidden text-xs text-gray-400 mt-1 space-y-1">
+                                                                {store.timezone && (
+                                                                    <div className="truncate">TZ: {store.timezone}</div>
+                                                                )}
+                                                                {coords && (
+                                                                    <div className="truncate">📍 {coords.latitude.toFixed(2)}°, {coords.longitude.toFixed(2)}°</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-700 align-middle hidden md:table-cell">
+                                                        <div className="max-w-xs truncate">
+                                                            {fullAddress || <span className="text-gray-400">No address</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-700 align-middle hidden sm:table-cell">
+                                                        {store.timezone ? (
+                                                            <div className="truncate">
+                                                                <span className="block md:hidden">{store.timezone}</span>
+                                                                <span className="hidden md:block">{store.timezone}</span>
+                                                                <span className="hidden lg:block text-xs text-gray-500">({getTimezoneOffset(store.timezone)})</span>
+                                                            </div>
+                                                        ) : <span className="text-gray-400">Not set</span>}
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-700 align-middle hidden sm:table-cell">
+                                                        {coords ? (
+                                                            <div className="truncate">
+                                                                <span className="block md:hidden">📍 Set</span>
+                                                                <span className="hidden md:block">{coords.latitude.toFixed(4)}°, {coords.longitude.toFixed(4)}°</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-400">Not set</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm align-middle">
+                                                        {(() => {
+                                                            const status = store.status ? store.status.toLowerCase() : '';
+                                                            let colorClass = 'bg-gray-100 text-gray-900';
+                                                            if (status === 'inactive') colorClass = 'bg-gray-100 text-gray-500';
+                                                            else if (status === 'suspended') colorClass = 'bg-yellow-100 text-yellow-800';
+                                                            else if (status === 'active') colorClass = 'bg-green-100 text-green-800';
+                                                            const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
+                                                            return (
+                                                                <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
+                                                                    <span className="block sm:hidden">{(displayStatus || 'Unknown').charAt(0)}</span>
+                                                                    <span className="hidden sm:block">{displayStatus || 'Unknown'}</span>
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm align-middle relative">
+                                                        <KebabMenuUI store={store} onEdit={handleOpenEdit} onGeocode={geocodeSingleStore} />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* Results Section */}
                 {showResults && results.length > 0 && (
-                    <div className="bg-white rounded-lg shadow-md p-6 mt-8">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Geocoding Results</h2>
-                        <div className="overflow-x-auto">
-                            <table className="w-full table-auto">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Store</th>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Address</th>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Coordinates</th>
-                                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Error</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {results.map((result) => (
-                                        <tr key={result.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                                                {result.name}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">
-                                                {result.address}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                    result.status === 'success' 
-                                                        ? 'bg-green-100 text-green-800' 
-                                                        : 'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {result.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">
-                                                {result.coordinates ? (
-                                                    `${result.coordinates.latitude.toFixed(6)}, ${result.coordinates.longitude.toFixed(6)}`
-                                                ) : (
-                                                    'N/A'
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-red-600">
-                                                {result.error || ''}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-6 sm:mt-8">
+                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Geocoding Results</h2>
+                        <div className="overflow-x-auto -mx-4 sm:mx-0">
+                            <div className="inline-block min-w-full align-middle">
+                                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                                    <table className="min-w-full table-auto">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-3 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Store</th>
+                                                <th className="px-3 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 hidden md:table-cell">Address</th>
+                                                <th className="px-3 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700">Status</th>
+                                                <th className="px-3 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 hidden sm:table-cell">Coordinates</th>
+                                                <th className="px-3 sm:px-4 py-2 text-left text-xs sm:text-sm font-medium text-gray-700 hidden lg:table-cell">Error</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {results.map((result) => (
+                                                <tr key={result.id} className="hover:bg-gray-50">
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 font-medium">
+                                                        <div className="min-w-0">
+                                                            <div className="truncate">{result.name}</div>
+                                                            {/* Show address on mobile */}
+                                                            <div className="lg:hidden text-xs text-gray-500 truncate mt-1">
+                                                                {result.address}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden md:table-cell">
+                                                        <div className="max-w-xs truncate">{result.address}</div>
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm">
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                            result.status === 'success' 
+                                                                ? 'bg-green-100 text-green-800' 
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}>
+                                                            {result.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-900 hidden sm:table-cell">
+                                                        {result.coordinates ? (
+                                                            <div className="truncate">
+                                                                <span className="hidden lg:inline">
+                                                                    {`${result.coordinates.latitude.toFixed(6)}, ${result.coordinates.longitude.toFixed(6)}`}
+                                                                </span>
+                                                                <span className="lg:hidden">Set</span>
+                                                            </div>
+                                                        ) : (
+                                                            'N/A'
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-red-600 hidden lg:table-cell">
+                                                        <div className="max-w-xs truncate">
+                                                            {result.error || ''}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Edit/Add Store Modal */}
                 {showEditModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
                         <div className="bg-white rounded-lg shadow-lg p-0 w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-                            <div className="p-6 border-b flex items-center justify-between">
+                            <div className="p-4 sm:p-6 border-b flex items-center justify-between">
                                 <h3 className="text-lg font-semibold">{showEditModal === 'add' ? 'Add Store' : 'Edit Store'}</h3>
                                 <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
                             </div>
@@ -578,7 +625,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                         setSaving(false);
                                     }
                                 }}
-                                className="overflow-y-auto p-6 flex-1"
+                                className="overflow-y-auto p-4 sm:p-6 flex-1"
                             >
                                 <div className="space-y-4">
                                     <div>
@@ -587,7 +634,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                             type="text"
                                             value={editedStore.store_name || ''}
                                             onChange={(e) => setEditedStore({ ...editedStore, store_name: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                             required
                                         />
                                     </div>
@@ -597,7 +644,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                             type="text"
                                             value={editedStore.address_line_1 || ''}
                                             onChange={(e) => setEditedStore({ ...editedStore, address_line_1: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                         />
                                     </div>
                                     <div>
@@ -606,17 +653,17 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                             type="text"
                                             value={editedStore.address_line_2 || ''}
                                             onChange={(e) => setEditedStore({ ...editedStore, address_line_2: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">City</label>
                                             <input
                                                 type="text"
                                                 value={editedStore.city || ''}
                                                 onChange={(e) => setEditedStore({ ...editedStore, city: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
                                         <div>
@@ -625,7 +672,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                                 type="text"
                                                 value={editedStore.province || ''}
                                                 onChange={(e) => setEditedStore({ ...editedStore, province: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
                                         <div>
@@ -634,7 +681,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                                 type="text"
                                                 value={editedStore.postal_code || ''}
                                                 onChange={(e) => setEditedStore({ ...editedStore, postal_code: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                             />
                                         </div>
                                         <div>
@@ -645,13 +692,13 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                                     value={editedStore.country || ''}
                                                     onChange={e => setEditedStore({ ...editedStore, country: e.target.value })}
                                                     onFocus={e => setShowCountryDropdown(true)}
-                                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                                     autoComplete="off"
                                                 />
                                                 {showCountryDropdown && (
                                                     <ul className="absolute z-10 left-0 right-0 bg-white border border-gray-200 rounded shadow max-h-40 overflow-y-auto mt-1">
                                                         <li
-                                                            className="px-4 py-2 hover:bg-blue-100 cursor-pointer"
+                                                            className="px-4 py-2 hover:bg-blue-100 cursor-pointer text-sm sm:text-base"
                                                             onMouseDown={() => {
                                                                 setEditedStore({ ...editedStore, country: 'Canada' });
                                                                 setShowCountryDropdown(false);
@@ -678,7 +725,7 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                             <select
                                                 value={editedStore.status || 'Active'}
                                                 onChange={(e) => setEditedStore({ ...editedStore, status: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                             >
                                                 <option value="Active">Active</option>
                                                 <option value="Inactive">Inactive</option>
@@ -687,19 +734,19 @@ Longitude: ${coordinates.longitude.toFixed(6)}`);
                                         </div>
                                     </div>
                                 </div>
-                                <div className="mt-6 flex justify-end gap-3">
+                                <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setShowEditModal(false)}
                                         disabled={saving}
-                                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                                        className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm sm:text-base"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={saving}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm sm:text-base"
                                     >
                                         {saving ? (showEditModal === 'add' ? 'Adding...' : 'Saving...') : (showEditModal === 'add' ? 'Add Store' : 'Save Changes')}
                                     </button>

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
+import { Menu } from 'lucide-react';
 
-const BreadcrumbsSidebar = () => {
+const BreadcrumbsSidebar = ({ toggleSidebar }) => {
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter(Boolean);
     const { user, isAuthenticated, logout } = useAuth();
@@ -64,24 +65,33 @@ const BreadcrumbsSidebar = () => {
     };
 
     return (
-        <nav className="w-full top-0 left-0 z-50 fixed bg-gray-50 border-b border-gray-200 px-6 py-3 flex items-center text-sm justify-between">
-            <ol className="flex items-center space-x-1">
-                <li>
-                    <Link to="/" className="text-blue-600 hover:underline font-medium">Shiftly</Link>
-                </li>
-                {pathnames.map((name, idx) => {
-                    const routeTo = '/' + pathnames.slice(0, idx + 1).join('/');
-                    const label = name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    return (
-                        <li key={routeTo} className="flex items-center">
-                            <span className="mx-2 text-gray-400">/</span>
-                            <Link to={routeTo} className="text-gray-700 hover:text-blue-600">
-                                {label}
-                            </Link>
-                        </li>
-                    );
-                })}
-            </ol>
+        <nav className="w-full top-0 left-0 z-50 fixed bg-gray-50 border-b border-gray-200 px-6 py-3 h-16 flex items-center text-sm justify-between">
+            <div className="flex items-center">
+                <button 
+                    onClick={toggleSidebar} 
+                    className="mr-3 lg:hidden text-gray-900 hover:text-blue-600 transition-colors p-1"
+                    aria-label="Toggle sidebar menu"
+                >
+                    <Menu size={24} strokeWidth={2.5} />
+                </button>
+                <ol className="flex items-center space-x-1">
+                    <li>
+                        <Link to="/" className="text-blue-600 hover:underline font-medium">Shiftly</Link>
+                    </li>
+                    {pathnames.map((name, idx) => {
+                        const routeTo = '/' + pathnames.slice(0, idx + 1).join('/');
+                        const label = name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        return (
+                            <li key={routeTo} className="flex items-center">
+                                <span className="mx-2 text-gray-400">/</span>
+                                <Link to={routeTo} className="text-gray-700 hover:text-blue-600">
+                                    {label}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
             {isAuthenticated && (
                 <div className="flex items-center space-x-4 relative">
                     <div

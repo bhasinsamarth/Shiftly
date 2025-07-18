@@ -75,14 +75,13 @@ function AppWithRoutes() {
         
         {/* Associate only routes */}
         <Route path="/time-off-request" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><RouteLoader><TimeOffRequestPage /></RouteLoader></ProtectedRoute>} />
-        <Route path="/requests" element={<ProtectedRoute allowedRoles={[4, 5, 6]}><div className="p-4 text-center">Notifications page - Coming soon!</div></ProtectedRoute>} />
         
         {/* Routes accessible to managers and admin/owners */}
         <Route path="/timecards" element={<ProtectedRoute allowedRoles={[1, 2, 3]}><RouteLoader><Timecards /></RouteLoader></ProtectedRoute>} />
         
         {/* Routes accessible to all employee roles (managers and associates) */}
         <Route path="/fetch-schedule" element={<ProtectedRoute allowedRoles={[3, 4, 5, 6]}><RouteLoader><FetchSchedule /></RouteLoader></ProtectedRoute>} />
-        <Route path="/clock" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><RouteLoader><ClockDashboard /></RouteLoader></ProtectedRoute>} />
+        <Route path="/clock" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><LocationProvider><RouteLoader><ClockDashboard /></RouteLoader></LocationProvider></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><RouteLoader><ChatPage /></RouteLoader></ProtectedRoute>} />
         <Route path="/chat/room/:roomId" element={<ProtectedRoute allowedRoles={[1, 2, 3, 4, 5, 6]}><RouteLoader><ChatRoomPage /></RouteLoader></ProtectedRoute>} />
         
@@ -90,7 +89,7 @@ function AppWithRoutes() {
         <Route path="/profile" element={<ProtectedRoute><RouteLoader><ProfilePage /></RouteLoader></ProtectedRoute>} />
         <Route path="/change-availability" element={<ProtectedRoute><RouteLoader><ChangeAvailabity /></RouteLoader></ProtectedRoute>} />
         
-        {/* Public routes */}
+        {/* Public routes needs the token rendering */}
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/setup-account" element={<SetupAccountPage />} />
@@ -114,5 +113,5 @@ function AppWithRoutes() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     {/* Provide the React Query client */}
-    <QueryClientProvider client={queryClient}><BrowserRouter><AuthProvider><LocationProvider><AppWithRoutes /></LocationProvider></AuthProvider></BrowserRouter></QueryClientProvider></React.StrictMode>
+    <QueryClientProvider client={queryClient}><BrowserRouter><AuthProvider><AppWithRoutes /></AuthProvider></BrowserRouter></QueryClientProvider></React.StrictMode>
 );

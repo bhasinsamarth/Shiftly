@@ -28,6 +28,7 @@ const FetchSchedule = () => {
   const [weekStartDate, setWeekStartDate] = useState(null);
   const [weekEndDate, setWeekEndDate] = useState(null);
   const [storeTimezone, setStoreTimezone] = useState("UTC");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -131,99 +132,147 @@ const FetchSchedule = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-6 pt-8 items-start">
-        <WeeklyCalendar onWeekSelect={handleWeekSelect} />
+      <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:pt-8 items-start">
+        <div className="w-full lg:w-auto flex justify-center lg:justify-start">
+          <WeeklyCalendar onWeekSelect={handleWeekSelect} />
+        </div>
 
         <div className="flex-1 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-            <nav className="flex gap-6 text-lg font-medium">
-              <span
-                className={tab === "schedule"
-                  ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
-                  : "text-gray-500 cursor-pointer hover:text-blue-700"}
-                onClick={() => setTab("schedule")}
-              >
-                My Schedule
-              </span>
-              <span
-                className={tab === "availability"
-                  ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
-                  : "text-gray-500 cursor-pointer hover:text-blue-700"}
-                onClick={() => setTab("availability")}
-              >
-                My Availability
-              </span>
-            </nav>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 lg:mb-6 gap-4">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <nav className="flex gap-4 lg:gap-6 text-base lg:text-lg font-medium">
+                <span
+                  className={tab === "schedule"
+                    ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
+                    : "text-gray-500 cursor-pointer hover:text-blue-700"}
+                  onClick={() => setTab("schedule")}
+                >
+                  My Schedule
+                </span>
+                <span
+                  className={tab === "availability"
+                    ? "border-b-2 border-blue-700 text-blue-700 pb-1 cursor-pointer"
+                    : "text-gray-500 cursor-pointer hover:text-blue-700"}
+                  onClick={() => setTab("availability")}
+                >
+                  My Availability
+                </span>
+              </nav>
+              
+              {/* Mobile: Show ellipse icon with dropdown */}
+              <div className="sm:hidden relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors p-2 rounded"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1"/>
+                    <circle cx="12" cy="5" r="1"/>
+                    <circle cx="12" cy="19" r="1"/>
+                  </svg>
+                </button>
+                
+                {isDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                    <button
+                      onClick={() => {
+                        navigate("/change-availability");
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      Change Availability
+                    </button>
+                  </div>
+                )}
+                
+                {/* Click outside to close dropdown */}
+                {isDropdownOpen && (
+                  <div 
+                    className="fixed inset-0 z-0" 
+                    onClick={() => setIsDropdownOpen(false)}
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* Desktop: Show full button */}
             <button
               onClick={() => navigate("/change-availability")}
-              className="bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-800 transition mt-4 sm:mt-0"
+              className="hidden sm:flex bg-blue-700 text-white px-4 lg:px-5 py-2 rounded-lg font-semibold shadow hover:bg-blue-800 transition text-sm lg:text-base"
             >
               Change Availability
             </button>
           </div>
 
           {tab === "schedule" ? (
-            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
-              <div className="text-lg font-semibold mb-4">
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+              <div className="text-base lg:text-lg font-semibold mb-4">
                 {weekStartDate && weekEndDate
                   ? `${utcToLocal(weekStartDate.toISOString(), storeTimezone, "MMM dd")} - ${utcToLocal(weekEndDate.toISOString(), storeTimezone, "MMM dd")}`
                   : "Select a week"}
               </div>
 
               {weekShiftData.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 py-6 lg:py-8 text-sm lg:text-base">
                   No shifts scheduled for this week.
                 </div>
               ) : (
-                weekShiftData.map((shift, idx) => {
-                  const timeLabel = `${utcToLocal(shift.start_time, storeTimezone, "hh:mm a")} - ${utcToLocal(shift.end_time, storeTimezone, "hh:mm a")}`;
-                  const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time);
-                  return (
-                    <div key={shift.id || idx} className="flex items-center py-3 pl-8 pr-6 gap-6">
-                      <span className="w-40 text-gray-700">
-                        {utcToLocal(shift.start_time, storeTimezone, "ccc, MMM dd")}
-                      </span>
-                      <span className="w-40 text-gray-700">{timeLabel}</span>
-                      <span className="text-xs text-gray-500">
-                        {shift.department || shift.location || ""}
-                      </span>
-                      <span className={`ml-auto px-3 py-1 rounded-full text-xs font-semibold shadow ${color}`}>
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })
+                <div className="space-y-3">
+                  {weekShiftData.map((shift, idx) => {
+                    const timeLabel = `${utcToLocal(shift.start_time, storeTimezone, "hh:mm a")} - ${utcToLocal(shift.end_time, storeTimezone, "hh:mm a")}`;
+                    const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time);
+                    return (
+                      <div key={shift.id || idx} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 lg:gap-6 py-3 px-4 lg:px-6 bg-gray-50 rounded-lg">
+                        <span className="font-medium text-gray-800 text-sm lg:text-base min-w-0 sm:w-32 lg:w-40">
+                          {utcToLocal(shift.start_time, storeTimezone, "ccc, MMM dd")}
+                        </span>
+                        <span className="text-gray-700 text-sm lg:text-base min-w-0 sm:w-32 lg:w-40">
+                          {timeLabel}
+                        </span>
+                        <span className="text-xs lg:text-sm text-gray-500 flex-1 min-w-0">
+                          {shift.department || shift.location || ""}
+                        </span>
+                        <span className={`self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold shadow ${color} whitespace-nowrap`}>
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-8">
-              <h2 className="text-xl font-bold mb-4">My Availability</h2>
-              <table className="min-w-full border text-center">
-                <thead>
-                  <tr>
-                    <th className="p-2 border">Day</th>
-                    <th className="p-2 border">Start Time</th>
-                    <th className="p-2 border">End Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => (
-                    <tr key={day}>
-                      <td className="p-2 border font-medium">{day}</td>
-                      <td className="p-2 border">
-                        {availability[idx]?.start_time
-                          ? utcToLocal(availability[idx].start_time, storeTimezone, "hh:mm a")
-                          : "-"}
-                      </td>
-                      <td className="p-2 border">
-                        {availability[idx]?.end_time
-                          ? utcToLocal(availability[idx].end_time, storeTimezone, "hh:mm a")
-                          : "-"}
-                      </td>
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 lg:p-6 mb-6 lg:mb-8">
+              <h2 className="text-lg lg:text-xl font-bold mb-4">My Availability</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border text-center text-sm lg:text-base">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">Day</th>
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">Start Time</th>
+                      <th className="p-2 lg:p-3 border font-medium text-gray-700">End Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => (
+                      <tr key={day} className="hover:bg-gray-50">
+                        <td className="p-2 lg:p-3 border font-medium text-gray-800">{day}</td>
+                        <td className="p-2 lg:p-3 border text-gray-700">
+                          {availability[idx]?.start_time
+                            ? utcToLocal(availability[idx].start_time, storeTimezone, "hh:mm a")
+                            : "-"}
+                        </td>
+                        <td className="p-2 lg:p-3 border text-gray-700">
+                          {availability[idx]?.end_time
+                            ? utcToLocal(availability[idx].end_time, storeTimezone, "hh:mm a")
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
