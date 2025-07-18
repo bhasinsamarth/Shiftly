@@ -1,140 +1,130 @@
-// src/pages/ChatRoomPage.jsx
-import React, { useEffect, useState, useRef } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../supabaseClient';
-import { useQueryClient } from '@tanstack/react-query';
-import PrivateChatRoom from '../components/Chat/PrivateChatRoom';
-import GroupChatRoom   from '../components/Chat/GroupChatRoom';
-import StoreChat       from '../components/Chat/StoreChat';
+// File: src/pages/ChatRoomPage.jsx
 
-// ← point at your lib, not utils
-import { loadMessages, sendMessage } from '../utils/chatService';
+/*import React, { useEffect, useState, useRef } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
+import PrivateChatRoom from "../components/Chat/PrivateChatRoom";
+import GroupChatRoom   from "../components/Chat/GroupChatRoom";
+import StoreChat       from "../components/Chat/StoreChat";
+import { loadMessages, sendMessage } from "../utils/chatService";
 
 export default function ChatRoomPage() {
-  const { user }     = useAuth();
-  const navigate     = useNavigate();
-  const { search }   = useLocation();
-  const qc           = useQueryClient();
-  const { roomId }   = useParams();
-  const mode         = new URLSearchParams(search).get('mode') === 'private'
-                     ? 'private'
-                     : 'group';
-  const bottomRef    = useRef();
+  const { user }   = useAuth();
+  const qc         = useQueryClient();
+  const { roomId } = useParams();
+  const mode       = new URLSearchParams(useLocation().search).get("mode") === "private"
+                     ? "private"
+                     : "group";
+  const bottomRef = useRef();
 
-  // currentEmployee record
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [roomName, setRoomName]               = useState("");
+  const [roomType, setRoomType]               = useState("");
+  const [messages, setMessages]               = useState([]);
+  const [input, setInput]                     = useState("");
+  const [loading, setLoading]                 = useState(true);
+
+  // Alert modal state
+  const [alertModalMsg, setAlertModalMsg] = useState(null);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const openAlertModal = msg => {
+    setAlertModalMsg(msg);
+    setShowAlertModal(true);
+  };
+
+  // 1️⃣ Load current employee ID
   useEffect(() => {
     if (!user?.id) return;
     supabase
-      .from('employee')
-      .select('employee_id')
-      .eq('id', user.id)
+      .from("employee")
+      .select("employee_id")
+      .eq("id", user.id)
       .single()
       .then(({ data, error }) => {
-        if (error) throw error;
-        setCurrentEmployee(data);
+        if (error) console.error("Employee load error:", error);
+        else setCurrentEmployee(data);
       });
   }, [user]);
 
-  // roomName & roomType for header
-  const [roomName, setRoomName] = useState(null);
-  const [roomType, setRoomType] = useState(null);
+  // 2️⃣ Load room metadata
   useEffect(() => {
     if (!roomId) return;
     supabase
-      .from('chat_rooms')
-      .select('name,type')
-      .eq('id', roomId)
+      .from("chat_rooms")
+      .select("name,type")
+      .eq("id", roomId)
       .single()
       .then(({ data, error }) => {
-        if (error) throw error;
-        setRoomName(data.name);
-        setRoomType(data.type);
+        if (error) console.error("Room load error:", error);
+        else {
+          setRoomName(data.name);
+          setRoomType(data.type);
+        }
       });
   }, [roomId]);
 
-  // messages & input state
-  const [messages, setMessages] = useState([]);
-  const [input, setInput]       = useState('');
-  const [loading, setLoading]   = useState(true);
-
-  // cutoff for private chats
-  const computeCutoff = async () => {
-    const { data, error } = await supabase
-      .from('chat_room_participants')
-      .select('deleted_at, last_read')
-      .eq('room_id', roomId)
-      .eq('employee_id', currentEmployee.employee_id)
-      .single();
-    if (error || !data) return null;
-    const da = data.deleted_at ? new Date(data.deleted_at) : null;
-    const lr = data.last_read   ? new Date(data.last_read)   : null;
-    const later = da && lr ? (da > lr ? da : lr) : (da || lr);
-    return later ? later.toISOString() : null;
-  };
-
-  // load + decrypt all messages
+  // 🔄 reload helper
   const reload = async () => {
     setLoading(true);
-    let since = null;
-    if (mode === 'private') {
-      since = await computeCutoff();
-    }
-    // <-- NOW using your queue-backed loader
-    let all = await loadMessages(roomId);
-    if (since) {
-      all = all.filter(m => new Date(m.sentAt) > new Date(since));
-    }
-    setMessages(all);
+    const msgs = await loadMessages(roomId);
+    setMessages(msgs);
     setLoading(false);
 
-    // mark as read
+    // mark read
     await supabase
-      .from('chat_room_participants')
+      .from("chat_room_participants")
       .update({ last_read: new Date().toISOString() })
-      .eq('room_id', roomId)
-      .eq('employee_id', currentEmployee.employee_id);
-    qc.invalidateQueries(['rooms', currentEmployee.employee_id]);
+      .eq("room_id", roomId)
+      .eq("employee_id", currentEmployee.employee_id);
+    qc.invalidateQueries(["rooms", currentEmployee.employee_id]);
   };
 
-  // subscribe to new inserts
+  // 3️⃣ Subscribe to real-time INSERT & DELETE on messages
   useEffect(() => {
     if (!roomId || !currentEmployee) return;
     reload();
+
     const channel = supabase
       .channel(`messages-${roomId}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `chat_room_id=eq.${roomId}`
-        },
-        () => reload()
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `chat_room_id=eq.${roomId}` },
+        () => {
+          reload();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "messages", filter: `chat_room_id=eq.${roomId}` },
+        payload => {
+          // remove from UI
+          setMessages(ms => ms.filter(m => m.id !== payload.old.id));
+          // if it was your own message, show alert
+          if (payload.old.sender_id === currentEmployee.employee_id) {
+            openAlertModal("Your message was restricted by policy.");
+          }
+        }
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [roomId, currentEmployee, mode]);
 
-  // send (encrypt & enqueue)
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId, currentEmployee]);
+
+  // ✉️ send handler
   const handleSend = async e => {
     e.preventDefault();
     if (!input.trim()) return;
-    // ← pass in your sender’s employee_id
-    await sendMessage(
-      roomId,
-      input.trim(),
-      currentEmployee.employee_id
-    );
-    setInput('');
-    // real-time listener will call reload()
+    await sendMessage(roomId, input.trim(), currentEmployee.employee_id);
+    setInput("");
   };
 
-  // auto-scroll on new messages
+  // ↘️ auto-scroll
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   if (!currentEmployee || loading) {
@@ -152,11 +142,30 @@ export default function ChatRoomPage() {
     roomName
   };
 
-  if (mode === 'private') {
-    return <PrivateChatRoom {...commonProps} />;
-  } else if (roomType === 'store') {
-    return <StoreChat {...commonProps} />;
-  } else {
-    return <GroupChatRoom {...commonProps} />;
-  }
+  return (
+    <>
+      {showAlertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-[9999] flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+            <h2 className="text-xl font-bold mb-4 text-red-700">Alert</h2>
+            <p className="mb-6 text-gray-800">{alertModalMsg}</p>
+            <button
+              onClick={() => setShowAlertModal(false)}
+              className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === "private"
+        ? <PrivateChatRoom {...commonProps}/>
+        : roomType === "store"
+          ? <StoreChat {...commonProps}/>
+          : <GroupChatRoom {...commonProps}/>}
+    </>
+  );
 }
+
+*/

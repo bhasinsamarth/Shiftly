@@ -1,4 +1,5 @@
 // src/pages/ChatPage.jsx
+
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import GroupChatRoom from '../components/Chat/GroupChatRoom.jsx';
 import PrivateChatRoom from '../components/Chat/PrivateChatRoom.jsx';
@@ -117,6 +118,7 @@ export default function ChatPage() {
   const [employee, setEmployee]         = useState(null);
   const [storeName, setStoreName]       = useState('');
   const [allEmployees, setAllEmployees] = useState([]);
+  const [shownAlerts, setShownAlerts]   = useState(new Set()); // Track shown alerts
 
   const [showNewGroupModal,   setShowNewGroupModal]   = useState(false);
   const [showNewPrivateModal, setShowNewPrivateModal] = useState(false);
@@ -126,6 +128,60 @@ export default function ChatPage() {
   const [searchQ,             setSearchQ]             = useState('');
   const [confirmDeleteId,     setConfirmDeleteId]     = useState(null);
   const [groupError,          setGroupError]          = useState('');
+
+  // Modal state for alert
+  const [alertModalMsg, setAlertModalMsg] = useState('');
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const openAlertModal = msg => {
+    setAlertModalMsg(msg);
+    setShowAlertModal(true);
+  };
+
+  // Subscribe to moderation events
+  useEffect(() => {
+    if (!employee) return;
+    const channel = supabase
+      .channel(`content_safety_events-${employee.employee_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'content_safety_events',
+          filter: `employee_id=eq.${employee.employee_id}`,
+        },
+        payload => {
+          if (!shownAlerts.has(payload.new.id)) {
+            setShownAlerts(prev => new Set(prev).add(payload.new.id));
+            openAlertModal('Your Recent Message has been Removed because it violated our content policy.');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [employee, shownAlerts]);
+
+  // Check for recent moderation events on mount
+  useEffect(() => {
+    if (!employee) return;
+    (async () => {
+      const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data: events, error } = await supabase
+        .from('content_safety_events')
+        .select('id, created_at')
+        .eq('employee_id', employee.employee_id)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!error && events?.length && !shownAlerts.has(events[0].id)) {
+        setShownAlerts(prev => new Set(prev).add(events[0].id));
+        openAlertModal('Your Recent Message has been Removed because it violated our content policy.');
+      }
+    })();
+  }, [employee, shownAlerts]);
 
   // 1️⃣ Load current employee + coworkers
   useEffect(() => {
@@ -213,14 +269,8 @@ export default function ChatPage() {
     [allEmployees, searchQ]
   );
 
-
   // Selected chat state
-  const [selectedChat, setSelectedChat] = useState(null); // { id, type }
-
-  const switchMode = m => {
-    setMode(m);
-    setSelectedChat(null);
-  };
+  const [selectedChat, setSelectedChat] = useState(null);
 
   const openChat = async (rid, type = 'group') => {
     await supabase
@@ -241,33 +291,22 @@ export default function ChatPage() {
     roomsRefetch();
   };
 
-  // 4️⃣ CREATE GROUP: use createChatRoom
+  // 4️⃣ CREATE GROUP
   const createGroupChat = async () => {
-    if (!newGroupName.trim()) {
-      setGroupError('Group name required');
-      return;
-    }
-    if (!selGroup.length) {
-      setGroupError('Select at least one member');
-      return;
-    }
+    if (!newGroupName.trim()) return setGroupError('Group name required');
+    if (!selGroup.length)      return setGroupError('Select at least one member');
     setGroupError('');
 
-    // use helper to insert room + key
     const newRoom = await createChatRoom(
       [employee.employee_id, ...selGroup],
       { type: 'group', name: newGroupName.trim() }
     );
 
-    // link participants
     const parts = [
       { room_id: newRoom.id, employee_id: employee.employee_id, is_admin: true },
       ...selGroup.map(id => ({ room_id: newRoom.id, employee_id: id, is_admin: false })),
     ];
-    await supabase
-      .from('chat_room_participants')
-      .upsert(parts, { onConflict: ['room_id','employee_id'] });
-
+    await supabase.from('chat_room_participants').upsert(parts, { onConflict: ['room_id','employee_id'] });
     roomsRefetch();
     setShowNewGroupModal(false);
     setNewGroupName('');
@@ -275,23 +314,16 @@ export default function ChatPage() {
     openChat(newRoom.id);
   };
 
-  // 5️⃣ CREATE PRIVATE: also use createChatRoom
+  // 5️⃣ CREATE PRIVATE
   const createPrivateChat = async () => {
     if (!selPrivate) return;
     const me   = employee.employee_id;
     const them = selPrivate;
 
-    // check for existing private room
-    const { data: mine } = await supabase
-      .from('chat_room_participants')
-      .select('room_id, deleted_at')
-      .eq('employee_id', me);
+    // find existing
+    const { data: mine } = await supabase.from('chat_room_participants').select('room_id, deleted_at').eq('employee_id', me);
     const mineIds = mine.map(r => r.room_id);
-
-    const { data: theirs } = await supabase
-      .from('chat_room_participants')
-      .select('room_id')
-      .eq('employee_id', them);
+    const { data: theirs } = await supabase.from('chat_room_participants').select('room_id').eq('employee_id', them);
     const common = mineIds.filter(id => theirs.some(t => t.room_id === id));
 
     let existing = null;
@@ -318,13 +350,8 @@ export default function ChatPage() {
       return;
     }
 
-    // create new private room + key
-    const newRoom = await createChatRoom(
-      [me, them],
-      { type: 'private' }
-    );
-
-    // insert participants
+    // create fresh
+    const newRoom = await createChatRoom([me, them], { type: 'private' });
     await Promise.all(
       [me, them].map(id =>
         supabase
@@ -336,7 +363,6 @@ export default function ChatPage() {
           })
       )
     );
-
     setShowNewPrivateModal(false);
     setSelPrivate(null);
     openChat(newRoom.id);
@@ -346,7 +372,7 @@ export default function ChatPage() {
     return <div className="p-6 text-center">Loading…</div>;
   }
 
-    return (
+  return (
     <div className="flex h-[80vh] max-h-[700px] bg-gray-100">
       {/* Sidebar */}
       <aside className="w-80 min-w-[18rem] border-r bg-white flex flex-col">
@@ -362,24 +388,17 @@ export default function ChatPage() {
         </div>
         {/* Tabs */}
         <div className="flex gap-2 px-4 pt-4 pb-2 border-b">
-          <button
-            onClick={() => setMode('all')}
-            className={`px-3 py-1 rounded font-medium ${mode === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setMode('group')}
-            className={`px-3 py-1 rounded font-medium ${mode === 'group' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            Groups
-          </button>
-          <button
-            onClick={() => setMode('private')}
-            className={`px-3 py-1 rounded font-medium ${mode === 'private' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            Personal
-          </button>
+          {['all','group','private'].map(m => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); setSelectedChat(null); }}
+              className={`px-3 py-1 rounded font-medium ${
+                mode === m ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+              }`}
+            >
+              {m === 'all' ? 'All' : m === 'group' ? 'Groups' : 'Personal'}
+            </button>
+          ))}
         </div>
         {/* New Chat Buttons */}
         <div className="px-4 pt-4 pb-2 flex gap-2">
@@ -398,36 +417,50 @@ export default function ChatPage() {
         </div>
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
-          {/* All Chats */}
-          {mode === 'all' && (
+          {mode === 'all' || mode === 'group' ? (
             <>
-              <div className="text-xs text-gray-400 px-6 pt-4 pb-1">Groups</div>
-              {groupChats.map(room => (
-                <div
-                  key={room.id}
-                  onClick={() => openChat(room.id, room.type)}
-                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === room.id ? 'bg-blue-100' : ''}`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
-                    <span>👥</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 truncate">{room.type === 'store' ? storeName : room.name}</div>
-                    <div className="text-xs text-gray-500">Group chat</div>
-                  </div>
-                  {room.unread_count > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-                      {room.unread_count}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {(mode === 'all' || mode === 'group') && (
+                <>
+                  <div className="text-xs text-gray-400 px-6 pt-4 pb-1">Groups</div>
+                  {groupChats.map(room => (
+                    <div
+                      key={room.id}
+                      onClick={() => openChat(room.id, room.type)}
+                      className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${
+                        selectedChat?.id === room.id ? 'bg-blue-100' : ''
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
+                        <span>👥</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 truncate">
+                          {room.type === 'store' ? storeName : room.name}
+                        </div>
+                        <div className="text-xs text-gray-500">Group chat</div>
+                      </div>
+                      {room.unread_count > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {room.unread_count}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
+          ) : null}
+
+          {mode === 'all' || mode === 'private' ? (
+            <>
               <div className="text-xs text-gray-400 px-6 pt-6 pb-1">Personal</div>
               {privateChats.map(c => (
                 <div
                   key={c.roomId}
                   onClick={() => openChat(c.roomId, 'private')}
-                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === c.roomId ? 'bg-blue-100' : ''}`}
+                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${
+                    selectedChat?.id === c.roomId ? 'bg-blue-100' : ''
+                  }`}
                 >
                   <img
                     src={c.avatar}
@@ -446,63 +479,28 @@ export default function ChatPage() {
                 </div>
               ))}
             </>
-          )}
-          {/* Groups Only */}
-          {mode === 'group' && (
-            <>
-              {groupChats.map(room => (
-                <div
-                  key={room.id}
-                  onClick={() => openChat(room.id, room.type)}
-                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === room.id ? 'bg-blue-100' : ''}`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold">
-                    <span>👥</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 truncate">{room.type === 'store' ? storeName : room.name}</div>
-                    <div className="text-xs text-gray-500">Group chat</div>
-                  </div>
-                  {room.unread_count > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-                      {room.unread_count}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-          {/* Personal Only */}
-          {mode === 'private' && (
-            <>
-              {privateChats.map(c => (
-                <div
-                  key={c.roomId}
-                  onClick={() => openChat(c.roomId, 'private')}
-                  className={`flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-blue-50 ${selectedChat && selectedChat.id === c.roomId ? 'bg-blue-100' : ''}`}
-                >
-                  <img
-                    src={c.avatar}
-                    alt={c.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900 truncate">{c.name}</div>
-                    <div className="text-xs text-gray-500">Private chat</div>
-                  </div>
-                  {c.unread_count > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
-                      {c.unread_count}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
+          ) : null}
         </div>
       </aside>
+
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col bg-white">
+        {/* Alert Modal */}
+        {showAlertModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 z-[9999] flex items-center justify-center">
+            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+              <h2 className="text-xl font-bold mb-4 text-red-700">Alert</h2>
+              <p className="mb-6 text-gray-800">{alertModalMsg}</p>
+              <button
+                onClick={() => setShowAlertModal(false)}
+                className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {selectedChat ? (
           <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400">Loading chat…</div>}>
             {selectedChat.type === 'group' && (
@@ -510,18 +508,21 @@ export default function ChatPage() {
                 roomId={selectedChat.id}
                 currentEmployee={employee}
                 roomName={groupChats.find(r => r.id === selectedChat.id)?.name || ''}
+                triggerAlert={openAlertModal}
               />
             )}
             {selectedChat.type === 'private' && (
               <PrivateChatRoom
                 roomId={selectedChat.id}
                 currentEmployee={employee}
+                triggerAlert={openAlertModal}
               />
             )}
             {selectedChat.type === 'store' && (
               <StoreChat
                 roomId={selectedChat.id}
                 currentEmployee={employee}
+                triggerAlert={openAlertModal}
               />
             )}
           </Suspense>
@@ -531,7 +532,8 @@ export default function ChatPage() {
           </div>
         )}
       </main>
-      {/* Modals and overlays remain unchanged */}
+
+      {/* New Private Modal */}
       {showNewPrivateModal && (
         <Suspense fallback={<div>Loading…</div>}>
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
@@ -555,6 +557,8 @@ export default function ChatPage() {
           </div>
         </Suspense>
       )}
+
+      {/* Confirmation Delete */}
       {confirmDeleteId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 w-80">
@@ -568,10 +572,7 @@ export default function ChatPage() {
                 Cancel
               </button>
               <button
-                onClick={async () => {
-                  await deleteChat(confirmDeleteId);
-                  setConfirmDeleteId(null);
-                }}
+                onClick={async () => { await deleteChat(confirmDeleteId); setConfirmDeleteId(null); }}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Delete
@@ -580,15 +581,14 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+
+      {/* New Group Modal */}
       {showNewGroupModal && (
         <Suspense fallback={<div>Loading…</div>}>
           <NewGroupModal
             allEmployees={filteredEmployees}
             onCreate={createGroupChat}
-            onClose={() => {
-              setShowNewGroupModal(false);
-              setGroupError('');
-            }}
+            onClose={() => { setShowNewGroupModal(false); setGroupError(''); }}
             selected={selGroup}
             setSelected={setSelGroup}
             groupName={newGroupName}

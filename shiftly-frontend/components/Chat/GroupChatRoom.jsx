@@ -206,10 +206,103 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     navigate('/chat?mode=group');
   };
 
+  // Modal state for moderation alerts
+  const [alertModalMsg, setAlertModalMsg] = useState('');
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const openAlertModal = msg => {
+    setAlertModalMsg(msg);
+    setShowAlertModal(true);
+  };
+
+  // Subscribe to moderation events (content_safety_events INSERT)
+  useEffect(() => {
+    if (!currentEmployee?.employee_id) return;
+    const channel = supabase
+      .channel(`content_safety_events_group_${rid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'content_safety_events',
+          filter: `employee_id=eq.${currentEmployee.employee_id}`,
+        },
+        payload => {
+          console.debug('[Moderation Event - GroupChatRoom]', payload);
+          if (payload?.new?.reason) {
+            openAlertModal(payload.new.reason);
+          } else if (payload?.new?.error) {
+            openAlertModal('A moderation event occurred.');
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentEmployee?.employee_id, rid]);
+
+  // Load group members and available employees when members modal is opened
+  useEffect(() => {
+    if (!showMembers || !rid) return;
+    (async () => {
+      // Fetch participants
+      const { data: partData } = await supabase
+        .from('chat_room_participants')
+        .select('employee_id, is_admin, employee(first_name, last_name, profile_photo_path)')
+        .eq('room_id', rid);
+      const participants = (partData || []).map(p => {
+        const emp = p.employee;
+        return {
+          id: p.employee_id,
+          name: `${emp.first_name} ${emp.last_name}`,
+          avatar: emp.profile_photo_path
+            ? supabase.storage.from('profile-photo').getPublicUrl(emp.profile_photo_path).data.publicUrl
+            : DEFAULT_AVATAR_URL,
+          isAdmin: p.is_admin,
+        };
+      });
+      setParticipants(participants);
+
+      // Fetch all employees not in group
+      const groupIds = participants.map(p => p.id);
+      const { data: allEmps } = await supabase
+        .from('employee')
+        .select('employee_id, first_name, last_name, profile_photo_path');
+      const available = (allEmps || [])
+        .filter(e => !groupIds.includes(e.employee_id))
+        .map(e => ({
+          employee_id: e.employee_id,
+          first_name: e.first_name,
+          last_name: e.last_name,
+          avatar: e.profile_photo_path
+            ? supabase.storage.from('profile-photo').getPublicUrl(e.profile_photo_path).data.publicUrl
+            : DEFAULT_AVATAR_URL,
+        }));
+      setAvailableEmployees(available);
+    })();
+  }, [showMembers, rid]);
+
   if (loading) return <div className="p-4 text-center">Loading chat…</div>;
 
   return (
     <>
+      {/* Moderation Alert Modal */}
+      {showAlertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-[9999] flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+            <h2 className="text-xl font-bold mb-4 text-red-700">Alert</h2>
+            <p className="mb-6 text-gray-800">{alertModalMsg}</p>
+            <button
+              onClick={() => setShowAlertModal(false)}
+              className="px-6 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Chat Box */}
       <div className="flex flex-col h-full w-full bg-white">
         {/* Header */}

@@ -1,160 +1,213 @@
+// src/pages/TimeOffRequestPage.jsx
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import RangeCalendar from '../components/RangeCalendar';
 import { submitEmployeeRequest } from '../utils/requestHandler';
 
-const TimeOffRequestPage = () => {
+// 🛡️ Content Safety REST client
+import ContentSafetyClient, { isUnexpected } from '@azure-rest/ai-content-safety';
+import { AzureKeyCredential } from '@azure/core-auth';
+
+const safetyClient = ContentSafetyClient(
+  import.meta.env.VITE_CONTENT_SAFETY_ENDPOINT.replace(/\/$/, ''),
+  new AzureKeyCredential(import.meta.env.VITE_CONTENT_SAFETY_KEY)
+);
+
+export default function TimeOffRequestPage() {
   const { user } = useAuth();
-  const [range, setRange] = useState({ start: null, end: null });
-  const [reason, setReason] = useState('');
+  const [range, setRange]     = useState({ start: null, end: null });
+  const [reason, setReason]   = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const openErrorModal = msg => {
+    setMessage(msg);
+    setShowErrorModal(true);
+  };
+
+  const handleSubmit = async e => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
-    const { start, end } = range;
 
-    if (!start || !end || !reason) {
-      setMessage('Please fill in all fields.');
+    const { start, end } = range;
+    if (!start || !end || !reason.trim()) {
+      openErrorModal('Please fill in all fields.');
       setLoading(false);
       return;
     }
-
     if (end < start) {
-      setMessage('End date cannot be before start date.');
+      openErrorModal('End date cannot be before start date.');
       setLoading(false);
       return;
     }
 
     try {
-      // Look up the integer employee_id for this user by email (as in ChangeAvailabity)
+      // 1️⃣ Run Content Safety analysis
+      const analyzeResponse = await safetyClient
+        .path('/text:analyze', '2024-09-01')
+        .post({ body: { text: reason } });
+
+      if (isUnexpected(analyzeResponse)) {
+        console.error('Content Safety error:', analyzeResponse);
+        openErrorModal('Failed to classify your reason. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      const categories = analyzeResponse.body.categoriesAnalysis;
+      const violation = categories.some(cat => {
+        const sev = typeof cat.severity === 'string' ? parseInt(cat.severity, 10) : cat.severity;
+        return sev >= 4; // Medium or High
+      });
+
+      if (violation) {
+        openErrorModal(
+          'Your reason contains content that violates our policy. Please rephrase and try again.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Lookup employee_id
       const { data: empData, error: empError } = await supabase
         .from('employee')
         .select('employee_id')
         .eq('email', user.email)
         .single();
+
       if (empError || !empData) {
-        setMessage('Could not find employee record.');
+        openErrorModal('Could not find your employee record.');
         setLoading(false);
         return;
       }
       const employeeId = empData.employee_id;
 
-      // Submit time-off request for approval
-      const requestPayload = {
-        employee_id: employeeId,
+      // 3️⃣ Submit the time-off request
+      const payload = {
+        employee_id:  employeeId,
         request_type: 'time-off',
         request: {
           start_date: start.toISOString().split('T')[0],
-          end_date: end.toISOString().split('T')[0],
-          reason,
-        },
+          end_date:   end.toISOString().split('T')[0],
+          reason
+        }
       };
-      const result = await submitEmployeeRequest(requestPayload);
+      const result = await submitEmployeeRequest(payload);
+
       if (!result.success) {
-        setMessage('Failed to submit request: ' + result.error);
+        openErrorModal('Failed to submit request: ' + result.error);
       } else {
-        setMessage('Time off request submitted for approval!');
+        openErrorModal('Your time-off request has been submitted for approval!');
         setRange({ start: null, end: null });
         setReason('');
       }
     } catch (err) {
-      setMessage('An error occurred.');
+      console.error('Submission error:', err);
+      openErrorModal('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Range selection logic: 1st click sets start, 2nd click sets end, 3rd click resets
-  const handleDateClick = (date) => {
+  // Calendar click logic
+  const handleDateClick = date => {
     if (!range.start || (range.start && range.end)) {
       setRange({ start: date, end: null });
-    } else if (range.start && !range.end) {
-      if (date < range.start) {
-        setRange({ start: date, end: range.start });
-      } else {
-        setRange({ start: range.start, end: date });
-      }
+    } else {
+      if (date < range.start) setRange({ start: date, end: range.start });
+      else setRange({ start: range.start, end: date });
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row max-w-4xl mx-auto mt-10 bg-white rounded-lg shadow overflow-hidden">
-      {/* Calendar on the left */}
-      <div className="md:w-1/2 w-full flex flex-col items-center justify-center bg-gray-50 p-8 border-r min-h-[420px]">
-        <h3 className="text-lg font-semibold mb-4 text-center">Select Date Range</h3>
-        <div className="w-full flex justify-center mb-4">
+    <>
+      {/* ERROR / INFO MODAL */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full text-center">
+            <p className="mb-4 text-gray-800">{message}</p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row max-w-4xl mx-auto mt-10 bg-white rounded-lg shadow overflow-hidden">
+        {/* Calendar Panel */}
+        <div className="md:w-1/2 w-full bg-gray-50 p-8 border-r">
+          <h3 className="text-lg font-semibold mb-4 text-center">Select Date Range</h3>
           <RangeCalendar
             selectedRange={range}
             onRangeSelect={setRange}
+            onDateClick={handleDateClick}
           />
-        </div>
-        <button
-          type="button"
-          className="px-3 py-1 rounded text-xs font-semibold border bg-gray-200 text-gray-700 mt-2"
-          onClick={() => setRange({ start: null, end: null })}
-        >
-          Clear Selection
-        </button>
-      </div>
-
-      {/* Form on the right */}
-      <div className="md:w-1/2 w-full p-6 flex flex-col justify-center">
-        <h2 className="text-2xl font-bold mb-4 text-center">Request Time Off</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 mb-1">Start Date</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-              value={range.start ? range.start.toLocaleDateString() : ''}
-              readOnly
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">End Date</label>
-            <input
-              type="text"
-              className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-              value={range.end ? range.end.toLocaleDateString() : ''}
-              readOnly
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Reason</label>
-            <textarea
-              className="w-full border rounded px-3 py-2"
-              value={reason}
-              onChange={e => {
-                // Only allow up to 500 alphabetic characters
-                const alphaCount = (e.target.value.match(/[a-zA-Z]/g) || []).length;
-                if (alphaCount <= 500) setReason(e.target.value);
-              }}
-              required
-              rows={3}
-              maxLength={2000} // fallback for very long text
-            />
-            <div className="text-xs text-gray-500 text-right mt-1">
-              {(reason.match(/[a-zA-Z]/g) || []).length} / 500 letters
-            </div>
-          </div>
           <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition"
-            disabled={loading}
+            type="button"
+            className="mt-4 px-3 py-1 rounded text-xs font-semibold border bg-gray-200"
+            onClick={() => setRange({ start: null, end: null })}
           >
-            {loading ? 'Submitting...' : 'Submit Request'}
+            Clear Selection
           </button>
-          {message && <div className="text-center mt-2 text-sm text-blue-700">{message}</div>}
-        </form>
-      </div>
-    </div>
-  );
-};
+        </div>
 
-export default TimeOffRequestPage;
+        {/* Form Panel */}
+        <div className="md:w-1/2 w-full p-6 flex flex-col justify-center">
+          <h2 className="text-2xl font-bold mb-4 text-center">Request Time Off</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block mb-1">Start Date</label>
+              <input
+                type="text"
+                value={range.start ? range.start.toLocaleDateString() : ''}
+                readOnly
+                className="w-full border rounded px-3 py-2 bg-gray-100"
+                required
+              />
+            </div>
+            <div>
+              <label className="block mb-1">End Date</label>
+              <input
+                type="text"
+                value={range.end ? range.end.toLocaleDateString() : ''}
+                readOnly
+                className="w-full border rounded px-3 py-2 bg-gray-100"
+                required
+              />
+            </div>
+            <div>
+              <label className="block mb-1">Reason</label>
+              <textarea
+                className="w-full border rounded px-3 py-2"
+                value={reason}
+                onChange={e => {
+                  const alphaCount = (e.target.value.match(/[a-zA-Z]/g) || []).length;
+                  if (alphaCount <= 500) setReason(e.target.value);
+                }}
+                rows={3}
+                maxLength={2000}
+                required
+              />
+              <div className="text-xs text-gray-500 text-right">
+                {(reason.match(/[a-zA-Z]/g) || []).length} / 500 letters
+              </div>
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? 'Submitting…' : 'Submit Request'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}

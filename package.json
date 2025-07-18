@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@azure-rest/ai-content-safety": "^1.0.1",
+    "@azure/core-auth": "^1.10.0",
     "@heroicons/react": "^2.2.0",
     "@shadcn/ui": "^0.0.4",
     "@supabase/supabase-js": "^2.49.4",
@@ -28,6 +30,7 @@
     "@tailwindcss/postcss": "^4.1.3",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
     "daisyui": "^5.0.46",
     "postcss": "^8.5.3",
     "postcss-nested": "^7.0.2",
@@ -44,7 +47,9 @@
     "build": "vite build",
     "geocode-stores": "node scripts/geocode-stores.js",
     "preview": "vite preview",
-    "queue:process": "node shiftly-frontend/utils/processQueues.mjs"
+    "queue": "node shiftly-frontend/utils/processQueues.mjs",
+    "server": "node shiftly-frontend/utils/queueServer.js",
+    "start": "concurrently \"npm run queue\" \"npm run server\""
   },
   "repository": {
     "type": "git",
@@ -53,6 +58,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/moin-shk/PROJ-Shiftly/issues"

@@ -1,4 +1,3 @@
-// src/lib/chatQueueService.js
 import { supabase } from '../supabaseClient.js'
 
 // Create a separate client only for queue operations with specific schema
