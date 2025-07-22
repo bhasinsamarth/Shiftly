@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
-import CalendarWidget from '../components/CalendarWidget';
 import WeeklyCalendar from '../components/WeeklyCalendar';
 import { utcToLocal, localToUTC } from '../utils/timezoneUtils';
 
+//generate an array of week dates based 
 const getWeekDates = (offset = 0) => {
     const dates = [];
     const today = new Date();
@@ -34,9 +34,10 @@ const SchedulePlanner = () => {
     const [weekOffset, setWeekOffset] = useState(0);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [editingCell, setEditingCell] = useState(null);
-    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default fallback
+    const [storeTimezone, setStoreTimezone] = useState('America/Edmonton'); 
     const weekDates = getWeekDates(weekOffset);
 
+    //get the manager's store id and store timezone
     useEffect(() => {
         const fetchManagerStore = async () => {
             const { data, error } = await supabase
@@ -57,9 +58,10 @@ const SchedulePlanner = () => {
         if (user) fetchManagerStore();
     }, [user]);
 
+    // Fetch employees and schedules for the selected store
     useEffect(() => {
         if (!storeId) return;
-
+        // get employee detail
         const fetchEmployeesAndSchedules = async () => {
             const { data: employeeData, error: empErr } = await supabase
                 .from('employee')
@@ -75,7 +77,7 @@ const SchedulePlanner = () => {
 
             const startDate = weekDates[0].dateString;
             const endDate = weekDates[6].dateString;
-
+            // get employee schedule
             const { data: scheduleEntries, error: schedErr } = await supabase
                 .from('store_schedule')
                 .select('employee_id, start_time, end_time')
@@ -112,7 +114,8 @@ const SchedulePlanner = () => {
         fetchEmployeesAndSchedules();
     }, [storeId, weekOffset, user]);
 
-    const handleTimeChange = (empId, date, field, value) => {
+    // update a specific employee's schedule time
+    const updateShiftTime = (empId, date, field, value) => {
         setScheduleData(prev => ({
             ...prev,
             [empId]: {
@@ -125,6 +128,7 @@ const SchedulePlanner = () => {
         }));
     };
 
+    // Handle cell click
     const handleCellClick = (empId, dateString) => {
         const shift = scheduleData[empId]?.[dateString];
         if (!shift?.checked) {
@@ -162,7 +166,6 @@ const SchedulePlanner = () => {
     };
 
     const handleSubmit = async () => {
-        if (!window.confirm('Are you sure you want to save the schedule?')) return;
 
         setSaving(true);
         let entriesToInsert = [];
@@ -226,7 +229,7 @@ const SchedulePlanner = () => {
             }
         }
 
-        setMessage('✅ Schedule saved successfully.');
+        setMessage('Schedule saved successfully.');
         setScheduleData({});
         setSaving(false);
     };
@@ -270,7 +273,7 @@ const SchedulePlanner = () => {
                                 <button onClick={() => setWeekOffset(weekOffset + 1)} className="px-4 py-2 border border-[#dde1e3] rounded-xl hover:bg-gray-50 transition text-sm font-medium">Next Week →</button>
                             </div>
                         </div>
-                        {message && <p className="mb-6 text-sm text-center text-red-600 bg-red-50 p-3 rounded-lg mx-4">{message}</p>}
+                        {message && <p className="mb-6 text-sm text-center text-blue-600 bg-blue-50 p-3 rounded-lg mx-4">{message}</p>}
 
                         <div className="px-4 py-3">
                             <div className="overflow-x-auto border border-[#dde1e3] rounded-xl">
@@ -302,7 +305,7 @@ const SchedulePlanner = () => {
                                                                             <input
                                                                                 type="text"
                                                                                 value={shift.start || ''}
-                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'start', e.target.value)}
+                                                                                onChange={(e) => updateShiftTime(emp.employee_id, dateString, 'start', e.target.value)}
                                                                                 onBlur={handleInputBlur}
                                                                                 className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                                 placeholder="Start (e.g. 09:00)"
@@ -311,7 +314,7 @@ const SchedulePlanner = () => {
                                                                             <input
                                                                                 type="text"
                                                                                 value={shift.end || ''}
-                                                                                onChange={(e) => handleTimeChange(emp.employee_id, dateString, 'end', e.target.value)}
+                                                                                onChange={(e) => updateShiftTime(emp.employee_id, dateString, 'end', e.target.value)}
                                                                                 onBlur={handleInputBlur}
                                                                                 className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                                 placeholder="End (e.g. 17:00)"

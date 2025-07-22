@@ -122,8 +122,6 @@ const Dashboard = () => {
   }, [user, myEmployee]);
 
 
-
-
   useEffect(() => {
     if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchMyEmployee() {
@@ -142,12 +140,6 @@ const Dashboard = () => {
       fetchMyEmployee();
     }
   }, [user]);
-
-
-
-
-
-
 
 
   // --- RENDERING ---

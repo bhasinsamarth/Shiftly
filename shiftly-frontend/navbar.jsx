@@ -8,7 +8,7 @@ import {
   CalendarDays, Clock, Timer, Building2, Users, UserPlus,
   MapPin, ClipboardList, Store, Bell, UserCheck, AlertCircle,
   MessageCircle, LayoutDashboard, X
-  
+
 } from 'lucide-react';
 
 
@@ -17,12 +17,6 @@ const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingTimeOffCount, setPendingTimeOffCount] = useState(0);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportSubject, setReportSubject] = useState('');
-  const [reportDetails, setReportDetails] = useState('');
-  const [reportAgainst, setReportAgainst] = useState('');
-  const [reportName, setReportName] = useState('');
-  const [reportMsg, setReportMsg] = useState('');
   const sidebarRef = useRef(null);
 
   const activeLinkClass =
@@ -47,7 +41,7 @@ const Navbar = () => {
         setMobileMenuOpen(false);
       }
     }
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [mobileMenuOpen]);
@@ -59,25 +53,6 @@ const Navbar = () => {
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
-  };
-
-  const handleSubmitReport = async (e) => {
-    e.preventDefault();
-    try {
-      // Handle report submission logic here
-      setReportMsg('Report submitted successfully');
-      setTimeout(() => {
-        setReportMsg('');
-        setShowReportModal(false);
-        setReportSubject('');
-        setReportDetails('');
-        setReportAgainst('');
-        setReportName('');
-      }, 2000);
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      setReportMsg('Failed to submit report');
-    }
   };
 
   const isActive = (path) => location.pathname === path;
@@ -98,20 +73,19 @@ const Navbar = () => {
   return (
     <>
       <BreadcrumbsSidebar toggleSidebar={toggleMobileMenu} />
-      
+
       {/* Overlay for mobile menu */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-40 z-30 lg:hidden" 
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-30 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
-      
-      <aside 
+
+      <aside
         ref={sidebarRef}
-        className={`w-80 max-w-sm lg:w-64 bg-white shadow-xl h-screen fixed top-16 left-0 z-40 flex flex-col justify-between transform transition-transform duration-300 ease-in-out ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        className={`w-80 max-w-sm lg:w-64 bg-white shadow-xl h-screen fixed top-16 left-0 z-40 flex flex-col justify-between transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
       >
         <div className="overflow-y-auto">
           <div className="flex justify-between items-center p-4 lg:hidden border-b">
@@ -124,7 +98,7 @@ const Navbar = () => {
               <X size={20} />
             </button>
           </div>
-          
+
           {isAuthenticated && (
             <div className="p-2">
               {/* Admin/Owner */}
@@ -219,36 +193,6 @@ const Navbar = () => {
           )}
         </div>
 
-        {showReportModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-4 sm:p-8 w-full max-w-md">
-              <form onSubmit={handleSubmitReport}>
-                <h2 className="text-lg font-semibold mb-4">Report Issue</h2>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
-                  <input type="text" value={reportSubject} onChange={e => setReportSubject(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Details</label>
-                  <textarea value={reportDetails} onChange={e => setReportDetails(e.target.value)} required className="mt-1 block w-full rounded-md border border-gray-300" rows="4" />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Against (optional)</label>
-                  <input type="text" value={reportAgainst} onChange={e => setReportAgainst(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700">Your Name (optional)</label>
-                  <input type="text" value={reportName} onChange={e => setReportName(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300" />
-                </div>
-                <div className="flex justify-end space-x-4">
-                  <button type="submit" className="px-5 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition">Submit</button>
-                  <button type="button" onClick={() => setShowReportModal(false)} className="px-5 py-2 bg-gray-300 text-gray-800 rounded-md">Cancel</button>
-                </div>
-                {reportMsg && <div className="mt-4 text-green-600">{reportMsg}</div>}
-              </form>
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );
