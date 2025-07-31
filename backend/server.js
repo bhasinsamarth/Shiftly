@@ -69,6 +69,33 @@ app.post('/send-invite', async (req, res) => {
   }
 });
 
+app.post('/check-content-safety', async (req, res) => {
+  const { text } = req.body;
+  if (!text) {
+    return res.status(400).json({ error: 'Missing text' });
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.CONTENT_SAFETY_ENDPOINT}/contentmoderator/moderate/v1.0/ProcessText/Screen?language=eng`,
+      {
+        method: 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': process.env.CONTENT_SAFETY_KEY,
+          'Content-Type': 'text/plain'
+        },
+        body: text
+      }
+    );
+    const result = await response.json();
+    console.log('Azure Content Safety result:', result);
+    res.json(result);
+  } catch (err) {
+    console.error('Azure Content Safety error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () =>
   console.log(`Mailjet mailer listening on port ${PORT}`)

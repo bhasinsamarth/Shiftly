@@ -163,29 +163,6 @@ const ClockDashboard = () => {
         console.log(`${eventType} successful:`, eventData);
     };
 
-    const formatDateTime = (dateString) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleString();
-    };
-
-    const calculateHoursWorked = (clockIn, clockOut, timeLogs = null) => {
-        if (!clockIn || !clockOut) return 'In Progress';
-        
-        // If we have time logs, use the proper calculation that includes breaks
-        if (timeLogs && Array.isArray(timeLogs)) {
-            const { workTime } = calculateHoursFromTimeLogs(timeLogs);
-            return formatDuration(workTime);
-        }
-        
-        // Fallback to simple calculation
-        const start = new Date(clockIn);
-        const end = new Date(clockOut);
-        const diffMs = end - start;
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
-        return `${hours}h ${minutes}m`;
-    };
 
     if (isLoading) {
         return (

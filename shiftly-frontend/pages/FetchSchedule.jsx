@@ -6,8 +6,12 @@ import { utcToLocal } from "../utils/timezoneUtils";
 
 function getShiftTypeAndColor(start, end, timezone = 'America/Toronto') {
   if (!start || !end) return { label: "Unknown", color: "bg-gray-400" };
-  const startHour = new Date(start).getHours();
-  const endHour = new Date(end).getHours();
+  
+  // Convert to store timezone to get correct hours
+  const startLocalTime = utcToLocal(start, timezone, "HH:mm");
+  const endLocalTime = utcToLocal(end, timezone, "HH:mm");
+  const startHour = parseInt(startLocalTime.split(':')[0]);
+  const endHour = parseInt(endLocalTime.split(':')[0]);
 
   if (startHour >= 22 || endHour <= 6) {
     return { label: "Night Shift", color: "bg-purple-600 text-white" };
@@ -24,7 +28,6 @@ const FetchSchedule = () => {
   const [employeeId, setEmployeeId] = useState(null);
   const [availability, setAvailability] = useState([]);
   const [tab, setTab] = useState("schedule");
-  const [selectedWeek, setSelectedWeek] = useState([]);
   const [weekStartDate, setWeekStartDate] = useState(null);
   const [weekEndDate, setWeekEndDate] = useState(null);
   const [storeTimezone, setStoreTimezone] = useState("UTC");
@@ -111,7 +114,7 @@ const FetchSchedule = () => {
       week.push(day);
     }
 
-    setSelectedWeek(week);
+   
     setWeekStartDate(week[0]);
     setWeekEndDate(week[6]);
   };
@@ -131,7 +134,7 @@ const FetchSchedule = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white-50">
       <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 lg:pt-8 items-start">
         <div className="w-full lg:w-auto flex justify-center lg:justify-start">
           <WeeklyCalendar onWeekSelect={handleWeekSelect} />
@@ -221,7 +224,7 @@ const FetchSchedule = () => {
                 <div className="space-y-3">
                   {weekShiftData.map((shift, idx) => {
                     const timeLabel = `${utcToLocal(shift.start_time, storeTimezone, "hh:mm a")} - ${utcToLocal(shift.end_time, storeTimezone, "hh:mm a")}`;
-                    const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time);
+                    const { label, color } = getShiftTypeAndColor(shift.start_time, shift.end_time, storeTimezone);
                     return (
                       <div key={shift.id || idx} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 lg:gap-6 py-3 px-4 lg:px-6 bg-gray-50 rounded-lg">
                         <span className="font-medium text-gray-800 text-sm lg:text-base min-w-0 sm:w-32 lg:w-40">
