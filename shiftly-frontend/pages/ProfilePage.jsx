@@ -33,6 +33,7 @@ const ProfilePage = () => {
     }
   }, [message]);
 
+  //fetching employee photo if available
   useEffect(() => {
     const fetchEmployeePhoto = async () => {
       if (user?.id) {
@@ -54,6 +55,8 @@ const ProfilePage = () => {
     fetchEmployeePhoto();
   }, [user]);
 
+
+  //Loads initial data from the user object and reloads it if the user changes
   useEffect(() => {
     if (user) {
       const editableData = {
@@ -76,9 +79,10 @@ const ProfilePage = () => {
     }
   }, [user, authLoading]);
 
+  //
   useEffect(() => {
     let changed = false;
-    for (const key of Object.keys(formData)) {
+    for (const key of Object.keys(formData)) { //Object.keys(formData) - Gets all field names
       if (String(formData[key] || '') !== String(initialFormData[key] || '')) {
         changed = true;
         break;

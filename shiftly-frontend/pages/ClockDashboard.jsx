@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ClockInOut from '../components/ClockInOut';
-import { calculateHoursFromTimeLogs, formatDuration } from '../utils/locationService';
 
 const ClockDashboard = () => {
     const { user } = useAuth();
@@ -100,7 +99,7 @@ const ClockDashboard = () => {
                 .eq('employee_id', userProfile.employee_id)
                 .not('time_log', 'is', null)
                 .order('start_time', { ascending: false })
-                .limit(10);
+                .limit(10); //fetch only 10 rows at max
 
             if (error) {
                 console.error('Error fetching recent clock events:', error);
@@ -114,7 +113,7 @@ const ClockDashboard = () => {
             data?.forEach(schedule => {
                 if (schedule.time_log && Array.isArray(schedule.time_log)) {
                     const logs = schedule.time_log.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                    
+
                     let clockIn = null;
                     let clockOut = null;
                     let breaks = [];
@@ -163,6 +162,7 @@ const ClockDashboard = () => {
         console.log(`${eventType} successful:`, eventData);
     };
 
+   
 
     if (isLoading) {
         return (
@@ -209,7 +209,7 @@ const ClockDashboard = () => {
                                 userId={userProfile.employee_id}
                                 employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
                                 onClockEvent={handleClockEvent}
-                                allowedRadius={6800}
+                                allowedRadius={50}
                             />
                         </div>
 

@@ -32,7 +32,7 @@ export const useAuth = () => {
         const expiration = localStorage.getItem("session_expiration");
         const now = new Date().getTime();
         
-        if (expiration && now > parseInt(expiration, 10)) {
+        if (expiration && now > parseInt(expiration, 10)) { //10 is radix for decimal
           // Session expired, sign out
           await supabase.auth.signOut();
           localStorage.removeItem("session_expiration");

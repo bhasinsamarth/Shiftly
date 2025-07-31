@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import { getCoordinatesFromAddress } from '../utils/locationService';
-import { COMMON_TIMEZONES, formatDateTime, getCurrentLocalTime, getTimezoneOffset } from '../utils/timezoneUtils';
+import { getTimezoneOffset } from '../utils/timezoneUtils';
 import TimezoneDropdown from '../components/TimezoneDropdown';
 import { EllipsisVertical } from 'lucide-react';
 
 const BulkStoreGeocoding = () => {
-    const { user, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
-
+    
     const [stores, setStores] = useState([]);
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -63,6 +59,7 @@ const BulkStoreGeocoding = () => {
             }
         } catch {
             // Invalid JSON
+            console.error('Error parsing store coordinates:', store.coordinates);
         }
         return null;
     };
@@ -104,6 +101,7 @@ const BulkStoreGeocoding = () => {
             }
         });
 
+
         setProgress({ current: 0, total: storesToGeocode.length });
         const geocodingResults = [];
         let successCount = 0;
@@ -128,6 +126,7 @@ const BulkStoreGeocoding = () => {
                     continue;
                 }
 
+                // Throttle requests to avoid hitting API limits
                 if (i > 0) {
                     await new Promise(resolve => setTimeout(resolve, 1100));
                 }
@@ -207,8 +206,8 @@ const BulkStoreGeocoding = () => {
                 if (error) throw error;
 
                 alert(`Successfully geocoded ${store.store_name}!
-Latitude: ${coordinates.latitude.toFixed(6)}
-Longitude: ${coordinates.longitude.toFixed(6)}`);
+                Latitude: ${coordinates.latitude.toFixed(6)}
+                Longitude: ${coordinates.longitude.toFixed(6)}`);
                 await fetchStores();
             } else {
                 alert(`Failed to geocode ${store.store_name}. Please check the address.`);

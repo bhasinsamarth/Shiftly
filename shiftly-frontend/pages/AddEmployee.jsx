@@ -1,10 +1,9 @@
-// src/components/AddEmployee.jsx
+// src/pages/AddEmployee.jsx
 import React, { useState, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import DropdownMenu from '../components/DropdownMenu';
-import RoleProtectedRoute from '../components/RoleProtectedRoute';
 
 // endpoint of your mail-sending backend
 const MAILER_API = import.meta.env.VITE_MAILER_API;
@@ -16,7 +15,7 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
-  // We no longer need to store the dropdown options in the component state
+  
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -24,7 +23,7 @@ const AddEmployee = () => {
   const navigate = useNavigate();
 
   // We no longer need these fetch effects since the DropdownSelect component
-  // will handle fetching the data directly from the database
+  //DropDown menu will handle fetching the data directly from the database
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -57,8 +56,9 @@ const AddEmployee = () => {
       // Generate a secure random token
       const token = uuidv4();
       // Set expiry 24 hours from now
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const createdAt = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      
 
       // Build the invite object
       const inviteData = {
@@ -70,6 +70,8 @@ const AddEmployee = () => {
         created_at: createdAt,
         is_used: false,
       };
+      // If employee_id is provided, add it to the inviteData
+      // This is optional, so we check if it's present
       if (form.employee_id) {
         inviteData.employee_id = parseInt(form.employee_id, 10);
       }
@@ -231,12 +233,5 @@ const AddEmployee = () => {
   );
 };
 
-// Wrap the AddEmployee component with RoleProtectedRoute
-// Role IDs 1 (owner) and 2 (admin) are allowed to access this page
-const ProtectedAddEmployee = () => (
-  <RoleProtectedRoute allowedRoleIds={[1, 2]}>
-    <AddEmployee />
-  </RoleProtectedRoute>
-);
+export default AddEmployee;
 
-export default ProtectedAddEmployee;
