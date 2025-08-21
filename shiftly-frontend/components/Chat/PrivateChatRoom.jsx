@@ -112,36 +112,45 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
     return () => supabase.removeChannel(channel);
   }, [rid, deletedAt]);
 
-  // 5️⃣ Send a message (encrypt & insert)
+  // 5️⃣ Send a message (optimistic UI)
+  const [optimisticMessages, setOptimisticMessages] = useState([]);
   const handleSend = async () => {
     if (!newMsg.trim()) return;
-    await sendMessage(rid, newMsg.trim(), empId);
+    const tempMsg = {
+      id: `optimistic-${Date.now()}`,
+      senderId: empId,
+      text: newMsg.trim(),
+      sentAt: new Date().toISOString(),
+      optimistic: true,
+    };
+    setOptimisticMessages(msgs => [...msgs, tempMsg]); // Add to chat box immediately
     setNewMsg('');
+    await sendMessage(rid, tempMsg.text, empId);
+    setOptimisticMessages(msgs => msgs.filter(m => m.id !== tempMsg.id)); // Remove after backend loads
   };
 
   // 6️⃣ Group by date & auto-scroll
+  const allMessages = [...messages, ...optimisticMessages];
   const grouped = useMemo(() => {
     const byDay = {};
-    messages.forEach(m => {
+    allMessages.forEach(m => {
       const day = new Date(m.sentAt).toLocaleDateString(undefined, {
         month: 'long', day: 'numeric', year: 'numeric'
       });
       ;(byDay[day] ||= []).push(m);
     });
     return Object.entries(byDay);
-  }, [messages]);
+  }, [allMessages]);
 
   useEffect(() => {
     const c = document.getElementById('private-chat-container');
     if (c) c.scrollTop = c.scrollHeight;
-  }, [messages]);
-
-  if (loading) return <div className="p-4 text-center">Loading chat…</div>;
+  }, [allMessages]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-white">
+    <div className="flex flex-col w-full max-w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl xl:max-w-3xl mx-auto bg-white rounded-none shadow-none overflow-hidden" style={{ height: '700px' }}>
       {/* Header */}
-      <div className="h-16 px-6 flex items-center border-b bg-white gap-4">
+      <div className="flex-shrink-0 h-16 px-6 flex items-center border-b bg-white gap-4">
         <img src={partnerAvatar} alt={partnerName} className="h-10 w-10 rounded-full object-cover" />
         <span className="font-semibold text-lg">{partnerName}</span>
       </div>
@@ -149,7 +158,8 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       {/* Messages */}
       <div
         id="private-chat-container"
-        className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50"
+        className="flex-1 min-h-0 overflow-y-auto px-6 py-3 bg-gray-50"
+        style={{ minHeight: 0, maxHeight: 'calc(700px - 64px - 56px)' }} // 64px header + 56px input
       >
         {grouped.map(([date, msgs]) => (
           <div key={date}>
@@ -173,16 +183,12 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
                     <div className={`max-w-lg ${isMine ? 'text-right' : 'text-left'}`}>
                       <div
                         className={`inline-block px-3 py-2 rounded-lg text-sm ${
-                          isMine ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border'
+                          isMine ? (msg.optimistic ? 'bg-blue-300 text-white opacity-70 animate-pulse' : 'bg-blue-600 text-white') : 'bg-white text-gray-800 border'
                         }`}
                       >
                         {msg.text}
                       </div>
-                      <div className="text-xs mt-1 text-gray-500">
-                        {new Date(msg.sentAt).toLocaleTimeString([], {
-                          hour: '2-digit', minute: '2-digit'
-                        })}
-                      </div>
+                      <div className={`text-xs mt-1 ${msg.optimistic ? 'text-gray-400' : 'text-gray-500'}`}>{msg.optimistic ? 'Sending…' : new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                   </div>
                 </div>
@@ -193,17 +199,20 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       </div>
 
       {/* Input */}
-      <div className="px-6 py-4 border-t bg-white flex items-center gap-3">
+      <div className="flex-shrink-0 px-4 py-2 border-t bg-white flex items-center gap-2 sticky bottom-0 z-10"
+        style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.03)' }}>
         <input
           value={newMsg}
           onChange={e => setNewMsg(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Write a message"
-          className="flex-1 rounded-full border px-4 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 rounded-full border px-4 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+          style={{ minWidth: 0 }}
         />
         <button
           onClick={handleSend}
           className="bg-blue-600 text-white px-4 py-2 rounded-full font-medium hover:bg-blue-700 transition"
+          style={{ whiteSpace: 'nowrap' }}
         >
           Send
         </button>

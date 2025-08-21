@@ -49,18 +49,12 @@ app.post('/send-invite', async (req, res) => {
 
     res.json({ status: 'sent' });
   } catch (err) {
-     // 1) Log the full error to your console
-     // 1) Log the full error to your console
     console.error('Mailjet error:', {
       statusCode: err.statusCode,
       message: err.message,
-      // Mailjet puts the API response in err.response.body
-      // Mailjet puts the API response in err.response.body
       responseBody: err.response && err.response.body,
     });
 
-    // 2) Return that info to the front-end for easier debugging
-    // 2) Return that info to the front-end for easier debugging
     res.status(500).json({
       error: err.message,
       statusCode: err.statusCode,

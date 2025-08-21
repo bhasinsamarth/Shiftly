@@ -369,7 +369,7 @@ export default function ChatPage() {
   };
 
   if (!employee || isLoading) {
-    return <div className="p-6 text-center">Loading…</div>;
+    // return <div className="p-6 text-center">Loading…</div>;
   }
 
   return (
@@ -435,9 +435,9 @@ export default function ChatPage() {
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 truncate">
-                          {room.type === 'store' ? storeName : room.name}
+                          {room.type === 'store' ? 'Store Chat' : room.name}
                         </div>
-                        <div className="text-xs text-gray-500">Group chat</div>
+                        <div className="text-xs text-gray-500">{room.type === 'store' ? 'Store chat' : 'Group chat'}</div>
                       </div>
                       {room.unread_count > 0 && (
                         <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
@@ -502,7 +502,7 @@ export default function ChatPage() {
         )}
 
         {selectedChat ? (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400">Loading chat…</div>}>
+          <Suspense>
             {selectedChat.type === 'group' && (
               <GroupChatRoom
                 roomId={selectedChat.id}
@@ -535,7 +535,7 @@ export default function ChatPage() {
 
       {/* New Private Modal */}
       {showNewPrivateModal && (
-        <Suspense fallback={<div>Loading…</div>}>
+        <Suspense>
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
             <div className="bg-white rounded-lg p-6 w-80">
               <h2 className="text-lg font-semibold mb-4">New Private Chat</h2>
@@ -584,7 +584,7 @@ export default function ChatPage() {
 
       {/* New Group Modal */}
       {showNewGroupModal && (
-        <Suspense fallback={<div>Loading…</div>}>
+        <Suspense>
           <NewGroupModal
             allEmployees={filteredEmployees}
             onCreate={createGroupChat}

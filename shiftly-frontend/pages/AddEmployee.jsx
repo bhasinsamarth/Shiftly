@@ -16,15 +16,12 @@ const AddEmployee = () => {
     role_id: '',
     employee_id: '',
   });
-  // We no longer need to store the dropdown options in the component state
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const navigate = useNavigate();
 
-  // We no longer need these fetch effects since the DropdownSelect component
-  // will handle fetching the data directly from the database
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
