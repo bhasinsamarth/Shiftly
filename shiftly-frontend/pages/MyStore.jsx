@@ -64,7 +64,7 @@ const MyStore = () => {
 
     const formatDateTime = (dateTimeStr) => {
         const options = {
-            weekday: "long",
+            weekday: "short",
             year: "numeric",
             month: "long",
             day: "numeric",

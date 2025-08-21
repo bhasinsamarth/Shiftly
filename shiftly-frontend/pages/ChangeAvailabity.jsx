@@ -1,20 +1,14 @@
 import React, { useState } from "react";
-import CalendarWidget from "../components/CalendarWidget";
+import RangeCalendar from "../components/RangeCalendar";
 import { supabase } from "../supabaseClient";
 import { submitEmployeeRequest } from "../utils/requestHandler";
+import {  localToUTC } from "../utils/timezoneUtils";
 
 const WEEKDAYS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 ];
 
-function getMonthYear(date) {
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth(),
-  };
-}
-
-const AvailabilityTable = ({ availability, onChange }) => (
+const AvailabilityTable = ({ availability, onChange, storeTimezone = "UTC" }) => (
   <div className="bg-white rounded-lg shadow overflow-hidden">
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-50">
@@ -29,28 +23,20 @@ const AvailabilityTable = ({ availability, onChange }) => (
           <tr key={day}>
             <td className="px-6 py-4 whitespace-nowrap font-medium">{day}</td>
             <td className="px-6 py-4">
-              {availability[day]?.start_time ? (
-                <span>{formatToLocalDateTime(availability[day].start_time)}</span>
-              ) : (
-                <input
-                  type="time"
-                  value={availability[day]?.start || ""}
-                  onChange={(e) => onChange(day, "start", e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 w-full"
-                />
-              )}
+              <input
+                type="time"
+                value={availability[day]?.start || ""}
+                onChange={(e) => onChange(day, "start", e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 w-full"
+              />
             </td>
             <td className="px-6 py-4">
-              {availability[day]?.end_time ? (
-                <span>{formatToLocalDateTime(availability[day].end_time)}</span>
-              ) : (
-                <input
-                  type="time"
-                  value={availability[day]?.end || ""}
-                  onChange={(e) => onChange(day, "end", e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 w-full"
-                />
-              )}
+              <input
+                type="time"
+                value={availability[day]?.end || ""}
+                onChange={(e) => onChange(day, "end", e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 w-full"
+              />
             </td>
           </tr>
         ))}
@@ -59,45 +45,17 @@ const AvailabilityTable = ({ availability, onChange }) => (
   </div>
 );
 
-function parseLocalDate(str) {
-  const [year, month, day] = str.split('-').map(Number);
-  return new Date(year, month - 1, day);
-}
-
-// ✅ Combines a date and time into a UTC ISO string
-function combineDateAndTimeAsLocalISOString(dateObj, timeStr) {
-  const [hour, minute] = timeStr.split(":").map(Number);
-  const local = new Date(
-    dateObj.getFullYear(),
-    dateObj.getMonth(),
-    dateObj.getDate(),
-    hour,
-    minute,
-    0,
-    0
-  );
-  return local.toISOString();
-}
-
-// ✅ Formats UTC string to readable local time
-export function formatToLocalDateTime(utcString) {
-  if (!utcString) return "-";
-  const date = new Date(utcString);
-  return date.toLocaleString([], {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
+function combineDateAndTimeAsStoreISOString(dateObj, timeStr, storeTimezone = "UTC") {
+  // Create a date string in YYYY-MM-DD format
+  const dateStr = dateObj.toISOString().split('T')[0];
+  // Combine date and time as local time in store timezone
+  const localDateTime = `${dateStr}T${timeStr}:00`;
+  // Convert from store local time to UTC
+  return localToUTC(localDateTime, storeTimezone);
 }
 
 const ChangeAvailability = () => {
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const today = new Date();
-  const [{ year, month }, setMonthYear] = useState(getMonthYear(today));
-
+  const [range, setRange] = useState({ start: null, end: null });
   const [availability, setAvailability] = useState(() => {
     const initial = {};
     WEEKDAYS.forEach((day) => {
@@ -105,54 +63,40 @@ const ChangeAvailability = () => {
     });
     return initial;
   });
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [selecting, setSelecting] = useState(null);
   const [employeeId, setEmployeeId] = useState(null);
+  const [storeTimezone, setStoreTimezone] = useState("UTC");
 
   React.useEffect(() => {
-    async function fetchEmployeeId() {
+    async function fetchEmployeeData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: employee } = await supabase
           .from("employee")
-          .select("employee_id")
+          .select("employee_id, store_id")
           .eq("email", user.email)
           .single();
-        if (employee) setEmployeeId(employee.employee_id);
+        
+        if (employee) {
+          setEmployeeId(employee.employee_id);
+          
+          // Fetch store timezone
+          if (employee.store_id) {
+            const { data: store } = await supabase
+              .from("store")
+              .select("timezone")
+              .eq("store_id", employee.store_id)
+              .single();
+            if (store?.timezone) setStoreTimezone(store.timezone);
+          }
+        }
       }
     }
-    fetchEmployeeId();
+    fetchEmployeeData();
   }, []);
 
-  const highlightedDates = React.useMemo(() => {
-    if (!startDate || !endDate) return [];
-    const arr = [];
-    let d = parseLocalDate(startDate);
-    const end = parseLocalDate(endDate);
-    while (d <= end) {
-      arr.push(new Date(d));
-      d.setDate(d.getDate() + 1);
-    }
-    return arr;
-  }, [startDate, endDate]);
-
-  const handleDateClick = (date) => {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const localDateStr = `${yyyy}-${mm}-${dd}`;
-    if (selecting === "start") {
-      setStartDate(localDateStr);
-      setSelecting(null);
-    } else if (selecting === "end") {
-      setEndDate(localDateStr);
-      setSelecting(null);
-    }
-  };
-
-  const isDateValid = startDate && endDate && startDate <= endDate;
+  const isDateValid = range.start && range.end && range.start <= range.end;
   const isValidTimeForAllDays = Object.values(availability).every(
     ({ start, end }) => start && end && start < end
   );
@@ -176,14 +120,13 @@ const ChangeAvailability = () => {
     }
 
     const combinedAvailability = {};
-    let d = parseLocalDate(startDate);
-    const end = parseLocalDate(endDate);
+    let d = new Date(range.start);
+    const end = new Date(range.end);
     while (d <= end) {
       const dayName = WEEKDAYS[d.getDay()];
       const { start, end: endTime } = availability[dayName];
-      const startISO = combineDateAndTimeAsLocalISOString(d, start);
-      const endISO = combineDateAndTimeAsLocalISOString(d, endTime);
-      console.log(`${dayName}: ${startISO} to ${endISO}`);
+      const startISO = combineDateAndTimeAsStoreISOString(d, start, storeTimezone);
+      const endISO = combineDateAndTimeAsStoreISOString(d, endTime, storeTimezone);
       combinedAvailability[dayName] = {
         start_time: startISO,
         end_time: endISO,
@@ -195,8 +138,8 @@ const ChangeAvailability = () => {
       employee_id: employeeId,
       request_type: "availability",
       request: {
-        start_date: startDate,
-        end_date: endDate,
+        start_date: range.start ? range.start.toISOString().split('T')[0] : "",
+        end_date: range.end ? range.end.toISOString().split('T')[0] : "",
         preferred_hours: combinedAvailability
       }
     };
@@ -212,60 +155,53 @@ const ChangeAvailability = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex p-8 space-x-8">
+    <div className="flex flex-col md:flex-row w-full">
       {/* Calendar Section */}
-      <div className="w-80 bg-white p-6 rounded-xl shadow flex flex-col items-center">
-        <h2 className="text-xl font-semibold mb-4">Select Date Range</h2>
-        <div className="flex gap-2 mb-4">
-          <button
-            className={`px-3 py-1 rounded ${selecting === "start" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-            onClick={() => setSelecting("start")}
-          >
-            Pick Start
-          </button>
-          <button
-            className={`px-3 py-1 rounded ${selecting === "end" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-            onClick={() => setSelecting("end")}
-          >
-            Pick End
-          </button>
+      <div className=" flex flex-col items-center justify-center bg-white-50 p-4 sm:p-6 md:p-8 border-b md:border-b-0 md:border-r min-h-[420px]">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-center">Select Date Range</h3>
+        <div className="w-full flex justify-center mb-4">
+          <RangeCalendar
+            selectedRange={range}
+            onRangeSelect={setRange}
+          />
         </div>
-        <CalendarWidget
-          year={year}
-          month={month}
-          highlightedDates={highlightedDates}
-          selectedDate={null}
-          onDateClick={handleDateClick}
-        />
+        <button
+          type="button"
+          className="px-3 py-1 rounded text-xs font-semibold border bg-gray-200 text-gray-700 mt-2"
+          onClick={() => setRange({ start: null, end: null })}
+        >
+          Clear Selection
+        </button>
         <div className="flex gap-2 mt-4 w-full">
           <div className="flex-1">
             <label className="block text-xs font-medium mb-1">Start Date</label>
             <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm"
+              type="text"
+              value={range.start ? range.start.toLocaleDateString() : ''}
+              readOnly
+              className="w-full border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
             />
           </div>
           <div className="flex-1">
             <label className="block text-xs font-medium mb-1">End Date</label>
             <input
-              type="date"
-              value={endDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm"
+              type="text"
+              value={range.end ? range.end.toLocaleDateString() : ''}
+              readOnly
+              className="w-full border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed"
             />
           </div>
         </div>
       </div>
       {/* Form Section */}
-      <div className="flex-1 bg-white p-6 rounded-xl shadow">
-        <h1 className="text-3xl font-bold mb-6">Set Your Availability</h1>
-        <form onSubmit={handleSubmit}>
+      <div className="md:w-1/2 w-full p-4 sm:p-6 flex flex-col justify-center">
+        <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-center">Set Your Availability</h2>
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">Daily Availability</h2>
+            <h3 className="text-lg font-semibold mb-4">Daily Availability</h3>
             <AvailabilityTable
               availability={availability}
+              storeTimezone={storeTimezone}
               onChange={(day, field, value) =>
                 setAvailability({
                   ...availability,
@@ -278,7 +214,7 @@ const ChangeAvailability = () => {
           {success && <p className="text-green-500 mb-4">{success}</p>}
           <button
             type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition"
           >
             Save Availability
           </button>

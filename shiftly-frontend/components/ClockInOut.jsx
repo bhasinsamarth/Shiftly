@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from '../context/LocationContext';
 import { isWithinRadius, formatDistance, calculateDistance } from '../utils/locationService';
 import { supabase } from '../supabaseClient';
@@ -8,7 +9,7 @@ const ClockInOut = ({
     userId, // This will be employee_id
     employeeName, 
     onClockEvent,
-    allowedRadius = 50,
+    allowedRadius ,
     className = "" 
 }) => {
     const { 

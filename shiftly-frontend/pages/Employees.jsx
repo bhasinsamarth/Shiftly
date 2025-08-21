@@ -18,7 +18,9 @@ export default function Employees() {
           role:role_id (
             role_desc
           )
-        `);
+        `)
+        
+        
       if (error) {
         console.error('Error fetching employees:', error);
         setError('Failed to fetch employees');

@@ -16,7 +16,7 @@ const Timecards = () => {
     const [message, setMessage] = useState('');
     const [saving, setSaving] = useState(false);
     const [editingCell, setEditingCell] = useState(null);
-    const [storeTimezone, setStoreTimezone] = useState('America/Toronto'); // Default timezone
+    const [storeTimezone, setStoreTimezone] = useState('America/Edmonton'); // Default timezone
 
     // Fetch store and timezone based on user email
     useEffect(() => {
@@ -43,7 +43,6 @@ const Timecards = () => {
 
         const fetchData = async () => {
             const start = date.startOf('day');
-            // const end = date.endOf('day');
 
             const { data: employeesData } = await supabase
                 .from('employee')

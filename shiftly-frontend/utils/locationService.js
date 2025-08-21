@@ -97,10 +97,10 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
  * Check if user is within allowed radius of store location
  * @param {object} userLocation - User's current location {latitude, longitude}
  * @param {object} storeLocation - Store location {latitude, longitude}
- * @param {number} allowedRadius - Allowed radius in meters (default: 50)
+ * @param {number} allowedRadius - Allowed radius in meters 
  * @returns {boolean} True if within radius, false otherwise
  */
-export const isWithinRadius = (userLocation, storeLocation, allowedRadius = 50) => {
+export const isWithinRadius = (userLocation, storeLocation, allowedRadius) => {
     const distance = calculateDistance(
         userLocation.latitude,
         userLocation.longitude,

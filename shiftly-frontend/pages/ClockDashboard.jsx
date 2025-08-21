@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import ClockInOut from '../components/ClockInOut';
-import { calculateHoursFromTimeLogs, formatDuration } from '../utils/locationService';
 
 const ClockDashboard = () => {
     const { user } = useAuth();
@@ -100,7 +99,7 @@ const ClockDashboard = () => {
                 .eq('employee_id', userProfile.employee_id)
                 .not('time_log', 'is', null)
                 .order('start_time', { ascending: false })
-                .limit(10);
+                .limit(10); //fetch only 10 rows at max
 
             if (error) {
                 console.error('Error fetching recent clock events:', error);
@@ -114,7 +113,7 @@ const ClockDashboard = () => {
             data?.forEach(schedule => {
                 if (schedule.time_log && Array.isArray(schedule.time_log)) {
                     const logs = schedule.time_log.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                    
+
                     let clockIn = null;
                     let clockOut = null;
                     let breaks = [];
@@ -163,29 +162,7 @@ const ClockDashboard = () => {
         console.log(`${eventType} successful:`, eventData);
     };
 
-    const formatDateTime = (dateString) => {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleString();
-    };
-
-    const calculateHoursWorked = (clockIn, clockOut, timeLogs = null) => {
-        if (!clockIn || !clockOut) return 'In Progress';
-        
-        // If we have time logs, use the proper calculation that includes breaks
-        if (timeLogs && Array.isArray(timeLogs)) {
-            const { workTime } = calculateHoursFromTimeLogs(timeLogs);
-            return formatDuration(workTime);
-        }
-        
-        // Fallback to simple calculation
-        const start = new Date(clockIn);
-        const end = new Date(clockOut);
-        const diffMs = end - start;
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
-        return `${hours}h ${minutes}m`;
-    };
+   
 
     if (isLoading) {
         return (
@@ -232,7 +209,7 @@ const ClockDashboard = () => {
                                 userId={userProfile.employee_id}
                                 employeeName={`${userProfile.first_name} ${userProfile.last_name}`}
                                 onClockEvent={handleClockEvent}
-                                allowedRadius={6800}
+                                allowedRadius={50}
                             />
                         </div>
 

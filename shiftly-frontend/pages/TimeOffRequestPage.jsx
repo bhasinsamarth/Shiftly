@@ -95,10 +95,12 @@ export default function TimeOffRequestPage() {
           reason
         }
       };
-      const result = await submitEmployeeRequest(payload);
 
-      if (!result.success) {
-        openErrorModal('Failed to submit request: ' + result.error);
+      // Use the imported submitEmployeeRequest utility to submit the request
+      const result = await submitEmployeeRequest(requestPayload);
+
+      if (result && result.error) {
+        setMessage('Failed to submit request: ' + result.error);
       } else {
         openErrorModal('Your time-off request has been submitted for approval!');
         setRange({ start: null, end: null });
@@ -112,15 +114,6 @@ export default function TimeOffRequestPage() {
     }
   };
 
-  // Calendar click logic
-  const handleDateClick = date => {
-    if (!range.start || (range.start && range.end)) {
-      setRange({ start: date, end: null });
-    } else {
-      if (date < range.start) setRange({ start: date, end: range.start });
-      else setRange({ start: range.start, end: date });
-    }
-  };
 
   return (
     <>
