@@ -126,8 +126,22 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
     setOptimisticMessages(msgs => [...msgs, tempMsg]); // Add to chat box immediately
     setNewMsg('');
     await sendMessage(rid, tempMsg.text, empId);
-    setOptimisticMessages(msgs => msgs.filter(m => m.id !== tempMsg.id)); // Remove after backend loads
+    // Do NOT remove optimistic message here; wait for backend confirmation
   };
+
+  // Remove optimistic messages only when real message arrives
+  useEffect(() => {
+    if (!optimisticMessages.length || !messages.length) return;
+    setOptimisticMessages(msgs =>
+      msgs.filter(optMsg =>
+        !messages.some(realMsg =>
+          realMsg.senderId === optMsg.senderId &&
+          realMsg.text === optMsg.text &&
+          Math.abs(new Date(realMsg.sentAt) - new Date(optMsg.sentAt)) < 60000 // within 1 min
+        )
+      )
+    );
+  }, [messages]);
 
   // 6️⃣ Group by date & auto-scroll
   const allMessages = [...messages, ...optimisticMessages];

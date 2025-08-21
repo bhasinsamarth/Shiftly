@@ -23,6 +23,49 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
   // Optimistic UI for sending messages
   const [optimisticMessages, setOptimisticMessages] = useState([]);
 
+  // Combine real and optimistic messages
+  const allMessages = useMemo(() => [...messages, ...optimisticMessages], [messages, optimisticMessages]);
+
+  // Group messages by date (use sentAt)
+  const groupedMessages = useMemo(() => {
+    return Object.entries(
+      allMessages.reduce((acc, msg) => {
+        const key = new Date(msg.sentAt).toLocaleDateString(undefined, {
+          month: 'long', day: 'numeric', year: 'numeric',
+        });
+        (acc[key] = acc[key] || []).push(msg);
+        return acc;
+      }, {})
+    );
+  }, [allMessages]);
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    const c = document.getElementById('group-chat-container');
+    if (c) c.scrollTop = c.scrollHeight;
+  }, [allMessages]); // auto-scroll on allMessages
+
+  // Send encrypted message with optimistic UI
+  const handleSend = async () => {
+    if (!newMsg.trim() || !rid) return;
+    const tempMsg = {
+      id: `optimistic-${Date.now()}`,
+      senderId: currentEmployee.employee_id,
+      text: newMsg.trim(),
+      sentAt: new Date().toISOString(),
+      senderName: currentEmployee.first_name + ' ' + currentEmployee.last_name,
+      senderAvatar: currentEmployee.profile_photo_path
+        ? supabase.storage.from('profile-photo').getPublicUrl(currentEmployee.profile_photo_path).data.publicUrl
+        : DEFAULT_AVATAR_URL,
+      optimistic: true,
+    };
+    setOptimisticMessages(msgs => [...msgs, tempMsg]); // Render instantly
+    setNewMsg('');
+    // Await backend, then remove pending ONLY after real message arrives
+    await sendEncryptedMessage(rid, tempMsg.text, currentEmployee.employee_id);
+    // Do NOT remove optimistic message here; let real-time subscription handle it
+  };
+
   // Participants & admin
   const [participants, setParticipants]             = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
@@ -105,6 +148,15 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
       setMessages(ui);
       setLoading(false);
 
+      // Remove optimistic message if real one with same text and senderId exists
+      setOptimisticMessages(msgs => msgs.filter(opt =>
+        !ui.some(real =>
+          real.senderId === opt.senderId &&
+          real.text === opt.text &&
+          Math.abs(new Date(real.sentAt) - new Date(opt.sentAt)) < 10000 // 10s window
+        )
+      ));
+
       // mark as read
       await supabase
         .from('chat_room_participants')
@@ -127,48 +179,6 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
 
     return () => supabase.removeChannel(channel);
   }, [rid, currentEmployee.employee_id, queryClient]);
-
-  // Auto-scroll when messages change
-  useEffect(() => {
-    const c = document.getElementById('group-chat-container');
-    if (c) c.scrollTop = c.scrollHeight;
-  }, [messages, optimisticMessages]); // include optimisticMessages for instant scroll
-
-  // Send encrypted message with optimistic UI
-  const handleSend = async () => {
-    if (!newMsg.trim() || !rid) return;
-    const tempMsg = {
-      id: `optimistic-${Date.now()}`,
-      senderId: currentEmployee.employee_id,
-      text: newMsg.trim(),
-      sentAt: new Date().toISOString(),
-      senderName: currentEmployee.first_name + ' ' + currentEmployee.last_name,
-      senderAvatar: currentEmployee.profile_photo_path
-        ? supabase.storage.from('profile-photo').getPublicUrl(currentEmployee.profile_photo_path).data.publicUrl
-        : DEFAULT_AVATAR_URL,
-      optimistic: true,
-    };
-    setOptimisticMessages(msgs => [...msgs, tempMsg]); // Show pending message instantly
-    setNewMsg('');
-    await sendEncryptedMessage(rid, tempMsg.text, currentEmployee.employee_id);
-    setOptimisticMessages(msgs => msgs.filter(m => m.id !== tempMsg.id)); // Remove pending after send
-  };
-
-  // Combine real and optimistic messages
-  const allMessages = [...messages, ...optimisticMessages];
-
-  // Group messages by date
-  const groupedMessages = useMemo(() => {
-    return Object.entries(
-      allMessages.reduce((acc, msg) => {
-        const key = new Date(msg.sentAt).toLocaleDateString(undefined, {
-          month: 'long', day: 'numeric', year: 'numeric',
-        });
-        (acc[key] = acc[key] || []).push(msg);
-        return acc;
-      }, {})
-    );
-  }, [allMessages]);
 
   // Persist changes
     const saveGroupName = async () => {

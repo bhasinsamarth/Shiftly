@@ -194,11 +194,16 @@ export default function ChatPage() {
         .single();
       if (!meRec) return;
 
-      const { data: storeRec } = await supabase
-        .from('store')
-        .select('store_name')
-        .eq('store_id', meRec.store_id)
-        .single();
+      // Fetch store name
+      let storeNameValue = '';
+      if (meRec.store_id) {
+        const { data: storeRec } = await supabase
+          .from('store')
+          .select('store_name')
+          .eq('store_id', meRec.store_id)
+          .single();
+        storeNameValue = storeRec?.store_name || '';
+      }
 
       const { data: coworkers } = await supabase
         .from('employee')
@@ -206,7 +211,7 @@ export default function ChatPage() {
         .neq('employee_id', meRec.employee_id);
 
       setEmployee(meRec);
-      setStoreName(storeRec.store_name);
+      setStoreName(storeNameValue);
       setAllEmployees(
         coworkers.map(e => ({
           ...e,
@@ -435,7 +440,7 @@ export default function ChatPage() {
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-900 truncate">
-                          {room.type === 'store' ? 'Store Chat' : room.name}
+                          {room.type === 'store' ? storeName : room.name}
                         </div>
                         <div className="text-xs text-gray-500">{room.type === 'store' ? 'Store chat' : 'Group chat'}</div>
                       </div>

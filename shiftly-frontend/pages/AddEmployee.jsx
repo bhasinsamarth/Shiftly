@@ -23,7 +23,7 @@ const AddEmployee = () => {
   const navigate = useNavigate();
 
   // We no longer need these fetch effects since the DropdownSelect component
-  // will handle fetching the data directly from the database
+  //DropDown menu will handle fetching the data directly from the database
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
