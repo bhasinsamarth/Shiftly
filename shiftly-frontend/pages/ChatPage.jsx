@@ -194,11 +194,16 @@ export default function ChatPage() {
         .single();
       if (!meRec) return;
 
-      const { data: storeRec } = await supabase
-        .from('store')
-        .select('store_name')
-        .eq('store_id', meRec.store_id)
-        .single();
+      // Fetch store name
+      let storeNameValue = '';
+      if (meRec.store_id) {
+        const { data: storeRec } = await supabase
+          .from('store')
+          .select('store_name')
+          .eq('store_id', meRec.store_id)
+          .single();
+        storeNameValue = storeRec?.store_name || '';
+      }
 
       const { data: coworkers } = await supabase
         .from('employee')
@@ -206,7 +211,7 @@ export default function ChatPage() {
         .neq('employee_id', meRec.employee_id);
 
       setEmployee(meRec);
-      setStoreName(storeRec.store_name);
+      setStoreName(storeNameValue);
       setAllEmployees(
         coworkers.map(e => ({
           ...e,
@@ -369,7 +374,7 @@ export default function ChatPage() {
   };
 
   if (!employee || isLoading) {
-    return <div className="p-6 text-center">Loading…</div>;
+    // return <div className="p-6 text-center">Loading…</div>;
   }
 
   return (
@@ -388,15 +393,46 @@ export default function ChatPage() {
         </div>
         {/* Tabs */}
         <div className="flex gap-2 px-4 pt-4 pb-2 border-b">
-          {['all','group','private'].map(m => (
+          {["all", "group", "private"].map(m => (
             <button
               key={m}
               onClick={() => { setMode(m); setSelectedChat(null); }}
-              className={`px-3 py-1 rounded font-medium ${
-                mode === m ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+              className={`relative px-3 py-1 rounded font-medium ${
+                mode === m ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
               }`}
             >
-              {m === 'all' ? 'All' : m === 'group' ? 'Groups' : 'Personal'}
+              {m === "all"
+                ? (
+                    <>
+                      All
+                      {(totalGroupUnread + totalPrivateUnread > 0) && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalGroupUnread + totalPrivateUnread}
+                        </span>
+                      )}
+                    </>
+                  )
+                : m === "group"
+                ? (
+                    <>
+                      Groups
+                      {totalGroupUnread > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalGroupUnread}
+                        </span>
+                      )}
+                    </>
+                  )
+                : (
+                    <>
+                      Personal
+                      {totalPrivateUnread > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalPrivateUnread}
+                        </span>
+                      )}
+                    </>
+                  )}
             </button>
           ))}
         </div>
@@ -437,7 +473,7 @@ export default function ChatPage() {
                         <div className="font-medium text-gray-900 truncate">
                           {room.type === 'store' ? storeName : room.name}
                         </div>
-                        <div className="text-xs text-gray-500">Group chat</div>
+                        <div className="text-xs text-gray-500">{room.type === 'store' ? 'Store chat' : 'Group chat'}</div>
                       </div>
                       {room.unread_count > 0 && (
                         <span className="ml-auto bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
@@ -502,7 +538,7 @@ export default function ChatPage() {
         )}
 
         {selectedChat ? (
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center text-gray-400">Loading chat…</div>}>
+          <Suspense>
             {selectedChat.type === 'group' && (
               <GroupChatRoom
                 roomId={selectedChat.id}
@@ -535,7 +571,7 @@ export default function ChatPage() {
 
       {/* New Private Modal */}
       {showNewPrivateModal && (
-        <Suspense fallback={<div>Loading…</div>}>
+        <Suspense>
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
             <div className="bg-white rounded-lg p-6 w-80">
               <h2 className="text-lg font-semibold mb-4">New Private Chat</h2>
@@ -584,7 +620,7 @@ export default function ChatPage() {
 
       {/* New Group Modal */}
       {showNewGroupModal && (
-        <Suspense fallback={<div>Loading…</div>}>
+        <Suspense>
           <NewGroupModal
             allEmployees={filteredEmployees}
             onCreate={createGroupChat}

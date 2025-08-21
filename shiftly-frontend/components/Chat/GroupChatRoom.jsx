@@ -20,6 +20,52 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
   const [newMsg, setNewMsg]     = useState('');
   const [loading, setLoading]   = useState(true);
 
+  // Optimistic UI for sending messages
+  const [optimisticMessages, setOptimisticMessages] = useState([]);
+
+  // Combine real and optimistic messages
+  const allMessages = useMemo(() => [...messages, ...optimisticMessages], [messages, optimisticMessages]);
+
+  // Group messages by date (use sentAt)
+  const groupedMessages = useMemo(() => {
+    return Object.entries(
+      allMessages.reduce((acc, msg) => {
+        const key = new Date(msg.sentAt).toLocaleDateString(undefined, {
+          month: 'long', day: 'numeric', year: 'numeric',
+        });
+        (acc[key] = acc[key] || []).push(msg);
+        return acc;
+      }, {})
+    );
+  }, [allMessages]);
+
+  // Auto-scroll when messages change
+  useEffect(() => {
+    const c = document.getElementById('group-chat-container');
+    if (c) c.scrollTop = c.scrollHeight;
+  }, [allMessages]); // auto-scroll on allMessages
+
+  // Send encrypted message with optimistic UI
+  const handleSend = async () => {
+    if (!newMsg.trim() || !rid) return;
+    const tempMsg = {
+      id: `optimistic-${Date.now()}`,
+      senderId: currentEmployee.employee_id,
+      text: newMsg.trim(),
+      sentAt: new Date().toISOString(),
+      senderName: currentEmployee.first_name + ' ' + currentEmployee.last_name,
+      senderAvatar: currentEmployee.profile_photo_path
+        ? supabase.storage.from('profile-photo').getPublicUrl(currentEmployee.profile_photo_path).data.publicUrl
+        : DEFAULT_AVATAR_URL,
+      optimistic: true,
+    };
+    setOptimisticMessages(msgs => [...msgs, tempMsg]); // Render instantly
+    setNewMsg('');
+    // Await backend, then remove pending ONLY after real message arrives
+    await sendEncryptedMessage(rid, tempMsg.text, currentEmployee.employee_id);
+    // Do NOT remove optimistic message here; let real-time subscription handle it
+  };
+
   // Participants & admin
   const [participants, setParticipants]             = useState([]);
   const [availableEmployees, setAvailableEmployees] = useState([]);
@@ -92,7 +138,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
         return {
           id:          m.id,
           text:        m.text,
-          ts:          m.sentAt,
+          sentAt:      m.sentAt, // use sentAt for consistency
           senderId:    m.senderId,
           senderName:  info.name,
           senderAvatar: info.avatar,
@@ -101,6 +147,15 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
 
       setMessages(ui);
       setLoading(false);
+
+      // Remove optimistic message if real one with same text and senderId exists
+      setOptimisticMessages(msgs => msgs.filter(opt =>
+        !ui.some(real =>
+          real.senderId === opt.senderId &&
+          real.text === opt.text &&
+          Math.abs(new Date(real.sentAt) - new Date(opt.sentAt)) < 10000 // 10s window
+        )
+      ));
 
       // mark as read
       await supabase
@@ -124,32 +179,6 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
 
     return () => supabase.removeChannel(channel);
   }, [rid, currentEmployee.employee_id, queryClient]);
-
-  // Auto-scroll when messages change
-  useEffect(() => {
-    const c = document.getElementById('group-chat-container');
-    if (c) c.scrollTop = c.scrollHeight;
-  }, [messages]);
-
-  // Send encrypted message
-  const handleSend = async () => {
-    if (!newMsg.trim() || !rid) return;
-    await sendEncryptedMessage(rid, newMsg.trim(), currentEmployee.employee_id);
-    setNewMsg('');
-  };
-
-  // Group messages by date
-  const groupedMessages = useMemo(() => {
-    return Object.entries(
-      messages.reduce((acc, msg) => {
-        const key = new Date(msg.ts).toLocaleDateString(undefined, {
-          month: 'long', day: 'numeric', year: 'numeric',
-        });
-        (acc[key] = acc[key] || []).push(msg);
-        return acc;
-      }, {})
-    );
-  }, [messages]);
 
   // Persist changes
     const saveGroupName = async () => {
@@ -283,7 +312,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     })();
   }, [showMembers, rid]);
 
-  if (loading) return <div className="p-4 text-center">Loading chat…</div>;
+  //if (loading) return <div className="p-4 text-center">Loading chat…</div>;
 
   return (
     <>
@@ -389,7 +418,7 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
         </div>
 
         {/* Messages */}
-        <div id="group-chat-container" className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50">
+        <div id="group-chat-container" className="flex-1 min-h-0 overflow-y-auto px-6 py-4 bg-gray-50" style={{ minHeight: 0, maxHeight: 'calc(700px - 64px - 56px)' }}>
           {groupedMessages.map(([date, msgs]) => (
             <div key={date} className="space-y-4">
               <div className="text-center my-2 text-gray-400 text-xs font-medium">
@@ -411,25 +440,16 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
                         className="h-8 w-8 rounded-full object-cover"
                         style={{ marginBottom: 2 }}
                       />
-                      <div className={`max-w-lg ${isOwn ? 'text-right' : 'text-left'}`}>
+                      <div className={`max-w-lg ${isOwn ? 'text-right' : 'text-left'}`}> 
                         <div className="text-xs font-medium text-gray-600 mb-1">
                           {msg.senderName}
                         </div>
                         <div
-                          className={`inline-block px-3 py-2 rounded-lg text-sm ${
-                            isOwn
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-800 border'
-                          }`}
+                          className={`inline-block px-3 py-2 rounded-lg text-sm ${isOwn ? (msg.optimistic ? 'bg-blue-300 text-white opacity-70 animate-pulse' : 'bg-blue-600 text-white') : 'bg-white text-gray-800 border'}`}
                         >
                           {msg.text}
                         </div>
-                        <div className="text-xs mt-1 text-gray-500">
-                          {new Date(msg.ts).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </div>
+                        <div className={`text-xs mt-1 ${msg.optimistic ? 'text-gray-400' : 'text-gray-500'}`}>{msg.optimistic ? 'Sending…' : new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   </div>
