@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import { supabase } from './supabaseClient';
 import { fetchPendingTimeOffCount } from "./utils/requestHandler";
 import BreadcrumbsSidebar from './components/BreadcrumbsSidebar';
+import { useRooms } from './hooks/useRooms';
 import {
   CalendarDays, Clock, Timer, Building2, Users, UserPlus,
   MapPin, ClipboardList, Store, Bell, UserCheck, AlertCircle,
@@ -18,6 +19,14 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingTimeOffCount, setPendingTimeOffCount] = useState(0);
   const sidebarRef = useRef(null);
+
+  // Unread chat badge logic
+  const { data: rd } = useRooms(user);
+  const groupChats = rd?.groupChats ?? [];
+  const privateChats = rd?.privateChats ?? [];
+  const totalGroupUnread = groupChats.reduce((sum, r) => sum + (r.unread_count || 0), 0);
+  const totalPrivateUnread = privateChats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  const totalUnread = totalGroupUnread + totalPrivateUnread;
 
   const activeLinkClass =
     'bg-gray-200 text-gray-900 font-semibold rounded-md mx-2 my-1';
@@ -131,6 +140,11 @@ const Navbar = () => {
                   <Link to="/chat" className={`p-3 flex items-center w-full ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>
                     <MessageCircle className="w-5 h-5 mr-3" />
                     <span>Chat</span>
+                    {totalUnread > 0 && (
+                      <span className="ml-2 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {totalUnread}
+                      </span>
+                    )}
                   </Link>
                 </div>
               )}
@@ -167,6 +181,11 @@ const Navbar = () => {
                   <Link to="/chat" className={`p-3 flex items-center w-full ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>
                     <MessageCircle className="w-5 h-5 mr-3" />
                     <span>Chat</span>
+                    {totalUnread > 0 && (
+                      <span className="ml-2 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {totalUnread}
+                      </span>
+                    )}
                   </Link>
                 </div>
               )}
@@ -186,6 +205,11 @@ const Navbar = () => {
                   <Link to="/chat" className={`p-3 flex items-center w-full ${isActive('/chat') ? activeLinkClass : inactiveLinkClass}`}>
                     <MessageCircle className="w-5 h-5 mr-3" />
                     <span>Chat</span>
+                    {totalUnread > 0 && (
+                      <span className="ml-2 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {totalUnread}
+                      </span>
+                    )}
                   </Link>
                 </div>
               )}

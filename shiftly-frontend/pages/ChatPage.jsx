@@ -393,15 +393,46 @@ export default function ChatPage() {
         </div>
         {/* Tabs */}
         <div className="flex gap-2 px-4 pt-4 pb-2 border-b">
-          {['all','group','private'].map(m => (
+          {["all", "group", "private"].map(m => (
             <button
               key={m}
               onClick={() => { setMode(m); setSelectedChat(null); }}
-              className={`px-3 py-1 rounded font-medium ${
-                mode === m ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+              className={`relative px-3 py-1 rounded font-medium ${
+                mode === m ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700"
               }`}
             >
-              {m === 'all' ? 'All' : m === 'group' ? 'Groups' : 'Personal'}
+              {m === "all"
+                ? (
+                    <>
+                      All
+                      {(totalGroupUnread + totalPrivateUnread > 0) && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalGroupUnread + totalPrivateUnread}
+                        </span>
+                      )}
+                    </>
+                  )
+                : m === "group"
+                ? (
+                    <>
+                      Groups
+                      {totalGroupUnread > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalGroupUnread}
+                        </span>
+                      )}
+                    </>
+                  )
+                : (
+                    <>
+                      Personal
+                      {totalPrivateUnread > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold px-2 rounded-full">
+                          {totalPrivateUnread}
+                        </span>
+                      )}
+                    </>
+                  )}
             </button>
           ))}
         </div>
