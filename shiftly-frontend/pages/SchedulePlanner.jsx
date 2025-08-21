@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabaseClient';
 import WeeklyCalendar from '../components/WeeklyCalendar';
 import { utcToLocal, localToUTC } from '../utils/timezoneUtils';
+import InputField from '../components/InputField';
 
 //generate an array of week dates based 
 const getWeekDates = (offset = 0) => {
@@ -302,7 +303,7 @@ const SchedulePlanner = () => {
                                                                 {shift?.checked ? (
                                                                     shift.editable || isEditing ? (
                                                                         <div className="flex flex-col gap-1">
-                                                                            <input
+                                                                            <InputField
                                                                                 type="text"
                                                                                 value={shift.start || ''}
                                                                                 onChange={(e) => updateShiftTime(emp.employee_id, dateString, 'start', e.target.value)}
@@ -310,14 +311,24 @@ const SchedulePlanner = () => {
                                                                                 className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                                 placeholder="Start (e.g. 09:00)"
                                                                                 autoFocus={isEditing}
+                                                                                validate={(value) => {
+                                                                                    if (!value) return null;
+                                                                                    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                                                                                    return timeRegex.test(value) ? null : "Please enter time in HH:MM format (e.g. 09:00)";
+                                                                                }}
                                                                             />
-                                                                            <input
+                                                                            <InputField
                                                                                 type="text"
                                                                                 value={shift.end || ''}
                                                                                 onChange={(e) => updateShiftTime(emp.employee_id, dateString, 'end', e.target.value)}
                                                                                 onBlur={handleInputBlur}
                                                                                 className="w-full text-xs border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                                                                 placeholder="End (e.g. 17:00)"
+                                                                                validate={(value) => {
+                                                                                    if (!value) return null;
+                                                                                    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                                                                                    return timeRegex.test(value) ? null : "Please enter time in HH:MM format (e.g. 17:00)";
+                                                                                }}
                                                                             />
                                                                         </div>
                                                                     ) : (

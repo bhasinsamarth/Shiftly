@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import InputField from '../components/InputField';
 
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -54,7 +55,7 @@ export default function Employees() {
           </Link>
         </div>
 
-        <input
+        <InputField
           type="text"
           placeholder="Search by name or email..."
           className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"

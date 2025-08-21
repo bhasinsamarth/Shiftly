@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
+import InputField from "../components/InputField";
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Prefer not to say'];
 
@@ -174,14 +175,12 @@ const ProfilePage = () => {
 
   const renderInputField = (label, id, value, span = "md:col-span-1") => (
     <div className={span}>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input
+      <InputField
+        label={label}
         type="text"
         name={id}
-        id={id}
         value={value || ''}
         onChange={handleChange}
-        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
       />
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import DropdownMenu from '../components/DropdownMenu';
+import InputField from '../components/InputField';
 
 const EditEmployee = () => {
   const { id } = useParams();
@@ -163,87 +164,64 @@ const EditEmployee = () => {
         )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="first_name" className="block text-gray-700 font-medium mb-2">
-                First Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="first_name"
-                name="first_name"
-                value={form.first_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="last_name" className="block text-gray-700 font-medium mb-2">
-                Last Name
-              </label>
-              <input
-                type="text"
-                id="last_name"
-                name="last_name"
-                value={form.last_name}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="preferred_name" className="block text-gray-700 font-medium mb-2">
-              Preferred Name
-            </label>
-            <input
+            <InputField
+              label="First Name *"
               type="text"
-              id="preferred_name"
-              name="preferred_name"
-              value={form.preferred_name}
+              name="first_name"
+              value={form.first_name}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-gray-700 font-medium mb-2">
-              Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
               required
             />
-          </div>
-          <div>
-            <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">Phone</label>
-            <input
+            <InputField
+              label="Last Name"
               type="text"
-              id="phone"
-              name="phone"
-              value={form.phone}
+              name="last_name"
+              value={form.last_name}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
             />
           </div>
-          <div>
-            <label htmlFor="pay_rate" className="block text-gray-700 font-medium mb-2">
-              Pay Rate ($/hr)
-            </label>
-            <input
-              type="number"
-              id="pay_rate"
-              name="pay_rate"
-              value={form.pay_rate}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500"
-              step="0.01"
-            />
-          </div>
+          <InputField
+            label="Preferred Name"
+            type="text"
+            name="preferred_name"
+            value={form.preferred_name}
+            onChange={handleChange}
+          />
+
+          <InputField
+            label="Email *"
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
+          <InputField
+            label="Phone"
+            type="text"
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            validate={(val) => {
+              if (val && !/^[\d\s\-\+\(\)]+$/.test(val)) {
+                return 'Please enter a valid phone number';
+              }
+              return '';
+            }}
+          />
+          <InputField
+            label="Pay Rate ($/hr)"
+            type="number"
+            name="pay_rate"
+            value={form.pay_rate}
+            onChange={handleChange}
+            validate={(val) => {
+              if (val && (isNaN(val) || val < 0)) {
+                return 'Pay rate must be a positive number';
+              }
+              return '';
+            }}
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <DropdownMenu

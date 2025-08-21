@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { Eye, EyeOff } from "lucide-react";
+import InputField from '../components/InputField';
 
 export default function ResetPasswordForm() {
 
@@ -59,7 +60,7 @@ export default function ResetPasswordForm() {
             New Password
           </label>
           <div className="relative">
-            <input
+            <InputField
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
@@ -84,7 +85,7 @@ export default function ResetPasswordForm() {
             Confirm New Password
           </label>
           <div className="relative">
-            <input
+            <InputField
               id="confirmPassword"
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}

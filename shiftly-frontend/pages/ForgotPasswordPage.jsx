@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient"; // Adjust the import path as needed
 import { useNavigate } from "react-router-dom"; // If you need to navigate after success
+import InputField from "../components/InputField";
 
 
 export default function ForgotPassword() {
@@ -118,17 +119,24 @@ export default function ForgotPassword() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-md">
-            <label htmlFor="identifier" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Employee ID or Email
-            </label>
-            <input
-              id="identifier"
+            <InputField
+              label="Employee ID or Email"
               type="text"
+              name="identifier"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="e.g. 1000001 or user@example.com"
               required
-              className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              validate={(val) => {
+                if (!val) return '';
+                // Check if it's a 7-digit employee ID or valid email
+                const isEmployeeId = /^\d{7}$/.test(val);
+                const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+                if (!isEmployeeId && !isEmail) {
+                  return 'Please enter a valid 7-digit Employee ID or email address';
+                }
+                return '';
+              }}
             />
 
             <button

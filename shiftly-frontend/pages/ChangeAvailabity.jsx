@@ -3,6 +3,7 @@ import RangeCalendar from "../components/RangeCalendar";
 import { supabase } from "../supabaseClient";
 import { submitEmployeeRequest } from "../utils/requestHandler";
 import {  localToUTC } from "../utils/timezoneUtils";
+import InputField from '../components/InputField';
 
 const WEEKDAYS = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
@@ -23,7 +24,7 @@ const AvailabilityTable = ({ availability, onChange, storeTimezone = "UTC" }) =>
           <tr key={day}>
             <td className="px-6 py-4 whitespace-nowrap font-medium">{day}</td>
             <td className="px-6 py-4">
-              <input
+              <InputField
                 type="time"
                 value={availability[day]?.start || ""}
                 onChange={(e) => onChange(day, "start", e.target.value)}
@@ -31,7 +32,7 @@ const AvailabilityTable = ({ availability, onChange, storeTimezone = "UTC" }) =>
               />
             </td>
             <td className="px-6 py-4">
-              <input
+              <InputField
                 type="time"
                 value={availability[day]?.end || ""}
                 onChange={(e) => onChange(day, "end", e.target.value)}
@@ -175,7 +176,7 @@ const ChangeAvailability = () => {
         <div className="flex gap-2 mt-4 w-full">
           <div className="flex-1">
             <label className="block text-xs font-medium mb-1">Start Date</label>
-            <input
+            <InputField
               type="text"
               value={range.start ? range.start.toLocaleDateString() : ''}
               readOnly
@@ -184,7 +185,7 @@ const ChangeAvailability = () => {
           </div>
           <div className="flex-1">
             <label className="block text-xs font-medium mb-1">End Date</label>
-            <input
+            <InputField
               type="text"
               value={range.end ? range.end.toLocaleDateString() : ''}
               readOnly

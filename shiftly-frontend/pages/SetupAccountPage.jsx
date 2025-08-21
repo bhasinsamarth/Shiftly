@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import InputField from '../components/InputField';
 
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -290,12 +291,12 @@ const SetupAccountPage = () => {
             <>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Email <span className="text-red-500">*</span></label>
-                <input type="email" name="email" value={form.email} readOnly className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" required />
+                <InputField type="email" name="email" value={form.email} readOnly className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Password <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(min 8 chars, lowercase, uppercase, digits & symbols recommended)</span></label>
                 <div className="relative">
-                  <input
+                  <InputField
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={form.password}
@@ -318,7 +319,7 @@ const SetupAccountPage = () => {
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input
+                  <InputField
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     value={form.confirmPassword}
@@ -344,23 +345,23 @@ const SetupAccountPage = () => {
             <>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">First Name <span className="text-red-500">*</span></label>
-                <input type="text" name="first_name" value={form.first_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="text" name="first_name" value={form.first_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Middle Name</label>
-                <input type="text" name="middle_name" value={form.middle_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <InputField type="text" name="middle_name" value={form.middle_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Last Name</label>
-                <input type="text" name="last_name" value={form.last_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <InputField type="text" name="last_name" value={form.last_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Preferred Name</label>
-                <input type="text" name="preferred_name" value={form.preferred_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <InputField type="text" name="preferred_name" value={form.preferred_name} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Date of Birth <span className="text-red-500">*</span></label>
-                <input type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Gender <span className="text-red-500">*</span></label>
@@ -377,31 +378,55 @@ const SetupAccountPage = () => {
             <>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Address Line 1 <span className="text-red-500">*</span></label>
-                <input type="text" name="address_line_1" value={form.address_line_1} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="text" name="address_line_1" value={form.address_line_1} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Address Line 2</label>
-                <input type="text" name="address_line_2" value={form.address_line_2} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
+                <InputField type="text" name="address_line_2" value={form.address_line_2} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Postal Code <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(e.g. A1A 1A1)</span></label>
-                <input type="text" name="postal_code" value={form.postal_code} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField 
+                  type="text" 
+                  name="postal_code" 
+                  value={form.postal_code} 
+                  onChange={handleChange} 
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" 
+                  required 
+                  validate={(value) => {
+                    if (!value) return null;
+                    const postalCodeRegex = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+                    return postalCodeRegex.test(value) ? null : "Please enter a valid Canadian postal code (e.g. A1A 1A1)";
+                  }}
+                />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">City <span className="text-red-500">*</span></label>
-                <input type="text" name="city" value={form.city} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="text" name="city" value={form.city} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Province <span className="text-red-500">*</span></label>
-                <input type="text" name="province" value={form.province} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="text" name="province" value={form.province} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Country <span className="text-red-500">*</span></label>
-                <input type="text" name="country" value={form.country} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField type="text" name="country" value={form.country} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
               </div>
               <div>
                 <label className="block text-gray-700 text-xs sm:text-sm font-medium mb-1 sm:mb-2">Phone <span className="text-red-500">*</span> <span className="text-gray-400 text-[10px] sm:text-xs">(10 digits, e.g. 4035551234)</span></label>
-                <input type="text" name="phone" value={form.phone} onChange={handleChange} className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" required />
+                <InputField 
+                  type="text" 
+                  name="phone" 
+                  value={form.phone} 
+                  onChange={handleChange} 
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-500" 
+                  required 
+                  validate={(value) => {
+                    if (!value) return null;
+                    const phoneRegex = /^(\+1[-.\s]?)?(\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})$/;
+                    return phoneRegex.test(value) ? null : "Please enter a valid phone number (e.g. 123-456-7890)";
+                  }}
+                />
               </div>
             </>
           )}

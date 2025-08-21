@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import CalendarWidget from '../components/CalendarWidget';
 import { utcToLocal } from '../utils/timezoneUtils';
 import dayjs from 'dayjs';
+import InputField from '../components/InputField';
 
 const Timecards = () => {
     const { user } = useAuth();
@@ -262,7 +263,7 @@ const Timecards = () => {
                                                                     onClick={() => handleCellClick(emp.employee_id, type)}
                                                                 >
                                                                     {isEditing ? (
-                                                                        <input
+                                                                        <InputField
                                                                             className="w-full border rounded px-1 text-sm focus:ring-blue-500 focus:outline-none"
                                                                             type="text"
                                                                             value={shifts[type] || ''}
@@ -270,6 +271,11 @@ const Timecards = () => {
                                                                             onBlur={handleInputBlur}
                                                                             placeholder="--:--"
                                                                             autoFocus
+                                                                            validate={(value) => {
+                                                                                if (!value) return null;
+                                                                                const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                                                                                return timeRegex.test(value) ? null : "Please enter time in HH:MM format (e.g. 09:00)";
+                                                                            }}
                                                                         />
                                                                     ) : (
                                                                         <span className={shifts[type] ? '' : 'text-gray-400'}>{shifts[type] || 'No data'}</span>

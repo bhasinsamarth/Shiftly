@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import DropdownMenu from '../components/DropdownMenu';
+import InputField from '../components/InputField';
 
 // endpoint of your mail-sending backend
 const MAILER_API = import.meta.env.VITE_MAILER_API;
@@ -150,20 +151,15 @@ const AddEmployee = () => {
         <div className="max-w-sm">
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Email Address */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                Email address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="john.employee@email.com"
-                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-                required
-              />
-            </div>
+            <InputField
+              label="Email address"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="john.employee@email.com"
+              required
+            />
 
             {/* Store ID */}
             <div>
@@ -201,20 +197,20 @@ const AddEmployee = () => {
             </div>
 
             {/* Employee ID */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                Employee ID
-              </label>
-              <input
-                type="number"
-                name="employee_id"
-                value={form.employee_id}
-                onChange={handleChange}
-                placeholder="Enter employee ID"
-                className="w-80 px-3 py-2 sm:py-2.5 bg-white border border-gray-300 rounded-md text-xs sm:text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-                min="1"
-              />
-            </div>
+            <InputField
+              label="Employee ID"
+              type="number"
+              name="employee_id"
+              value={form.employee_id}
+              onChange={handleChange}
+              placeholder="Enter employee ID"
+              validate={(val) => {
+                if (val && val.length !== 7) {
+                  return 'Employee ID must be exactly 7 digits';
+                }
+                return '';
+              }}
+            />
 
             {/* Submit Button */}
             <div className="pt-3 sm:pt-4">

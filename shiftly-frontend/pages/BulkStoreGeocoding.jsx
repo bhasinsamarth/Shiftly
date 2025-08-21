@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { getCoordinatesFromAddress } from '../utils/locationService';
 import { getTimezoneOffset } from '../utils/timezoneUtils';
 import TimezoneDropdown from '../components/TimezoneDropdown';
+import InputField from '../components/InputField';
 import { EllipsisVertical } from 'lucide-react';
 
 const BulkStoreGeocoding = () => {
@@ -627,66 +628,60 @@ const BulkStoreGeocoding = () => {
                                 className="overflow-y-auto p-4 sm:p-6 flex-1"
                             >
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Store Name</label>
-                                        <input
-                                            type="text"
-                                            value={editedStore.store_name || ''}
-                                            onChange={(e) => setEditedStore({ ...editedStore, store_name: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Address Line 1</label>
-                                        <input
-                                            type="text"
-                                            value={editedStore.address_line_1 || ''}
-                                            onChange={(e) => setEditedStore({ ...editedStore, address_line_1: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700">Address Line 2</label>
-                                        <input
-                                            type="text"
-                                            value={editedStore.address_line_2 || ''}
-                                            onChange={(e) => setEditedStore({ ...editedStore, address_line_2: e.target.value })}
-                                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                        />
-                                    </div>
+                                    <InputField
+                                        label="Store Name"
+                                        type="text"
+                                        name="store_name"
+                                        value={editedStore.store_name || ''}
+                                        onChange={(e) => setEditedStore({ ...editedStore, store_name: e.target.value })}
+                                        required
+                                    />
+                                    <InputField
+                                        label="Address Line 1"
+                                        type="text"
+                                        name="address_line_1"
+                                        value={editedStore.address_line_1 || ''}
+                                        onChange={(e) => setEditedStore({ ...editedStore, address_line_1: e.target.value })}
+                                    />
+                                    <InputField
+                                        label="Address Line 2"
+                                        type="text"
+                                        name="address_line_2"
+                                        value={editedStore.address_line_2 || ''}
+                                        onChange={(e) => setEditedStore({ ...editedStore, address_line_2: e.target.value })}
+                                    />
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">City</label>
-                                            <input
-                                                type="text"
-                                                value={editedStore.city || ''}
-                                                onChange={(e) => setEditedStore({ ...editedStore, city: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Province</label>
-                                            <input
-                                                type="text"
-                                                value={editedStore.province || ''}
-                                                onChange={(e) => setEditedStore({ ...editedStore, province: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Postal Code</label>
-                                            <input
-                                                type="text"
-                                                value={editedStore.postal_code || ''}
-                                                onChange={(e) => setEditedStore({ ...editedStore, postal_code: e.target.value })}
-                                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                                            />
-                                        </div>
+                                        <InputField
+                                            label="City"
+                                            type="text"
+                                            name="city"
+                                            value={editedStore.city || ''}
+                                            onChange={(e) => setEditedStore({ ...editedStore, city: e.target.value })}
+                                        />
+                                        <InputField
+                                            label="Province"
+                                            type="text"
+                                            name="province"
+                                            value={editedStore.province || ''}
+                                            onChange={(e) => setEditedStore({ ...editedStore, province: e.target.value })}
+                                        />
+                                        <InputField
+                                            label="Postal Code"
+                                            type="text"
+                                            name="postal_code"
+                                            value={editedStore.postal_code || ''}
+                                            onChange={(e) => setEditedStore({ ...editedStore, postal_code: e.target.value })}
+                                            validate={(val) => {
+                                                if (val && !/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/.test(val)) {
+                                                    return 'Please enter a valid Canadian postal code (e.g., T2X 1V4)';
+                                                }
+                                                return '';
+                                            }}
+                                        />
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700">Country</label>
                                             <div className="relative">
-                                                <input
+                                                <InputField
                                                     type="text"
                                                     value={editedStore.country || ''}
                                                     onChange={e => setEditedStore({ ...editedStore, country: e.target.value })}
