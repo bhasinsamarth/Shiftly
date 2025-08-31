@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import InputField from "../../components/InputField";
 import { Eye, EyeOff } from "lucide-react";
-import { supabase } from "../../supabaseClient"; 
+import { AuthService } from "../../services/apiClient.js";
 import { useAuth } from "../../context/AuthContext";
 
 export default function LoginForm() {
@@ -46,37 +46,30 @@ export default function LoginForm() {
     setError("");
 
     try {
-      // 1) Lookup email by employee_id
-      const { data, error: dbError } = await supabase
-        .from("employee")
-        .select("email")
-        .eq("employee_id", employeeId)
-        .single();
-
-      if (dbError || !data) {
+      // Use the new secure login API
+      const result = await AuthService.login(employeeId, password);
+      
+      // The API handles authentication and returns session data
+      if (result.session && result.employee) {
+        // Store employee data for immediate access
+        localStorage.setItem("shiftly_employee", JSON.stringify(result.employee));
+        
+        // Trigger auth context update by calling the existing login hook
+        const loginSuccess = await login(result.employee.email, password, keepLoggedIn);
+        
+        if (loginSuccess) {
+          // Redirect to intended page
+          navigate(from, { replace: true });
+        } else {
+          setError("Authentication failed. Please try again.");
+        }
+      } else {
         setError("Invalid Employee ID or password.");
-        setIsLoading(false);
-        return;
       }
-
-      // 2) Attempt login
-      const loginSuccess = await login(data.email, password, keepLoggedIn);
-      if (!loginSuccess) {
-        setError("Invalid Employee ID or password.");
-        setIsLoading(false);
-        return;
-      }
-
-      // 3) Persist user in localStorage for fallback
-      if (user) {
-        localStorage.setItem("shiftly_user", JSON.stringify(user));
-      }
-
-      // 4) Redirect back to intended page
-      navigate(from, { replace: true });
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
+      console.error("Login error:", err);
+      setError(err.message || "Invalid Employee ID or password.");
+    } finally {
       setIsLoading(false);
     }
   };

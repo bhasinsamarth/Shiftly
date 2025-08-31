@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, Link } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
+import { EmployeeService, ScheduleService } from '../services/apiClient.js';
 
 
 
@@ -34,14 +34,13 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && (user.role_id === 1 || user.role_id === 2)) {
       async function fetchMetricsAndActivity() {
-        // Employee count from employee table
-        const { data: empRows, error: countError } = await supabase
-          .from('employee')
-          .select('id');
-        if (!countError && empRows) {
-          setEmployeesCount(empRows.length);
-        } else {
-          console.error('Error fetching employee count:', countError);
+        try {
+          // Employee count from secure API
+          const employees = await EmployeeService.getEmployees({ limit: 1000 }); // Get all employees to count
+          setEmployeesCount(employees.length);
+        } catch (error) {
+          console.error('Error fetching employee count:', error);
+          setEmployeesCount(0);
         }
       }
       fetchMetricsAndActivity();
@@ -59,14 +58,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     async function fetchShiftsForWeek(employeeId, weekStart, weekEnd) {
-      const { data: shiftData, error: shiftError } = await supabase
-        .from('store_schedule')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .gte('start_time', weekStart.toISOString())
-        .lte('start_time', weekEnd.toISOString())
-        .order('start_time', { ascending: true });
-      return { shiftData, shiftError };
+      try {
+        const shiftData = await ScheduleService.getSchedule({
+          employee_id: employeeId,
+          start_date: weekStart.toISOString(),
+          end_date: weekEnd.toISOString(),
+          limit: 100
+        });
+        return { shiftData, shiftError: null };
+      } catch (error) {
+        return { shiftData: null, shiftError: error };
+      }
     }
 
     // Include role_id 3 (manager) in the schedule preview logic
@@ -125,15 +127,25 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && (user.role_id === 3 || user.role_id === 4 || user.role_id === 5 || user.role_id === 6)) {
       async function fetchMyEmployee() {
-        const { data, error } = await supabase
-          .from('employee')
-          .select('*')
-          .eq('email', user.email)
-          .single();
-        if (error) {
+        try {
+          // The user object should already have employee data from AuthContext
+          // But we can fetch fresh data if needed
+          const employees = await EmployeeService.getEmployees({ 
+            limit: 1,
+            // Note: The API will automatically filter by user's store and permissions
+          });
+          
+          // Find current user's employee record
+          const currentEmployee = employees.find(emp => emp.email === user.email);
+          
+          if (currentEmployee) {
+            setMyEmployee(currentEmployee);
+          } else {
+            setErrorMyEmp('Could not fetch your employee data.');
+          }
+        } catch (error) {
+          console.error('Error fetching employee data:', error);
           setErrorMyEmp('Could not fetch your employee data.');
-        } else {
-          setMyEmployee(data);
         }
         setLoadingMyEmp(false);
       }

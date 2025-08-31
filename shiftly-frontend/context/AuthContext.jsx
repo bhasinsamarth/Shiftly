@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth as useAuthHook } from '../hooks/useAuth';
-import { supabase } from '../supabaseClient';
+import { AuthService } from '../services/apiClient.js';
 
 // Create the authentication context
 export const AuthContext = createContext();
@@ -20,20 +20,17 @@ export const AuthProvider = ({ children }) => {
   // State to hold the custom user record from the "users" table.
   const [dbUser, setDbUser] = useState(null);
 
-  // Whenever the auth.user is available, fetch the corresponding user record from your custom table.
+  // Whenever the auth.user is available, fetch the corresponding user record from the API.
   useEffect(() => {
     const fetchDbUser = async () => {
       if (auth.user && auth.user.email) {
-        
-        const { data, error } = await supabase
-          .from("employee") 
-          .select("*")
-          .eq("email", auth.user.email)
-          .single();
-        if (error) {
+        try {
+          const data = await AuthService.getProfile();
+          setDbUser(data);
+        } catch (error) {
           console.error("Error fetching db user:", error);
+          setDbUser(null);
         }
-        setDbUser(data);
       }
     };
 

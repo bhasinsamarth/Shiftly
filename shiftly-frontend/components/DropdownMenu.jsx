@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
+import { DropdownService } from '../services/apiClient.js';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 /**
@@ -56,37 +56,23 @@ const DropdownMenu = ({
     const fetchOptions = async () => {
       setLoading(true);
       try {
-        // Just fetch the value and display fields
-        let selectFields = `${valueField}, ${displayField}`;
-        
-        let query = supabase.from(tableName).select(selectFields);
-        
-        // Add filter if specified
+        const params = {
+          valueField,
+          displayField,
+        };
+
+        // Add filter parameters if specified
         if (filterField && filterValue !== undefined) {
-          if (filterOperator === 'neq') {
-            query = query.neq(filterField, filterValue);
-          } else if (filterOperator === 'gt') {
-            query = query.gt(filterField, filterValue);
-          } else if (filterOperator === 'lt') {
-            query = query.lt(filterField, filterValue);
-          } else if (filterOperator === 'gte') {
-            query = query.gte(filterField, filterValue);
-          } else if (filterOperator === 'lte') {
-            query = query.lte(filterField, filterValue);
-          } else if (filterOperator === 'in') {
-            query = query.in(filterField, filterValue);
-          } else {
-            // Default to equality
-            query = query.eq(filterField, filterValue);
-          }
+          params.filterField = filterField;
+          params.filterValue = filterValue;
+          params.filterOperator = filterOperator || 'eq';
         }
-        
-        const { data, error } = await query;
-        
-        if (error) throw error;
+
+        const data = await DropdownService.getOptions(tableName, params);
         setOptions(data || []);
       } catch (err) {
         console.error(`Error fetching options from ${tableName}:`, err);
+        setOptions([]);
       } finally {
         setLoading(false);
       }
