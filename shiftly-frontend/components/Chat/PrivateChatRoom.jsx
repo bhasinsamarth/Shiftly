@@ -1,8 +1,14 @@
 // src/components/Chat/PrivateChatRoom.jsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { loadMessages, sendMessage } from '../../utils/chatService';
+import {
+  getCachedEmployeeData,
+  getCachedParticipantData,
+  getCachedMessages,
+  addMessageToCache
+} from '../../utils/chatCacheService';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
@@ -25,46 +31,49 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
   const [partnerName, setPartnerName] = useState('');
   const [partnerAvatar, setPartnerAvatar] = useState(DEFAULT_AVATAR_URL);
 
-  // 1️⃣ Load my profile
+  // 1️⃣ Load my profile (OPTIMIZED)
   useEffect(() => {
     if (!empId) return;
-    supabase
-      .from('employee')
-      .select('first_name, preferred_name, profile_photo_path')
-      .eq('employee_id', empId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setMyName(data.preferred_name || data.first_name);
-        if (data.profile_photo_path) {
-          const { data: urlData } = supabase
-            .storage.from('profile-photo')
-            .getPublicUrl(data.profile_photo_path);
-          setMyAvatar(urlData.publicUrl);
+    (async () => {
+      try {
+        const employeeMap = await getCachedEmployeeData([empId]);
+        const myData = employeeMap[empId];
+        if (myData) {
+          setMyName(myData.name);
+          setMyAvatar(myData.avatar);
         }
-      });
+      } catch (error) {
+        console.error('Error loading my profile:', error);
+      }
+    })();
   }, [empId]);
 
-  // 2️⃣ Load partner info
+  // 2️⃣ Load partner info (OPTIMIZED)
   useEffect(() => {
     if (!rid || !empId) return;
-    supabase
-      .from('chat_room_participants')
-      .select('employee(first_name,last_name,profile_photo_path)')
-      .eq('room_id', rid)
-      .neq('employee_id', empId)
-      .single()
-      .then(({ data: row }) => {
-        const emp = row?.employee;
-        if (!emp) return setPartnerName('Unknown');
-        setPartnerName(`${emp.first_name} ${emp.last_name}`);
-        if (emp.profile_photo_path) {
+    (async () => {
+      try {
+        const participants = await getCachedParticipantData(rid, empId);
+        const partnerData = participants?.[0]?.employee;
+        
+        if (!partnerData) {
+          setPartnerName('Unknown');
+          return;
+        }
+        
+        setPartnerName(`${partnerData.first_name} ${partnerData.last_name}`);
+        
+        if (partnerData.profile_photo_path) {
           const { data: urlData } = supabase
             .storage.from('profile-photo')
-            .getPublicUrl(emp.profile_photo_path);
+            .getPublicUrl(partnerData.profile_photo_path);
           setPartnerAvatar(urlData.publicUrl);
         }
-      });
+      } catch (error) {
+        console.error('Error loading partner info:', error);
+        setPartnerName('Unknown');
+      }
+    })();
   }, [rid, empId]);
 
   // 3️⃣ Fetch deleted_at cutoff
@@ -81,21 +90,52 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
       });
   }, [rid, empId]);
 
-  // 4️⃣ Load & decrypt messages (with soft-delete filtering + real-time)
-  useEffect(() => {
-    if (!rid) return;
-    const reload = async () => {
+  // 4️⃣ Load & decrypt messages (OPTIMIZED with soft-delete filtering + real-time)
+  const loadMessagesOptimized = useCallback(async () => {
+    try {
       setLoading(true);
-      // load all decrypted
-      let all = await loadMessages(rid);
+      // Use cached messages
+      let all = await getCachedMessages(rid);
       // filter out before deletedAt
       if (deletedAt) {
         all = all.filter(m => new Date(m.sentAt) > new Date(deletedAt));
       }
       setMessages(all);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
       setLoading(false);
-    };
-    reload();
+    }
+  }, [rid, deletedAt]);
+
+  // Handle new message insertion (optimized)
+  const handleNewMessage = useCallback(async (payload) => {
+    try {
+      // Only load the new message instead of all messages
+      const newMessage = await loadMessages(rid);
+      const latestMessage = newMessage[newMessage.length - 1];
+      
+      if (latestMessage) {
+        // Check if it should be filtered by deletedAt
+        if (!deletedAt || new Date(latestMessage.sentAt) > new Date(deletedAt)) {
+          addMessageToCache(rid, latestMessage);
+          setMessages(prev => [...prev, latestMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling new message:', error);
+      // Fallback to full reload if incremental fails
+      loadMessagesOptimized();
+    }
+  }, [rid, deletedAt, loadMessagesOptimized]);
+
+  useEffect(() => {
+    if (!rid) return;
+    
+    // Initial load
+    loadMessagesOptimized();
+    
+    // Set up real-time subscription with optimized handler
     const channel = supabase
       .channel(`messages-${rid}`)
       .on(
@@ -106,11 +146,14 @@ export default function PrivateChatRoom({ roomId: rid, currentEmployee }) {
           table: 'messages',
           filter: `chat_room_id=eq.${rid}`
         },
-        reload
+        handleNewMessage
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [rid, deletedAt]);
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rid, loadMessagesOptimized, handleNewMessage]);
 
   // 5️⃣ Send a message (optimistic UI)
   const [optimisticMessages, setOptimisticMessages] = useState([]);

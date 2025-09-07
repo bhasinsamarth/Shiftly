@@ -1,5 +1,5 @@
 // src/components/Chat/GroupChatRoom.jsx
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../supabaseClient';
@@ -7,6 +7,11 @@ import {
   loadMessages as loadEncryptedMessages,
   sendMessage as sendEncryptedMessage,
 } from '../../utils/chatService';
+import {
+  getCachedEmployeeData,
+  getCachedMessages,
+  addMessageToCache
+} from '../../utils/chatCacheService';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
@@ -106,39 +111,25 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
     })();
   }, [rid, currentEmployee.employee_id]);
 
-  // Load & decrypt messages, subscribe real-time
-  useEffect(() => {
-    if (!rid) return;
-    const load = async () => {
+  // Load & decrypt messages, subscribe real-time (OPTIMIZED)
+  const loadMessagesOptimized = useCallback(async () => {
+    try {
       setLoading(true);
-      // 1️⃣ decrypt messages
-      const decrypted = await loadEncryptedMessages(rid);
+      
+      // 1️⃣ Use cached messages
+      const decrypted = await getCachedMessages(rid);
 
-      // 2️⃣ bulk-fetch sender info
+      // 2️⃣ Use cached employee data
       const ids = [...new Set(decrypted.map(m => m.senderId))];
-      const { data: emps } = await supabase
-        .from('employee')
-        .select('employee_id, first_name, last_name, profile_photo_path')
-        .in('employee_id', ids);
-
-      const map = {};
-      emps.forEach(e => {
-        const avatar = e.profile_photo_path
-          ? supabase.storage.from('profile-photo').getPublicUrl(e.profile_photo_path).data.publicUrl
-          : DEFAULT_AVATAR_URL;
-        map[e.employee_id] = {
-          name: `${e.first_name} ${e.last_name}`.trim(),
-          avatar,
-        };
-      });
+      const employeeMap = await getCachedEmployeeData(ids);
 
       // 3️⃣ build UI-ready message list
       const ui = decrypted.map(m => {
-        const info = map[m.senderId] || { name: 'Unknown', avatar: DEFAULT_AVATAR_URL };
+        const info = employeeMap[m.senderId] || { name: 'Unknown', avatar: DEFAULT_AVATAR_URL };
         return {
           id:          m.id,
           text:        m.text,
-          sentAt:      m.sentAt, // use sentAt for consistency
+          sentAt:      m.sentAt,
           senderId:    m.senderId,
           senderName:  info.name,
           senderAvatar: info.avatar,
@@ -146,7 +137,6 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
       });
 
       setMessages(ui);
-      setLoading(false);
 
       // Remove optimistic message if real one with same text and senderId exists
       setOptimisticMessages(msgs => msgs.filter(opt =>
@@ -165,20 +155,64 @@ export default function GroupChatRoom({ roomId: rid, currentEmployee, roomName }
         .eq('employee_id', currentEmployee.employee_id);
 
       queryClient.invalidateQueries(['rooms', currentEmployee.employee_id]);
-    };
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [rid, currentEmployee.employee_id, queryClient]);
 
-    load();
+  // Handle new message insertion (optimized)
+  const handleNewMessage = useCallback(async (payload) => {
+    try {
+      // Only load the new message instead of all messages
+      const newMessage = await loadEncryptedMessages(rid);
+      const latestMessage = newMessage[newMessage.length - 1];
+      
+      if (latestMessage) {
+        // Get employee data for the new sender (cached)
+        const employeeMap = await getCachedEmployeeData([latestMessage.senderId]);
+        
+        const newUIMessage = {
+          id: latestMessage.id,
+          text: latestMessage.text,
+          sentAt: latestMessage.sentAt,
+          senderId: latestMessage.senderId,
+          senderName: employeeMap[latestMessage.senderId]?.name || 'Unknown',
+          senderAvatar: employeeMap[latestMessage.senderId]?.avatar || DEFAULT_AVATAR_URL
+        };
+        
+        // Add to cache and state
+        addMessageToCache(rid, latestMessage);
+        setMessages(prev => [...prev, newUIMessage]);
+      }
+    } catch (error) {
+      console.error('Error handling new message:', error);
+      // Fallback to full reload if incremental fails
+      loadMessagesOptimized();
+    }
+  }, [rid, loadMessagesOptimized]);
+
+  useEffect(() => {
+    if (!rid) return;
+    
+    // Initial load
+    loadMessagesOptimized();
+    
+    // Set up real-time subscription with optimized handler
     const channel = supabase
       .channel(`group-${rid}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
-        load
+        handleNewMessage
       )
       .subscribe();
-
-    return () => supabase.removeChannel(channel);
-  }, [rid, currentEmployee.employee_id, queryClient]);
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rid, loadMessagesOptimized, handleNewMessage]);
 
   // Persist changes
     const saveGroupName = async () => {

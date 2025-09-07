@@ -1,11 +1,19 @@
 // src/components/Chat/StoreChat.jsx
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import {
   loadMessages as loadEncryptedMessages,
   sendMessage as sendMessage,
 } from '../../utils/chatService';
+import {
+  getCachedEmployeeData,
+  getCachedRoomData,
+  getCachedStoreData,
+  getCachedMessages,
+  addMessageToCache,
+  clearRoomCache
+} from '../../utils/chatCacheService';
 
 const DEFAULT_AVATAR_URL =
   'https://naenzjlyvbjodvdjnnbr.supabase.co/storage/v1/object/public/profile-photo/matthew-blank-profile-photo-2.jpg';
@@ -45,77 +53,109 @@ export default function StoreChat({ roomId: rid, currentEmployee }) {
   // — Admin context (role_id 1,2,3)
   const isCurrentAdmin = [1, 2, 3].includes(currentEmployee.role_id);
 
-  // 0️⃣ Fetch store_id & store_name from chat_rooms → store
+  // 0️⃣ Fetch store_id & store_name from chat_rooms → store (OPTIMIZED)
   useEffect(() => {
     if (!rid) return;
     (async () => {
-      // get store_id from chat_rooms
-      const { data: room } = await supabase
-        .from('chat_rooms')
-        .select('store_id')
-        .eq('id', rid)
-        .single();
-      if (room?.store_id) {
-        setStoreId(room.store_id);
-        // then fetch store_name
-        const { data: store } = await supabase
-          .from('store')
-          .select('store_name')
-          .eq('store_id', room.store_id)
-          .single();
-        setStoreName(store?.store_name || 'Store Chat');
-      } else {
+      try {
+        const room = await getCachedRoomData(rid);
+        if (room?.store_id) {
+          setStoreId(room.store_id);
+          const store = await getCachedStoreData(room.store_id);
+          setStoreName(store?.store_name || 'Store Chat');
+        } else {
+          setStoreName('Store Chat');
+        }
+      } catch (error) {
+        console.error('Error loading room/store data:', error);
         setStoreName('Store Chat');
       }
     })();
   }, [rid]);
 
-  // 1️⃣ Load & decrypt messages + realtime
-  useEffect(() => {
-    if (!rid) return;
-    const load = async () => {
-      const decrypted = await loadEncryptedMessages(rid);
+  // 1️⃣ Load & decrypt messages + realtime (OPTIMIZED)
+  const loadMessagesOptimized = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Use cached messages first
+      const decrypted = await getCachedMessages(rid);
+      
+      // Get unique sender IDs
       const ids = [...new Set(decrypted.map(m => m.senderId))];
-      const { data: emps } = await supabase
-        .from('employee')
-        .select('employee_id, first_name, last_name, profile_photo_path')
-        .in('employee_id', ids);
+      
+      // Use cached employee data
+      const employeeMap = await getCachedEmployeeData(ids);
 
-      const map = {};
-      emps.forEach(e => {
-        map[e.employee_id] = {
-          name: `${e.first_name} ${e.last_name}`.trim(),
-          avatar: e.profile_photo_path
-            ? supabase.storage
-                .from('profile-photo')
-                .getPublicUrl(e.profile_photo_path).data.publicUrl
-            : DEFAULT_AVATAR_URL
-        };
-      });
-
+      // Build UI messages
       const ui = decrypted.map(m => ({
         id: m.id,
         text: m.text,
-        sentAt: m.sentAt, // changed from ts to sentAt for consistency
+        sentAt: m.sentAt,
         senderId: m.senderId,
-        senderName: map[m.senderId]?.name || 'Unknown',
-        senderAvatar: map[m.senderId]?.avatar || DEFAULT_AVATAR_URL
+        senderName: employeeMap[m.senderId]?.name || 'Unknown',
+        senderAvatar: employeeMap[m.senderId]?.avatar || DEFAULT_AVATAR_URL
       }));
 
       setMessagesState(ui);
-    };
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [rid]);
 
-    load();
+  // Handle new message insertion (optimized - no full reload)
+  const handleNewMessage = useCallback(async (payload) => {
+    try {
+      // Only load the new message instead of all messages
+      const newMessage = await loadEncryptedMessages(rid);
+      const latestMessage = newMessage[newMessage.length - 1];
+      
+      if (latestMessage) {
+        // Get employee data for the new sender (cached)
+        const employeeMap = await getCachedEmployeeData([latestMessage.senderId]);
+        
+        const newUIMessage = {
+          id: latestMessage.id,
+          text: latestMessage.text,
+          sentAt: latestMessage.sentAt,
+          senderId: latestMessage.senderId,
+          senderName: employeeMap[latestMessage.senderId]?.name || 'Unknown',
+          senderAvatar: employeeMap[latestMessage.senderId]?.avatar || DEFAULT_AVATAR_URL
+        };
+        
+        // Add to cache and state
+        addMessageToCache(rid, latestMessage);
+        setMessagesState(prev => [...prev, newUIMessage]);
+      }
+    } catch (error) {
+      console.error('Error handling new message:', error);
+      // Fallback to full reload if incremental fails
+      loadMessagesOptimized();
+    }
+  }, [rid, loadMessagesOptimized]);
+
+  useEffect(() => {
+    if (!rid) return;
+    
+    // Initial load
+    loadMessagesOptimized();
+    
+    // Set up real-time subscription with optimized handler
     const channel = supabase
       .channel(`store-${rid}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_room_id=eq.${rid}` },
-        load
+        handleNewMessage
       )
       .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [rid]);
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rid, loadMessagesOptimized, handleNewMessage]);
 
   // 2️⃣ Auto-scroll
   useEffect(() => {
@@ -155,29 +195,35 @@ export default function StoreChat({ roomId: rid, currentEmployee }) {
     );
   }, [allMessages]);
 
-  // 5️⃣ Load store members
+  // 5️⃣ Load store members (OPTIMIZED)
   useEffect(() => {
     if (!showMembers || !storeId) {
       if (!showMembers) setMembers([]);
       return;
     }
     (async () => {
-      const { data: emps } = await supabase
-        .from('employee')
-        .select('employee_id, first_name, last_name, profile_photo_path, role_id')
-        .eq('store_id', storeId);
-      setMembers(
-        emps.map(e => ({
-          id: e.employee_id,
-          name: `${e.first_name} ${e.last_name}`.trim(),
-          avatar: e.profile_photo_path
-            ? supabase.storage
-                .from('profile-photo')
-                .getPublicUrl(e.profile_photo_path).data.publicUrl
-            : DEFAULT_AVATAR_URL,
-          isAdmin: [1, 2, 3].includes(e.role_id)
-        }))
-      );
+      try {
+        const { data: emps } = await supabase
+          .from('employee')
+          .select('employee_id, first_name, last_name, profile_photo_path, role_id')
+          .eq('store_id', storeId);
+          
+        setMembers(
+          emps?.map(e => ({
+            id: e.employee_id,
+            name: `${e.first_name} ${e.last_name}`.trim(),
+            avatar: e.profile_photo_path
+              ? supabase.storage
+                  .from('profile-photo')
+                  .getPublicUrl(e.profile_photo_path).data.publicUrl
+              : DEFAULT_AVATAR_URL,
+            isAdmin: [1, 2, 3].includes(e.role_id)
+          })) || []
+        );
+      } catch (error) {
+        console.error('Error loading store members:', error);
+        setMembers([]);
+      }
     })();
   }, [showMembers, storeId]);
 

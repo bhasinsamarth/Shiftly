@@ -174,3 +174,4 @@ The API provides consistent error responses:
 
 CORS is configured to allow requests from the frontend URL specified in `FRONTEND_URL` environment variable.
 
+
